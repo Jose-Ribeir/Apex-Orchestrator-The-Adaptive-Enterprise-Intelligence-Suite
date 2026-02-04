@@ -1,0 +1,1 @@
+export { performanceMetricsRoutes } from "./routes";
