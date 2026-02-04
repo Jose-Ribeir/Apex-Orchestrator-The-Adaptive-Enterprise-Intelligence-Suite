@@ -5,80 +5,128 @@ import torch
 import subprocess
 import sys
 import shutil
+from pathlib import Path
+from typing import List, Optional, Dict
+from dotenv import load_dotenv
+
+# --- LOAD ENVIRONMENT VARIABLES FIRST ---
+load_dotenv()
+
+# --- CONFIGURATION FROM .env ---
+API_KEY = os.getenv("GEMINI_API_KEY")
+# This is now just a DEFAULT fallback, not the only option
+DEFAULT_MODEL_NAME = os.getenv("GEMINI_MODEL_NAME", "gemini-2.0-flash")
+FLASH_RAG_PATH = os.getenv("FLASH_RAG_PATH")
+HOST = os.getenv("HOST", "127.0.0.1")
+PORT = int(os.getenv("PORT", 8000))
+BASE_DATA_FOLDER = os.getenv("DATA_FOLDER", "data")
+CORPUS_FILENAME = "uploaded_docs.jsonl"
+INDEX_DIR_NAME = "flashrag_index"
+
+# Validate critical config
+if not API_KEY:
+    raise ValueError("❌ GEMINI_API_KEY missing from .env!")
+if not FLASH_RAG_PATH or not Path(FLASH_RAG_PATH).exists():
+    print("⚠️ FLASH_RAG_PATH not found or invalid")
+else:
+    if FLASH_RAG_PATH not in sys.path:
+        sys.path.append(FLASH_RAG_PATH)
+
+# Gemini Setup
 import google.generativeai as genai
-from fastapi import FastAPI, HTTPException, BackgroundTasks, UploadFile, File
+
+genai.configure(api_key=API_KEY)
+# Note: We do NOT initialize a global 'model' here anymore.
+# We do it per-request to support multiple models.
+
+from fastapi import FastAPI, HTTPException, BackgroundTasks, UploadFile, File, Form
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
-from typing import List, Optional, Dict
-
-# --- 1. CONFIGURATION ---
-API_KEY = "AIzaSyDdazQHNvH33BRfB6b_rG898R5uAvukQ60"
-genai.configure(api_key=API_KEY)
-GEMINI_MODEL_NAME = "gemini-2.0-flash-thinking-exp-01-21"
-model = genai.GenerativeModel(GEMINI_MODEL_NAME)
-
-# PATHS
-FLASH_RAG_PATH = r'J:\codigo\FlashRAG-main'
-DATA_FOLDER = "data"
-CORPUS_FILENAME = "uploaded_docs.jsonl"
-CORPUS_PATH = os.path.join(DATA_FOLDER, CORPUS_FILENAME)
-INDEX_SAVE_DIR = "../flashrag_index/"
-INDEX_PATH = os.path.join(INDEX_SAVE_DIR, "bge_Flat.index")
 
 app = FastAPI(title="Gemini Agent Factory")
 
-# --- 2. LOAD RAG SYSTEM ---
-# (Same RAG loading logic as before - kept brief for clarity)
-print("Loading RAG System...")
-if FLASH_RAG_PATH not in sys.path:
-    sys.path.append(FLASH_RAG_PATH)
-retriever = None
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+print(f"🚀 Server starting on {HOST}:{PORT}")
+print(f"📁 Base Data Folder: {BASE_DATA_FOLDER}")
+print(f"🤖 Default Model: {DEFAULT_MODEL_NAME}")
+
+# --- RAG SYSTEM (Multi-Agent) ---
+retriever_cache = {}
 
 
-def load_retriever():
-    global retriever
+def get_agent_paths(agent_name: str):
+    """Helper to get paths for a specific agent and ensure directory exists."""
+    safe_name = "".join([c for c in agent_name if c.isalnum() or c in ('-', '_')])
+    agent_dir = os.path.join(BASE_DATA_FOLDER, safe_name)
+
+    if not os.path.exists(agent_dir):
+        os.makedirs(agent_dir, exist_ok=True)
+
+    corpus_path = os.path.join(agent_dir, CORPUS_FILENAME)
+    index_path = os.path.join(agent_dir, INDEX_DIR_NAME, "bge_Flat.index")
+    index_dir = os.path.join(agent_dir, INDEX_DIR_NAME)
+    return agent_dir, corpus_path, index_path, index_dir
+
+
+def get_or_load_retriever(agent_name: str):
+    if agent_name in retriever_cache:
+        return retriever_cache[agent_name]
+
+    _, corpus_path, index_path, _ = get_agent_paths(agent_name)
+
+    if not os.path.exists(index_path):
+        return None
+
     try:
         from flashrag.config import Config
         from flashrag.utils import get_retriever
-        if os.path.exists(INDEX_PATH):
-            config_dict = {
-                "retrieval_method": "bge",
-                "retrieval_topk": 5,
-                "corpus_path": CORPUS_PATH,
-                "index_path": INDEX_PATH,
-                "instruction": "Represent this sentence for searching relevant passages:",
-                "device": "cuda" if torch.cuda.is_available() else "cpu"
-            }
-            config = Config(config_dict=config_dict)
-            retriever = get_retriever(config)
-            print("✅ RAG System Loaded Successfully")
-        else:
-            print("⚠️ Index file not found. RAG is disabled.")
-            retriever = None
+
+        print(f"🔄 Loading RAG index for agent: {agent_name}...")
+        config_dict = {
+            "retrieval_method": "bge",
+            "retrieval_topk": int(os.getenv("RAG_TOPK", 5)),
+            "corpus_path": corpus_path,
+            "index_path": index_path,
+            "instruction": os.getenv("RAG_INSTRUCTION", "Represent this sentence for searching relevant passages:"),
+            "device": "cuda" if torch.cuda.is_available() else "cpu"
+        }
+        config = Config(config_dict=config_dict)
+        retriever = get_retriever(config)
+        retriever_cache[agent_name] = retriever
+        print(f"✅ RAG Loaded for {agent_name}")
+        return retriever
     except Exception as e:
-        print(f"❌ Error loading FlashRAG: {e}")
-        retriever = None
+        print(f"❌ RAG Load Error for {agent_name}: {e}")
+        return None
 
 
-load_retriever()
-
-
-# --- 3. DATA MODELS ---
-
-# This matches the data structure you will send from your TypeScript backend
+# --- DATA MODELS ---
 class AgentConfig(BaseModel):
     name: str
-    mode: str  # "PERFORMANCE" or "EFFICIENCY"
-    instructions: List[str]  # List of raw instruction strings from the DB
-    tools: List[str]  # List of tool names (e.g., ["RAG", "Calculator"])
+    mode: str
+    instructions: List[str]
+    tools: List[str]
+    # Allow user to specify model for optimization, default to env var
+    model_name: str = DEFAULT_MODEL_NAME
 
 
 class ChatRequest(BaseModel):
+    agent_name: str
     message: str
-    system_prompt: str  # The compiled prompt generated by the optimizer
+    system_prompt: str
+    # Allow user to specify model for chat, default to env var
+    model_name: str = DEFAULT_MODEL_NAME
 
 
-# --- 4. THE REFERENCE LOGIC (V5 Template) ---
+# --- ANALYSIS TEMPLATE ---
 ANALYSIS_V5_TEMPLATE = (
     "--- ROUTING LOGIC (V5) ---\n"
     "You are a query classification expert. Classify the query into Profile 1 or Profile 2.\n"
@@ -91,176 +139,165 @@ ANALYSIS_V5_TEMPLATE = (
 )
 
 
-# --- 5. THE AGENT COMPILER (Prompt Optimizer) ---
+# --- ENDPOINTS ---
 
 @app.post("/optimize_prompt")
 async def optimize_prompt(config: AgentConfig):
-    """
-    Compiles the Agent's Name, Mode, Tools, and Instructions into a single System Prompt.
-    """
+    # Initialize the specific model requested
+    try:
+        current_model = genai.GenerativeModel(config.model_name)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid model name '{config.model_name}': {str(e)}")
 
-    # 1. Determine Mode Behavior
-    mode_instruction = ""
-    if config.mode == "PERFORMANCE":
-        mode_instruction = "You are in PERFORMANCE mode. Prioritize accuracy, detail, and thoroughness over speed. Always double-check your reasoning."
-    elif config.mode == "EFFICIENCY":
-        mode_instruction = "You are in EFFICIENCY mode. Prioritize concise, direct answers. Avoid unnecessary elaboration or retrieval if not strictly needed."
+    mode_instruction = {
+        "PERFORMANCE": "Prioritize accuracy, detail, thoroughness. Double-check reasoning.",
+        "EFFICIENCY": "Prioritize concise, direct answers. Skip unnecessary retrieval."
+    }.get(config.mode, "")
 
-    # 2. Format Tools
-    tools_list = ", ".join(config.tools) if config.tools else "No external tools available."
-
-    # 3. Format Raw Instructions
+    tools_list = ", ".join(config.tools) if config.tools else "No tools."
     raw_instructions = "\n".join(f"- {instr}" for instr in config.instructions)
 
-    # 4. Construct the Meta-Prompt for Gemini
-    meta_prompt = (
-        "You are an expert AI Architect. Your task is to compile a final SYSTEM PROMPT for a new AI Agent based on the configuration below.\n\n"
+    meta_prompt = f"""You are an expert AI Architect. Compile SYSTEM PROMPT from:
 
-        "--- AGENT CONFIGURATION ---\n"
-        f"Name: {config.name}\n"
-        f"Mode: {config.mode} ({mode_instruction})\n"
-        f"Available Tools: {tools_list}\n"
-        f"User-Provided Guidelines:\n{raw_instructions}\n"
-        "---------------------------\n\n"
+Name: {config.name}
+Mode: {config.mode} ({mode_instruction})
+Tools: {tools_list}
+Guidelines:
+{raw_instructions}
 
-        "--- REFERENCE ROUTING LOGIC ---\n"
-        f"{ANALYSIS_V5_TEMPLATE}\n"
-        "-------------------------------\n\n"
+{ANALYSIS_V5_TEMPLATE}
 
-        "**TASK:**\n"
-        "Generate a single, cohesive SYSTEM PROMPT that the agent will use to operate. The prompt must include:\n"
-        "1. **Persona Definition:** Incorporate the Name and Mode.\n"
-        "2. **Operational Guidelines:** Integrate the User-Provided Guidelines into clear rules.\n"
-        "3. **Tool Usage & Routing:** Adapt the 'Reference Routing Logic' to this specific agent. \n"
-        "   - If the agent has the 'RAG' tool, define specific examples for Profile 1 (Retrieval) based on the agent's domain.\n"
-        "   - If the agent does NOT have 'RAG', remove the routing logic and instruct it to rely on internal knowledge.\n\n"
-
-        "Output ONLY the final System Prompt text."
-    )
+Output ONLY the final System Prompt."""
 
     try:
-        response = model.generate_content(meta_prompt)
-        return {"optimized_prompt": response.text}
+        response = current_model.generate_content(meta_prompt)
+        return {"optimized_prompt": response.text, "model_used": config.model_name}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Gemini Error: {str(e)}")
 
 
-# --- 6. RUNTIME (Chat) ---
-
-async def decide_path(query, system_prompt):
-    """
-    Uses the compiled system prompt to decide the path.
-    """
-    routing_check = f"""
-    {system_prompt}
-
-    [TASK]
-    Analyze the following query based on the Routing Logic defined above.
-    Does this query fit Profile 1 (Retrieval Required) or Profile 2 (Direct Answer)?
-
-    Query: {query}
-
-    Reply ONLY with '1-Yes' or '2-No'.
-    """
+async def decide_path(query, system_prompt, model_instance):
+    """Uses the provided model instance to decide routing."""
+    routing_check = f"{system_prompt}\n\n[TASK] Analyze: {query}\nReply ONLY '1-Yes' or '2-No'."
     try:
-        response = model.generate_content(routing_check)
-        decision = response.text.strip()
-        if "1-Yes" in decision or "1-yes" in decision:
-            return "retrieval"
-        return "direct"
+        response = model_instance.generate_content(routing_check)
+        return "retrieval" if "1-Yes" in response.text else "direct"
     except:
         return "direct"
 
 
 @app.post("/generate_stream")
 async def generate_stream(request: ChatRequest):
-    # 1. Decide Path
-    method = await decide_path(request.message, request.system_prompt)
+    # 1. Initialize the specific model requested by the user
+    try:
+        current_model = genai.GenerativeModel(request.model_name)
+    except Exception as e:
+        # Fallback or error if model name is invalid
+        yield json.dumps({"error": f"Invalid model name: {str(e)}"}) + "\n"
+        return
 
-    # 2. Execute Path
+    # 2. Decide path using the selected model
+    method = await decide_path(request.message, request.system_prompt, current_model)
+
+    agent_retriever = get_or_load_retriever(request.agent_name)
+
     context_str = ""
     retrieved_docs = []
 
-    if method == "retrieval":
-        # Only retrieve if RAG is actually available/loaded
-        if retriever:
-            try:
-                results = retriever.search(request.message)
-                retrieved_docs = [doc['contents'] for doc in results]
-                context_str = "\n".join(retrieved_docs)
-            except:
-                context_str = "Error retrieving documents."
-        else:
-            context_str = "RAG tool is not active."
+    if method == "retrieval" and agent_retriever:
+        try:
+            results = agent_retriever.search(request.message)
+            retrieved_docs = [doc['contents'] for doc in results]
+            context_str = "\n".join(retrieved_docs)
+        except Exception as e:
+            context_str = f"RAG Error: {e}"
+    elif method == "retrieval" and not agent_retriever:
+        context_str = "No knowledge base found for this agent."
 
-    # 3. Build Final Prompt
-    full_prompt = f"""
-    [SYSTEM PROMPT]
-    {request.system_prompt}
+    full_prompt = f"""[SYSTEM] {request.system_prompt}
 
-    [EXECUTION CONTEXT]
-    Routing Decision: {method.upper()}
+[CONTEXT] Method: {method}
+{context_str or 'No context.'}
 
-    [RETRIEVED KNOWLEDGE]
-    {context_str if context_str else "No external context used."}
+[USER] {request.message}"""
 
-    [USER MESSAGE]
-    {request.message}
-    """
-
-    # 4. Stream Response
-    async def response_generator():
-        start_time = time.time()
-        total_tokens = 0
-
-        yield json.dumps({"text": "", "is_final": False, "metrics": {"method_used": method}}) + "\n"
+    async def stream():
+        yield json.dumps(
+            {"text": "", "is_final": False, "metrics": {"method": method, "model": request.model_name}}) + "\n"
 
         try:
-            stream = model.generate_content(full_prompt, stream=True)
-            for chunk in stream:
-                if chunk.text:
-                    total_tokens += len(chunk.text) / 4
-                    yield json.dumps({"text": chunk.text, "is_final": False,
-                                      "metrics": {"current_tokens": int(total_tokens)}}) + "\n"
+            # 3. Generate content using the selected model
+            stream_response = current_model.generate_content(full_prompt, stream=True)
+            total_tokens = 0
+            start = time.time()
 
-            duration = time.time() - start_time
+            for chunk in stream_response:
+                if chunk.text:
+                    total_tokens += len(chunk.text) // 4
+                    yield json.dumps({
+                        "text": chunk.text,
+                        "is_final": False,
+                        "metrics": {"tokens": total_tokens}
+                    }) + "\n"
+
             yield json.dumps({
                 "text": "",
                 "is_final": True,
                 "metrics": {
-                    "total_tokens": int(total_tokens),
-                    "duration_sec": round(duration, 2),
-                    "retrieved_docs": retrieved_docs
+                    "total_tokens": total_tokens,
+                    "duration": round(time.time() - start, 2),
+                    "docs": len(retrieved_docs),
+                    "rag_active": agent_retriever is not None,
+                    "model_used": request.model_name
                 }
             }) + "\n"
-
         except Exception as e:
             yield json.dumps({"error": str(e)}) + "\n"
 
-    return StreamingResponse(response_generator(), media_type="application/x-ndjson")
+    return StreamingResponse(stream(), media_type="application/x-ndjson")
 
 
-# --- 7. UPLOAD (Same as before) ---
 @app.post("/upload_and_index")
-async def upload_and_index(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
-    try:
-        os.makedirs(DATA_FOLDER, exist_ok=True)
-        with open(CORPUS_PATH, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
+async def upload_and_index(
+        background_tasks: BackgroundTasks,
+        agent_name: str = Form(...),
+        file: UploadFile = File(...)
+):
+    agent_dir, corpus_path, _, index_dir = get_agent_paths(agent_name)
 
-        def run_indexing():
-            subprocess.run([
-                "python", "-m", "flashrag.retriever.index_builder",
-                "--retrieval_method", "bge",
-                "--model_path", "BAAI/bge-base-en-v1.5",
-                "--corpus_path", CORPUS_PATH,
-                "--save_dir", INDEX_SAVE_DIR,
-                "--faiss_type", "Flat",
-                "--instruction", ""
-            ], cwd=FLASH_RAG_PATH)
-            load_retriever()
+    with open(corpus_path, "wb") as f:
+        shutil.copyfileobj(file.file, f)
 
-        background_tasks.add_task(run_indexing)
-        return {"status": "accepted", "message": "Indexing started."}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    def index_docs_task(a_name, c_path, i_dir):
+        print(f"🔨 Starting indexing for agent: {a_name}")
+        subprocess.run([
+            "python", "-m", "flashrag.retriever.index_builder",
+            "--retrieval_method", "bge",
+            "--model_path", "BAAI/bge-base-en-v1.5",
+            "--corpus_path", c_path,
+            "--save_dir", i_dir,
+            "--faiss_type", "Flat"
+        ], cwd=FLASH_RAG_PATH, capture_output=True)
+
+        if a_name in retriever_cache:
+            del retriever_cache[a_name]
+        get_or_load_retriever(a_name)
+        print(f"✅ Indexing complete for agent: {a_name}")
+
+    background_tasks.add_task(index_docs_task, agent_name, corpus_path, index_dir)
+    return {"status": "queued", "agent": agent_name, "path": corpus_path}
+
+
+@app.get("/health")
+async def health():
+    return {
+        "status": "healthy",
+        "loaded_agents": list(retriever_cache.keys()),
+        "default_model": DEFAULT_MODEL_NAME,
+    }
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    uvicorn.run(app, host=HOST, port=PORT, reload=True)

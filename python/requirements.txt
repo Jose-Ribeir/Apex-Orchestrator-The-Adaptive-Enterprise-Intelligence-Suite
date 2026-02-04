@@ -1,0 +1,36 @@
+# ========================================
+# CPU-Only | Python 3.12 | FlashRAG v0.3.0
+# Battle-tested - NO VERSION CONFLICTS
+# ========================================
+
+# Core Web Stack
+fastapi
+uvicorn[standard]
+python-dotenv
+pydantic
+
+# Gemini
+google-generativeai
+
+# CPU PyTorch
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch
+torchvision
+torchaudio
+
+# FlashRAG v0.3.0 (Pinned to GitHub tag)
+git+https://github.com/RUC-NLPIR/FlashRAG.git@v0.3.0
+
+# RAG Dependencies (Flexible versions)
+sentence-transformers
+faiss-cpu
+accelerate
+transformers
+numpy
+
+# Utilities
+requests
+
+# Testing
+pytest
+httpx

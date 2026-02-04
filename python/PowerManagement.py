@@ -26,7 +26,7 @@ from flashrag.utils import get_retriever
 
 # Define corpus and index paths
 corpus_file = "datasets/HotPotQa_docs_flashrag.jsonl"
-index_path = "../flashrag_index/bge_Flat.index"
+index_path = "flashrag_index/bge_Flat.index"
 
 # Initialize Retriever
 # We increase retrieval_topk (e.g., to 20 or 50) because we are skipping the
