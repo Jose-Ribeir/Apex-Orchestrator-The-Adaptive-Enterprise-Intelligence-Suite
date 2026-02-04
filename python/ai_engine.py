@@ -22,7 +22,7 @@ FLASH_RAG_PATH = r'J:\codigo\FlashRAG-main'
 DATA_FOLDER = "data"
 CORPUS_FILENAME = "uploaded_docs.jsonl"
 CORPUS_PATH = os.path.join(DATA_FOLDER, CORPUS_FILENAME)
-INDEX_SAVE_DIR = "./flashrag_index/"
+INDEX_SAVE_DIR = "../flashrag_index/"
 INDEX_PATH = os.path.join(INDEX_SAVE_DIR, "bge_Flat.index")
 
 app = FastAPI(title="Gemini Agent Factory")
