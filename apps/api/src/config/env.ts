@@ -17,4 +17,5 @@ export const env = {
   pythonApiUrl: getEnv("PYTHON_API_URL", "http://localhost:5000"),
   betterAuthSecret: getEnv("BETTER_AUTH_SECRET", ""),
   betterAuthUrl: getEnv("BETTER_AUTH_URL", "http://localhost:4200"),
+  appUrl: getEnv("APP_URL", ""),
 } as const;
