@@ -74,6 +74,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set repository (lowercase for GHCR)
+        run: echo "REPOSITORY_LOWER=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -93,7 +96,7 @@ jobs:
           push: ${{ github.event_name == 'push' }}
           load: ${{ github.event_name != 'push' }}
           tags: |
-            ${{ env.REGISTRY }}/${{ github.repository }}/api:latest
-            ${{ env.REGISTRY }}/${{ github.repository }}/api:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.REPOSITORY_LOWER }}/api:latest
+            ${{ env.REGISTRY }}/${{ env.REPOSITORY_LOWER }}/api:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
