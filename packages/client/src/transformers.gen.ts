@@ -5,6 +5,26 @@ import type {
   CreateAgentResponse,
   GetAgentByIdResponse,
   UpdateAgentResponse,
+  ListAgentInstructionsResponse,
+  CreateAgentInstructionResponse,
+  GetAgentInstructionByIdResponse,
+  UpdateAgentInstructionResponse,
+  ListAgentToolsResponse,
+  AddAgentToolResponse,
+  ListAgentQueriesResponse,
+  CreateAgentQueryResponse,
+  GetAgentQueryByIdResponse,
+  UpdateAgentQueryResponse,
+  ListAgentStatsResponse,
+  CreateAgentStatResponse,
+  GetAgentStatByDateResponse,
+  GetAgentStatByIdResponse,
+  UpdateAgentStatResponse,
+  ListToolsResponse,
+  ListHumanTasksResponse,
+  ListNotificationsResponse,
+  ListApiTokensResponse,
+  CreateApiTokenResponse2,
 } from "./types.gen";
 
 const agentInstructionSchemaResponseTransformer = (data: any) => {
@@ -50,7 +70,7 @@ const agentSchemaResponseTransformer = (data: any) => {
 export const listAgentsResponseTransformer = async (
   data: any,
 ): Promise<ListAgentsResponse> => {
-  data = data.map((item: any) => {
+  data.data = data.data.map((item: any) => {
     return agentSchemaResponseTransformer(item);
   });
   return data;
@@ -74,5 +94,232 @@ export const updateAgentResponseTransformer = async (
   data: any,
 ): Promise<UpdateAgentResponse> => {
   data = agentSchemaResponseTransformer(data);
+  return data;
+};
+
+export const listAgentInstructionsResponseTransformer = async (
+  data: any,
+): Promise<ListAgentInstructionsResponse> => {
+  if (data.data) {
+    data.data = data.data.map((item: any) => {
+      return agentInstructionSchemaResponseTransformer(item);
+    });
+  }
+  return data;
+};
+
+export const createAgentInstructionResponseTransformer = async (
+  data: any,
+): Promise<CreateAgentInstructionResponse> => {
+  data = agentInstructionSchemaResponseTransformer(data);
+  return data;
+};
+
+export const getAgentInstructionByIdResponseTransformer = async (
+  data: any,
+): Promise<GetAgentInstructionByIdResponse> => {
+  data = agentInstructionSchemaResponseTransformer(data);
+  return data;
+};
+
+export const updateAgentInstructionResponseTransformer = async (
+  data: any,
+): Promise<UpdateAgentInstructionResponse> => {
+  data = agentInstructionSchemaResponseTransformer(data);
+  return data;
+};
+
+export const listAgentToolsResponseTransformer = async (
+  data: any,
+): Promise<ListAgentToolsResponse> => {
+  if (data.data) {
+    data.data = data.data.map((item: any) => {
+      return toolSchemaResponseTransformer(item);
+    });
+  }
+  return data;
+};
+
+export const addAgentToolResponseTransformer = async (
+  data: any,
+): Promise<AddAgentToolResponse> => {
+  data = toolSchemaResponseTransformer(data);
+  return data;
+};
+
+const modelQuerySchemaResponseTransformer = (data: any) => {
+  if (data.createdAt) {
+    data.createdAt = new Date(data.createdAt);
+  }
+  if (data.updatedAt) {
+    data.updatedAt = new Date(data.updatedAt);
+  }
+  return data;
+};
+
+export const listAgentQueriesResponseTransformer = async (
+  data: any,
+): Promise<ListAgentQueriesResponse> => {
+  if (data.data) {
+    data.data = data.data.map((item: any) => {
+      return modelQuerySchemaResponseTransformer(item);
+    });
+  }
+  return data;
+};
+
+export const createAgentQueryResponseTransformer = async (
+  data: any,
+): Promise<CreateAgentQueryResponse> => {
+  data = modelQuerySchemaResponseTransformer(data);
+  return data;
+};
+
+export const getAgentQueryByIdResponseTransformer = async (
+  data: any,
+): Promise<GetAgentQueryByIdResponse> => {
+  data = modelQuerySchemaResponseTransformer(data);
+  return data;
+};
+
+export const updateAgentQueryResponseTransformer = async (
+  data: any,
+): Promise<UpdateAgentQueryResponse> => {
+  data = modelQuerySchemaResponseTransformer(data);
+  return data;
+};
+
+const dailyStatSchemaResponseTransformer = (data: any) => {
+  if (data.date) {
+    data.date = new Date(data.date);
+  }
+  if (data.createdAt) {
+    data.createdAt = new Date(data.createdAt);
+  }
+  if (data.updatedAt) {
+    data.updatedAt = new Date(data.updatedAt);
+  }
+  return data;
+};
+
+export const listAgentStatsResponseTransformer = async (
+  data: any,
+): Promise<ListAgentStatsResponse> => {
+  if (data.data) {
+    data.data = data.data.map((item: any) => {
+      return dailyStatSchemaResponseTransformer(item);
+    });
+  }
+  return data;
+};
+
+export const createAgentStatResponseTransformer = async (
+  data: any,
+): Promise<CreateAgentStatResponse> => {
+  data = dailyStatSchemaResponseTransformer(data);
+  return data;
+};
+
+export const getAgentStatByDateResponseTransformer = async (
+  data: any,
+): Promise<GetAgentStatByDateResponse> => {
+  data = dailyStatSchemaResponseTransformer(data);
+  return data;
+};
+
+export const getAgentStatByIdResponseTransformer = async (
+  data: any,
+): Promise<GetAgentStatByIdResponse> => {
+  data = dailyStatSchemaResponseTransformer(data);
+  return data;
+};
+
+export const updateAgentStatResponseTransformer = async (
+  data: any,
+): Promise<UpdateAgentStatResponse> => {
+  data = dailyStatSchemaResponseTransformer(data);
+  return data;
+};
+
+export const listToolsResponseTransformer = async (
+  data: any,
+): Promise<ListToolsResponse> => {
+  data.data = data.data.map((item: any) => {
+    return toolSchemaResponseTransformer(item);
+  });
+  return data;
+};
+
+const humanTaskSchemaResponseTransformer = (data: any) => {
+  if (data.createdAt) {
+    data.createdAt = new Date(data.createdAt);
+  }
+  if (data.updatedAt) {
+    data.updatedAt = new Date(data.updatedAt);
+  }
+  return data;
+};
+
+export const listHumanTasksResponseTransformer = async (
+  data: any,
+): Promise<ListHumanTasksResponse> => {
+  data.data = data.data.map((item: any) => {
+    return humanTaskSchemaResponseTransformer(item);
+  });
+  return data;
+};
+
+const notificationSchemaResponseTransformer = (data: any) => {
+  if (data.createdAt) {
+    data.createdAt = new Date(data.createdAt);
+  }
+  if (data.updatedAt) {
+    data.updatedAt = new Date(data.updatedAt);
+  }
+  return data;
+};
+
+export const listNotificationsResponseTransformer = async (
+  data: any,
+): Promise<ListNotificationsResponse> => {
+  data.data = data.data.map((item: any) => {
+    return notificationSchemaResponseTransformer(item);
+  });
+  return data;
+};
+
+const apiTokenListItemSchemaResponseTransformer = (data: any) => {
+  if (data.lastUsedAt) {
+    data.lastUsedAt = new Date(data.lastUsedAt);
+  }
+  if (data.expiresAt) {
+    data.expiresAt = new Date(data.expiresAt);
+  }
+  if (data.createdAt) {
+    data.createdAt = new Date(data.createdAt);
+  }
+  return data;
+};
+
+export const listApiTokensResponseTransformer = async (
+  data: any,
+): Promise<ListApiTokensResponse> => {
+  data.data = data.data.map((item: any) => {
+    return apiTokenListItemSchemaResponseTransformer(item);
+  });
+  return data;
+};
+
+const createApiTokenResponseSchemaResponseTransformer = (data: any) => {
+  if (data.expiresAt) {
+    data.expiresAt = new Date(data.expiresAt);
+  }
+  return data;
+};
+
+export const createApiTokenResponseTransformer = async (
+  data: any,
+): Promise<CreateApiTokenResponse2> => {
+  data = createApiTokenResponseSchemaResponseTransformer(data);
   return data;
 };

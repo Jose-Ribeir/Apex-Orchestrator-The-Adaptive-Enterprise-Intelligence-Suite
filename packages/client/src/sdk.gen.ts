@@ -15,6 +15,59 @@ import type {
   UpdateAgentData,
   UpdateAgentResponses,
   UpdateAgentErrors,
+  ListAgentInstructionsData,
+  ListAgentInstructionsResponses,
+  CreateAgentInstructionData,
+  CreateAgentInstructionResponses,
+  CreateAgentInstructionErrors,
+  DeleteAgentInstructionData,
+  DeleteAgentInstructionResponses,
+  DeleteAgentInstructionErrors,
+  GetAgentInstructionByIdData,
+  GetAgentInstructionByIdResponses,
+  GetAgentInstructionByIdErrors,
+  UpdateAgentInstructionData,
+  UpdateAgentInstructionResponses,
+  UpdateAgentInstructionErrors,
+  ListAgentToolsData,
+  ListAgentToolsResponses,
+  AddAgentToolData,
+  AddAgentToolResponses,
+  AddAgentToolErrors,
+  RemoveAgentToolData,
+  RemoveAgentToolResponses,
+  RemoveAgentToolErrors,
+  ListAgentQueriesData,
+  ListAgentQueriesResponses,
+  CreateAgentQueryData,
+  CreateAgentQueryResponses,
+  CreateAgentQueryErrors,
+  DeleteAgentQueryData,
+  DeleteAgentQueryResponses,
+  DeleteAgentQueryErrors,
+  GetAgentQueryByIdData,
+  GetAgentQueryByIdResponses,
+  GetAgentQueryByIdErrors,
+  UpdateAgentQueryData,
+  UpdateAgentQueryResponses,
+  UpdateAgentQueryErrors,
+  ListAgentStatsData,
+  ListAgentStatsResponses,
+  CreateAgentStatData,
+  CreateAgentStatResponses,
+  CreateAgentStatErrors,
+  GetAgentStatByDateData,
+  GetAgentStatByDateResponses,
+  GetAgentStatByDateErrors,
+  DeleteAgentStatData,
+  DeleteAgentStatResponses,
+  DeleteAgentStatErrors,
+  GetAgentStatByIdData,
+  GetAgentStatByIdResponses,
+  GetAgentStatByIdErrors,
+  UpdateAgentStatData,
+  UpdateAgentStatResponses,
+  UpdateAgentStatErrors,
   ListToolsData,
   ListToolsResponses,
   CreateToolData,
@@ -49,18 +102,19 @@ import type {
   UpdatePerformanceMetricResponses,
   ListNotificationsData,
   ListNotificationsResponses,
-  CreateNotificationData,
-  CreateNotificationResponses,
   MarkAllNotificationsReadData,
   MarkAllNotificationsReadResponses,
-  DeleteNotificationData,
-  DeleteNotificationResponses,
   GetNotificationByIdData,
   GetNotificationByIdResponses,
-  UpdateNotificationData,
-  UpdateNotificationResponses,
   MarkNotificationReadData,
   MarkNotificationReadResponses,
+  ListApiTokensData,
+  ListApiTokensResponses,
+  CreateApiTokenData,
+  CreateApiTokenResponses,
+  RevokeApiTokenData,
+  RevokeApiTokenResponses,
+  RevokeApiTokenErrors,
   PostApiChatStreamData,
   PostApiChatStreamResponses,
 } from "./types.gen";
@@ -69,6 +123,26 @@ import {
   createAgentResponseTransformer,
   getAgentByIdResponseTransformer,
   updateAgentResponseTransformer,
+  listAgentInstructionsResponseTransformer,
+  createAgentInstructionResponseTransformer,
+  getAgentInstructionByIdResponseTransformer,
+  updateAgentInstructionResponseTransformer,
+  listAgentToolsResponseTransformer,
+  addAgentToolResponseTransformer,
+  listAgentQueriesResponseTransformer,
+  createAgentQueryResponseTransformer,
+  getAgentQueryByIdResponseTransformer,
+  updateAgentQueryResponseTransformer,
+  listAgentStatsResponseTransformer,
+  createAgentStatResponseTransformer,
+  getAgentStatByDateResponseTransformer,
+  getAgentStatByIdResponseTransformer,
+  updateAgentStatResponseTransformer,
+  listToolsResponseTransformer,
+  listHumanTasksResponseTransformer,
+  listNotificationsResponseTransformer,
+  listApiTokensResponseTransformer,
+  createApiTokenResponseTransformer,
 } from "./transformers.gen";
 import { client as _heyApiClient } from "./client.gen";
 
@@ -93,9 +167,9 @@ export type Options<
  * List agents
  */
 export const listAgents = <ThrowOnError extends boolean = false>(
-  options: Options<ListAgentsData, ThrowOnError>,
+  options?: Options<ListAgentsData, ThrowOnError>,
 ) => {
-  return (options.client ?? _heyApiClient).get<
+  return (options?.client ?? _heyApiClient).get<
     ListAgentsResponses,
     unknown,
     ThrowOnError
@@ -142,10 +216,6 @@ export const deleteAgent = <ThrowOnError extends boolean = false>(
   >({
     url: "/api/agents/{id}",
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
   });
 };
 
@@ -190,6 +260,368 @@ export const updateAgent = <ThrowOnError extends boolean = false>(
 };
 
 /**
+ * List instructions for an agent
+ */
+export const listAgentInstructions = <ThrowOnError extends boolean = false>(
+  options: Options<ListAgentInstructionsData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).get<
+    ListAgentInstructionsResponses,
+    unknown,
+    ThrowOnError
+  >({
+    responseTransformer: listAgentInstructionsResponseTransformer,
+    responseType: "json",
+    url: "/api/agents/{agentId}/instructions",
+    ...options,
+  });
+};
+
+/**
+ * Create instruction for an agent
+ */
+export const createAgentInstruction = <ThrowOnError extends boolean = false>(
+  options: Options<CreateAgentInstructionData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).post<
+    CreateAgentInstructionResponses,
+    CreateAgentInstructionErrors,
+    ThrowOnError
+  >({
+    responseTransformer: createAgentInstructionResponseTransformer,
+    responseType: "json",
+    url: "/api/agents/{agentId}/instructions",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * Delete instruction
+ */
+export const deleteAgentInstruction = <ThrowOnError extends boolean = false>(
+  options: Options<DeleteAgentInstructionData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).delete<
+    DeleteAgentInstructionResponses,
+    DeleteAgentInstructionErrors,
+    ThrowOnError
+  >({
+    url: "/api/agents/{agentId}/instructions/{id}",
+    ...options,
+  });
+};
+
+/**
+ * Get instruction by ID
+ */
+export const getAgentInstructionById = <ThrowOnError extends boolean = false>(
+  options: Options<GetAgentInstructionByIdData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).get<
+    GetAgentInstructionByIdResponses,
+    GetAgentInstructionByIdErrors,
+    ThrowOnError
+  >({
+    responseTransformer: getAgentInstructionByIdResponseTransformer,
+    responseType: "json",
+    url: "/api/agents/{agentId}/instructions/{id}",
+    ...options,
+  });
+};
+
+/**
+ * Update instruction
+ */
+export const updateAgentInstruction = <ThrowOnError extends boolean = false>(
+  options: Options<UpdateAgentInstructionData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).patch<
+    UpdateAgentInstructionResponses,
+    UpdateAgentInstructionErrors,
+    ThrowOnError
+  >({
+    responseTransformer: updateAgentInstructionResponseTransformer,
+    responseType: "json",
+    url: "/api/agents/{agentId}/instructions/{id}",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * List tools assigned to an agent
+ */
+export const listAgentTools = <ThrowOnError extends boolean = false>(
+  options: Options<ListAgentToolsData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).get<
+    ListAgentToolsResponses,
+    unknown,
+    ThrowOnError
+  >({
+    responseTransformer: listAgentToolsResponseTransformer,
+    responseType: "json",
+    url: "/api/agents/{agentId}/tools",
+    ...options,
+  });
+};
+
+/**
+ * Assign a tool to an agent
+ */
+export const addAgentTool = <ThrowOnError extends boolean = false>(
+  options: Options<AddAgentToolData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).post<
+    AddAgentToolResponses,
+    AddAgentToolErrors,
+    ThrowOnError
+  >({
+    responseTransformer: addAgentToolResponseTransformer,
+    responseType: "json",
+    url: "/api/agents/{agentId}/tools",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * Remove tool assignment from an agent
+ */
+export const removeAgentTool = <ThrowOnError extends boolean = false>(
+  options: Options<RemoveAgentToolData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).delete<
+    RemoveAgentToolResponses,
+    RemoveAgentToolErrors,
+    ThrowOnError
+  >({
+    url: "/api/agents/{agentId}/tools/{toolId}",
+    ...options,
+  });
+};
+
+/**
+ * List model queries for an agent
+ */
+export const listAgentQueries = <ThrowOnError extends boolean = false>(
+  options: Options<ListAgentQueriesData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).get<
+    ListAgentQueriesResponses,
+    unknown,
+    ThrowOnError
+  >({
+    responseTransformer: listAgentQueriesResponseTransformer,
+    responseType: "json",
+    url: "/api/agents/{agentId}/queries",
+    ...options,
+  });
+};
+
+/**
+ * Create a model query for an agent
+ */
+export const createAgentQuery = <ThrowOnError extends boolean = false>(
+  options: Options<CreateAgentQueryData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).post<
+    CreateAgentQueryResponses,
+    CreateAgentQueryErrors,
+    ThrowOnError
+  >({
+    responseTransformer: createAgentQueryResponseTransformer,
+    responseType: "json",
+    url: "/api/agents/{agentId}/queries",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * Delete model query
+ */
+export const deleteAgentQuery = <ThrowOnError extends boolean = false>(
+  options: Options<DeleteAgentQueryData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).delete<
+    DeleteAgentQueryResponses,
+    DeleteAgentQueryErrors,
+    ThrowOnError
+  >({
+    url: "/api/agents/{agentId}/queries/{id}",
+    ...options,
+  });
+};
+
+/**
+ * Get model query by ID
+ */
+export const getAgentQueryById = <ThrowOnError extends boolean = false>(
+  options: Options<GetAgentQueryByIdData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).get<
+    GetAgentQueryByIdResponses,
+    GetAgentQueryByIdErrors,
+    ThrowOnError
+  >({
+    responseTransformer: getAgentQueryByIdResponseTransformer,
+    responseType: "json",
+    url: "/api/agents/{agentId}/queries/{id}",
+    ...options,
+  });
+};
+
+/**
+ * Update model query
+ */
+export const updateAgentQuery = <ThrowOnError extends boolean = false>(
+  options: Options<UpdateAgentQueryData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).patch<
+    UpdateAgentQueryResponses,
+    UpdateAgentQueryErrors,
+    ThrowOnError
+  >({
+    responseTransformer: updateAgentQueryResponseTransformer,
+    responseType: "json",
+    url: "/api/agents/{agentId}/queries/{id}",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * List daily stats for an agent
+ */
+export const listAgentStats = <ThrowOnError extends boolean = false>(
+  options: Options<ListAgentStatsData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).get<
+    ListAgentStatsResponses,
+    unknown,
+    ThrowOnError
+  >({
+    responseTransformer: listAgentStatsResponseTransformer,
+    responseType: "json",
+    url: "/api/agents/{agentId}/stats",
+    ...options,
+  });
+};
+
+/**
+ * Create daily stat for an agent
+ */
+export const createAgentStat = <ThrowOnError extends boolean = false>(
+  options: Options<CreateAgentStatData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).post<
+    CreateAgentStatResponses,
+    CreateAgentStatErrors,
+    ThrowOnError
+  >({
+    responseTransformer: createAgentStatResponseTransformer,
+    responseType: "json",
+    url: "/api/agents/{agentId}/stats",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * Get daily stat by agent and date
+ */
+export const getAgentStatByDate = <ThrowOnError extends boolean = false>(
+  options: Options<GetAgentStatByDateData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).get<
+    GetAgentStatByDateResponses,
+    GetAgentStatByDateErrors,
+    ThrowOnError
+  >({
+    responseTransformer: getAgentStatByDateResponseTransformer,
+    responseType: "json",
+    url: "/api/agents/{agentId}/stats/date/{date}",
+    ...options,
+  });
+};
+
+/**
+ * Delete daily stat
+ */
+export const deleteAgentStat = <ThrowOnError extends boolean = false>(
+  options: Options<DeleteAgentStatData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).delete<
+    DeleteAgentStatResponses,
+    DeleteAgentStatErrors,
+    ThrowOnError
+  >({
+    url: "/api/agents/{agentId}/stats/{id}",
+    ...options,
+  });
+};
+
+/**
+ * Get daily stat by ID
+ */
+export const getAgentStatById = <ThrowOnError extends boolean = false>(
+  options: Options<GetAgentStatByIdData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).get<
+    GetAgentStatByIdResponses,
+    GetAgentStatByIdErrors,
+    ThrowOnError
+  >({
+    responseTransformer: getAgentStatByIdResponseTransformer,
+    responseType: "json",
+    url: "/api/agents/{agentId}/stats/{id}",
+    ...options,
+  });
+};
+
+/**
+ * Update daily stat
+ */
+export const updateAgentStat = <ThrowOnError extends boolean = false>(
+  options: Options<UpdateAgentStatData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).patch<
+    UpdateAgentStatResponses,
+    UpdateAgentStatErrors,
+    ThrowOnError
+  >({
+    responseTransformer: updateAgentStatResponseTransformer,
+    responseType: "json",
+    url: "/api/agents/{agentId}/stats/{id}",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
  * List tools
  */
 export const listTools = <ThrowOnError extends boolean = false>(
@@ -200,6 +632,8 @@ export const listTools = <ThrowOnError extends boolean = false>(
     unknown,
     ThrowOnError
   >({
+    responseTransformer: listToolsResponseTransformer,
+    responseType: "json",
     url: "/api/tools",
     ...options,
   });
@@ -288,6 +722,8 @@ export const listHumanTasks = <ThrowOnError extends boolean = false>(
     unknown,
     ThrowOnError
   >({
+    responseTransformer: listHumanTasksResponseTransformer,
+    responseType: "json",
     url: "/api/human-tasks",
     ...options,
   });
@@ -472,38 +908,20 @@ export const updatePerformanceMetric = <ThrowOnError extends boolean = false>(
 };
 
 /**
- * List notifications for user
+ * List notifications
  */
 export const listNotifications = <ThrowOnError extends boolean = false>(
-  options: Options<ListNotificationsData, ThrowOnError>,
+  options?: Options<ListNotificationsData, ThrowOnError>,
 ) => {
-  return (options.client ?? _heyApiClient).get<
+  return (options?.client ?? _heyApiClient).get<
     ListNotificationsResponses,
     unknown,
     ThrowOnError
   >({
+    responseTransformer: listNotificationsResponseTransformer,
+    responseType: "json",
     url: "/api/notifications",
     ...options,
-  });
-};
-
-/**
- * Create notification
- */
-export const createNotification = <ThrowOnError extends boolean = false>(
-  options: Options<CreateNotificationData, ThrowOnError>,
-) => {
-  return (options.client ?? _heyApiClient).post<
-    CreateNotificationResponses,
-    unknown,
-    ThrowOnError
-  >({
-    url: "/api/notifications",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
   });
 };
 
@@ -520,30 +938,6 @@ export const markAllNotificationsRead = <ThrowOnError extends boolean = false>(
   >({
     url: "/api/notifications/mark-all-read",
     ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options?.headers,
-    },
-  });
-};
-
-/**
- * Delete notification
- */
-export const deleteNotification = <ThrowOnError extends boolean = false>(
-  options: Options<DeleteNotificationData, ThrowOnError>,
-) => {
-  return (options.client ?? _heyApiClient).delete<
-    DeleteNotificationResponses,
-    unknown,
-    ThrowOnError
-  >({
-    url: "/api/notifications/{id}",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
   });
 };
 
@@ -564,26 +958,6 @@ export const getNotificationById = <ThrowOnError extends boolean = false>(
 };
 
 /**
- * Update notification
- */
-export const updateNotification = <ThrowOnError extends boolean = false>(
-  options: Options<UpdateNotificationData, ThrowOnError>,
-) => {
-  return (options.client ?? _heyApiClient).patch<
-    UpdateNotificationResponses,
-    unknown,
-    ThrowOnError
-  >({
-    url: "/api/notifications/{id}",
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
-};
-
-/**
  * Mark notification as read
  */
 export const markNotificationRead = <ThrowOnError extends boolean = false>(
@@ -596,10 +970,64 @@ export const markNotificationRead = <ThrowOnError extends boolean = false>(
   >({
     url: "/api/notifications/{id}/read",
     ...options,
+  });
+};
+
+/**
+ * List API tokens
+ * List current user's API tokens (paginated). Token values are never returned.
+ */
+export const listApiTokens = <ThrowOnError extends boolean = false>(
+  options?: Options<ListApiTokensData, ThrowOnError>,
+) => {
+  return (options?.client ?? _heyApiClient).get<
+    ListApiTokensResponses,
+    unknown,
+    ThrowOnError
+  >({
+    responseTransformer: listApiTokensResponseTransformer,
+    responseType: "json",
+    url: "/api/api-tokens",
+    ...options,
+  });
+};
+
+/**
+ * Create API token
+ * Create an API token for the authenticated user. The plain token is returned only in this response; use it as Authorization: Bearer <token>.
+ */
+export const createApiToken = <ThrowOnError extends boolean = false>(
+  options?: Options<CreateApiTokenData, ThrowOnError>,
+) => {
+  return (options?.client ?? _heyApiClient).post<
+    CreateApiTokenResponses,
+    unknown,
+    ThrowOnError
+  >({
+    responseTransformer: createApiTokenResponseTransformer,
+    responseType: "json",
+    url: "/api/api-tokens",
+    ...options,
     headers: {
       "Content-Type": "application/json",
-      ...options.headers,
+      ...options?.headers,
     },
+  });
+};
+
+/**
+ * Revoke API token
+ */
+export const revokeApiToken = <ThrowOnError extends boolean = false>(
+  options: Options<RevokeApiTokenData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).delete<
+    RevokeApiTokenResponses,
+    RevokeApiTokenErrors,
+    ThrowOnError
+  >({
+    url: "/api/api-tokens/{id}",
+    ...options,
   });
 };
 

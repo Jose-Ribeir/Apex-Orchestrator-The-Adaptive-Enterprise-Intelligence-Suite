@@ -7,6 +7,25 @@ import {
   deleteAgent,
   getAgentById,
   updateAgent,
+  listAgentInstructions,
+  createAgentInstruction,
+  deleteAgentInstruction,
+  getAgentInstructionById,
+  updateAgentInstruction,
+  listAgentTools,
+  addAgentTool,
+  removeAgentTool,
+  listAgentQueries,
+  createAgentQuery,
+  deleteAgentQuery,
+  getAgentQueryById,
+  updateAgentQuery,
+  listAgentStats,
+  createAgentStat,
+  getAgentStatByDate,
+  deleteAgentStat,
+  getAgentStatById,
+  updateAgentStat,
   listTools,
   createTool,
   deleteTool,
@@ -24,21 +43,24 @@ import {
   getPerformanceMetricById,
   updatePerformanceMetric,
   listNotifications,
-  createNotification,
   markAllNotificationsRead,
-  deleteNotification,
   getNotificationById,
-  updateNotification,
   markNotificationRead,
+  listApiTokens,
+  createApiToken,
+  revokeApiToken,
   postApiChatStream,
 } from "../sdk.gen";
 import {
   queryOptions,
-  type UseMutationOptions,
+  infiniteQueryOptions,
+  type InfiniteData,
   type DefaultError,
+  type UseMutationOptions,
 } from "@tanstack/react-query";
 import type {
   ListAgentsData,
+  ListAgentsResponse,
   CreateAgentData,
   CreateAgentResponse,
   DeleteAgentData,
@@ -46,13 +68,49 @@ import type {
   GetAgentByIdData,
   UpdateAgentData,
   UpdateAgentResponse,
+  ListAgentInstructionsData,
+  ListAgentInstructionsResponse,
+  CreateAgentInstructionData,
+  CreateAgentInstructionResponse,
+  DeleteAgentInstructionData,
+  DeleteAgentInstructionResponse,
+  GetAgentInstructionByIdData,
+  UpdateAgentInstructionData,
+  UpdateAgentInstructionResponse,
+  ListAgentToolsData,
+  ListAgentToolsResponse,
+  AddAgentToolData,
+  AddAgentToolResponse,
+  RemoveAgentToolData,
+  RemoveAgentToolResponse,
+  ListAgentQueriesData,
+  ListAgentQueriesResponse,
+  CreateAgentQueryData,
+  CreateAgentQueryResponse,
+  DeleteAgentQueryData,
+  DeleteAgentQueryResponse,
+  GetAgentQueryByIdData,
+  UpdateAgentQueryData,
+  UpdateAgentQueryResponse,
+  ListAgentStatsData,
+  ListAgentStatsResponse,
+  CreateAgentStatData,
+  CreateAgentStatResponse,
+  GetAgentStatByDateData,
+  DeleteAgentStatData,
+  DeleteAgentStatResponse,
+  GetAgentStatByIdData,
+  UpdateAgentStatData,
+  UpdateAgentStatResponse,
   ListToolsData,
+  ListToolsResponse,
   CreateToolData,
   DeleteToolData,
   DeleteToolResponse,
   GetToolByIdData,
   UpdateToolData,
   ListHumanTasksData,
+  ListHumanTasksResponse,
   CreateHumanTaskData,
   DeleteHumanTaskData,
   DeleteHumanTaskResponse,
@@ -66,13 +124,16 @@ import type {
   GetPerformanceMetricByIdData,
   UpdatePerformanceMetricData,
   ListNotificationsData,
-  CreateNotificationData,
+  ListNotificationsResponse,
   MarkAllNotificationsReadData,
-  DeleteNotificationData,
-  DeleteNotificationResponse,
   GetNotificationByIdData,
-  UpdateNotificationData,
   MarkNotificationReadData,
+  ListApiTokensData,
+  ListApiTokensResponse,
+  CreateApiTokenData,
+  CreateApiTokenResponse2,
+  RevokeApiTokenData,
+  RevokeApiTokenResponse,
   PostApiChatStreamData,
 } from "../types.gen";
 import type { AxiosError } from "axios";
@@ -112,13 +173,13 @@ const createQueryKey = <TOptions extends Options>(
   return [params];
 };
 
-export const listAgentsQueryKey = (options: Options<ListAgentsData>) =>
+export const listAgentsQueryKey = (options?: Options<ListAgentsData>) =>
   createQueryKey("listAgents", options);
 
 /**
  * List agents
  */
-export const listAgentsOptions = (options: Options<ListAgentsData>) => {
+export const listAgentsOptions = (options?: Options<ListAgentsData>) => {
   return queryOptions({
     queryFn: async ({ queryKey, signal }) => {
       const { data } = await listAgents({
@@ -131,6 +192,93 @@ export const listAgentsOptions = (options: Options<ListAgentsData>) => {
     },
     queryKey: listAgentsQueryKey(options),
   });
+};
+
+const createInfiniteParams = <
+  K extends Pick<QueryKey<Options>[0], "body" | "headers" | "path" | "query">,
+>(
+  queryKey: QueryKey<Options>,
+  page: K,
+) => {
+  const params = {
+    ...queryKey[0],
+  };
+  if (page.body) {
+    params.body = {
+      ...(queryKey[0].body as any),
+      ...(page.body as any),
+    };
+  }
+  if (page.headers) {
+    params.headers = {
+      ...queryKey[0].headers,
+      ...page.headers,
+    };
+  }
+  if (page.path) {
+    params.path = {
+      ...(queryKey[0].path as any),
+      ...(page.path as any),
+    };
+  }
+  if (page.query) {
+    params.query = {
+      ...(queryKey[0].query as any),
+      ...(page.query as any),
+    };
+  }
+  return params as unknown as typeof page;
+};
+
+export const listAgentsInfiniteQueryKey = (
+  options?: Options<ListAgentsData>,
+): QueryKey<Options<ListAgentsData>> =>
+  createQueryKey("listAgents", options, true);
+
+/**
+ * List agents
+ */
+export const listAgentsInfiniteOptions = (
+  options?: Options<ListAgentsData>,
+) => {
+  return infiniteQueryOptions<
+    ListAgentsResponse,
+    AxiosError<DefaultError>,
+    InfiniteData<ListAgentsResponse>,
+    QueryKey<Options<ListAgentsData>>,
+    | number
+    | Pick<
+        QueryKey<Options<ListAgentsData>>[0],
+        "body" | "headers" | "path" | "query"
+      >
+  >(
+    // @ts-ignore
+    {
+      queryFn: async ({ pageParam, queryKey, signal }) => {
+        // @ts-ignore
+        const page: Pick<
+          QueryKey<Options<ListAgentsData>>[0],
+          "body" | "headers" | "path" | "query"
+        > =
+          typeof pageParam === "object"
+            ? pageParam
+            : {
+                query: {
+                  page: pageParam,
+                },
+              };
+        const params = createInfiniteParams(queryKey, page);
+        const { data } = await listAgents({
+          ...options,
+          ...params,
+          signal,
+          throwOnError: true,
+        });
+        return data;
+      },
+      queryKey: listAgentsInfiniteQueryKey(options),
+    },
+  );
 };
 
 export const createAgentQueryKey = (options: Options<CreateAgentData>) =>
@@ -256,6 +404,786 @@ export const updateAgentMutation = (
   return mutationOptions;
 };
 
+export const listAgentInstructionsQueryKey = (
+  options: Options<ListAgentInstructionsData>,
+) => createQueryKey("listAgentInstructions", options);
+
+/**
+ * List instructions for an agent
+ */
+export const listAgentInstructionsOptions = (
+  options: Options<ListAgentInstructionsData>,
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await listAgentInstructions({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: listAgentInstructionsQueryKey(options),
+  });
+};
+
+export const listAgentInstructionsInfiniteQueryKey = (
+  options: Options<ListAgentInstructionsData>,
+): QueryKey<Options<ListAgentInstructionsData>> =>
+  createQueryKey("listAgentInstructions", options, true);
+
+/**
+ * List instructions for an agent
+ */
+export const listAgentInstructionsInfiniteOptions = (
+  options: Options<ListAgentInstructionsData>,
+) => {
+  return infiniteQueryOptions<
+    ListAgentInstructionsResponse,
+    AxiosError<DefaultError>,
+    InfiniteData<ListAgentInstructionsResponse>,
+    QueryKey<Options<ListAgentInstructionsData>>,
+    | number
+    | Pick<
+        QueryKey<Options<ListAgentInstructionsData>>[0],
+        "body" | "headers" | "path" | "query"
+      >
+  >(
+    // @ts-ignore
+    {
+      queryFn: async ({ pageParam, queryKey, signal }) => {
+        // @ts-ignore
+        const page: Pick<
+          QueryKey<Options<ListAgentInstructionsData>>[0],
+          "body" | "headers" | "path" | "query"
+        > =
+          typeof pageParam === "object"
+            ? pageParam
+            : {
+                query: {
+                  page: pageParam,
+                },
+              };
+        const params = createInfiniteParams(queryKey, page);
+        const { data } = await listAgentInstructions({
+          ...options,
+          ...params,
+          signal,
+          throwOnError: true,
+        });
+        return data;
+      },
+      queryKey: listAgentInstructionsInfiniteQueryKey(options),
+    },
+  );
+};
+
+export const createAgentInstructionQueryKey = (
+  options: Options<CreateAgentInstructionData>,
+) => createQueryKey("createAgentInstruction", options);
+
+/**
+ * Create instruction for an agent
+ */
+export const createAgentInstructionOptions = (
+  options: Options<CreateAgentInstructionData>,
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await createAgentInstruction({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: createAgentInstructionQueryKey(options),
+  });
+};
+
+/**
+ * Create instruction for an agent
+ */
+export const createAgentInstructionMutation = (
+  options?: Partial<Options<CreateAgentInstructionData>>,
+): UseMutationOptions<
+  CreateAgentInstructionResponse,
+  AxiosError<DefaultError>,
+  Options<CreateAgentInstructionData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    CreateAgentInstructionResponse,
+    AxiosError<DefaultError>,
+    Options<CreateAgentInstructionData>
+  > = {
+    mutationFn: async (localOptions) => {
+      const { data } = await createAgentInstruction({
+        ...options,
+        ...localOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
+
+/**
+ * Delete instruction
+ */
+export const deleteAgentInstructionMutation = (
+  options?: Partial<Options<DeleteAgentInstructionData>>,
+): UseMutationOptions<
+  DeleteAgentInstructionResponse,
+  AxiosError<DefaultError>,
+  Options<DeleteAgentInstructionData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    DeleteAgentInstructionResponse,
+    AxiosError<DefaultError>,
+    Options<DeleteAgentInstructionData>
+  > = {
+    mutationFn: async (localOptions) => {
+      const { data } = await deleteAgentInstruction({
+        ...options,
+        ...localOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
+
+export const getAgentInstructionByIdQueryKey = (
+  options: Options<GetAgentInstructionByIdData>,
+) => createQueryKey("getAgentInstructionById", options);
+
+/**
+ * Get instruction by ID
+ */
+export const getAgentInstructionByIdOptions = (
+  options: Options<GetAgentInstructionByIdData>,
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await getAgentInstructionById({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: getAgentInstructionByIdQueryKey(options),
+  });
+};
+
+/**
+ * Update instruction
+ */
+export const updateAgentInstructionMutation = (
+  options?: Partial<Options<UpdateAgentInstructionData>>,
+): UseMutationOptions<
+  UpdateAgentInstructionResponse,
+  AxiosError<DefaultError>,
+  Options<UpdateAgentInstructionData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    UpdateAgentInstructionResponse,
+    AxiosError<DefaultError>,
+    Options<UpdateAgentInstructionData>
+  > = {
+    mutationFn: async (localOptions) => {
+      const { data } = await updateAgentInstruction({
+        ...options,
+        ...localOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
+
+export const listAgentToolsQueryKey = (options: Options<ListAgentToolsData>) =>
+  createQueryKey("listAgentTools", options);
+
+/**
+ * List tools assigned to an agent
+ */
+export const listAgentToolsOptions = (options: Options<ListAgentToolsData>) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await listAgentTools({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: listAgentToolsQueryKey(options),
+  });
+};
+
+export const listAgentToolsInfiniteQueryKey = (
+  options: Options<ListAgentToolsData>,
+): QueryKey<Options<ListAgentToolsData>> =>
+  createQueryKey("listAgentTools", options, true);
+
+/**
+ * List tools assigned to an agent
+ */
+export const listAgentToolsInfiniteOptions = (
+  options: Options<ListAgentToolsData>,
+) => {
+  return infiniteQueryOptions<
+    ListAgentToolsResponse,
+    AxiosError<DefaultError>,
+    InfiniteData<ListAgentToolsResponse>,
+    QueryKey<Options<ListAgentToolsData>>,
+    | number
+    | Pick<
+        QueryKey<Options<ListAgentToolsData>>[0],
+        "body" | "headers" | "path" | "query"
+      >
+  >(
+    // @ts-ignore
+    {
+      queryFn: async ({ pageParam, queryKey, signal }) => {
+        // @ts-ignore
+        const page: Pick<
+          QueryKey<Options<ListAgentToolsData>>[0],
+          "body" | "headers" | "path" | "query"
+        > =
+          typeof pageParam === "object"
+            ? pageParam
+            : {
+                query: {
+                  page: pageParam,
+                },
+              };
+        const params = createInfiniteParams(queryKey, page);
+        const { data } = await listAgentTools({
+          ...options,
+          ...params,
+          signal,
+          throwOnError: true,
+        });
+        return data;
+      },
+      queryKey: listAgentToolsInfiniteQueryKey(options),
+    },
+  );
+};
+
+export const addAgentToolQueryKey = (options: Options<AddAgentToolData>) =>
+  createQueryKey("addAgentTool", options);
+
+/**
+ * Assign a tool to an agent
+ */
+export const addAgentToolOptions = (options: Options<AddAgentToolData>) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await addAgentTool({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: addAgentToolQueryKey(options),
+  });
+};
+
+/**
+ * Assign a tool to an agent
+ */
+export const addAgentToolMutation = (
+  options?: Partial<Options<AddAgentToolData>>,
+): UseMutationOptions<
+  AddAgentToolResponse,
+  AxiosError<DefaultError>,
+  Options<AddAgentToolData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    AddAgentToolResponse,
+    AxiosError<DefaultError>,
+    Options<AddAgentToolData>
+  > = {
+    mutationFn: async (localOptions) => {
+      const { data } = await addAgentTool({
+        ...options,
+        ...localOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
+
+/**
+ * Remove tool assignment from an agent
+ */
+export const removeAgentToolMutation = (
+  options?: Partial<Options<RemoveAgentToolData>>,
+): UseMutationOptions<
+  RemoveAgentToolResponse,
+  AxiosError<DefaultError>,
+  Options<RemoveAgentToolData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    RemoveAgentToolResponse,
+    AxiosError<DefaultError>,
+    Options<RemoveAgentToolData>
+  > = {
+    mutationFn: async (localOptions) => {
+      const { data } = await removeAgentTool({
+        ...options,
+        ...localOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
+
+export const listAgentQueriesQueryKey = (
+  options: Options<ListAgentQueriesData>,
+) => createQueryKey("listAgentQueries", options);
+
+/**
+ * List model queries for an agent
+ */
+export const listAgentQueriesOptions = (
+  options: Options<ListAgentQueriesData>,
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await listAgentQueries({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: listAgentQueriesQueryKey(options),
+  });
+};
+
+export const listAgentQueriesInfiniteQueryKey = (
+  options: Options<ListAgentQueriesData>,
+): QueryKey<Options<ListAgentQueriesData>> =>
+  createQueryKey("listAgentQueries", options, true);
+
+/**
+ * List model queries for an agent
+ */
+export const listAgentQueriesInfiniteOptions = (
+  options: Options<ListAgentQueriesData>,
+) => {
+  return infiniteQueryOptions<
+    ListAgentQueriesResponse,
+    AxiosError<DefaultError>,
+    InfiniteData<ListAgentQueriesResponse>,
+    QueryKey<Options<ListAgentQueriesData>>,
+    | number
+    | Pick<
+        QueryKey<Options<ListAgentQueriesData>>[0],
+        "body" | "headers" | "path" | "query"
+      >
+  >(
+    // @ts-ignore
+    {
+      queryFn: async ({ pageParam, queryKey, signal }) => {
+        // @ts-ignore
+        const page: Pick<
+          QueryKey<Options<ListAgentQueriesData>>[0],
+          "body" | "headers" | "path" | "query"
+        > =
+          typeof pageParam === "object"
+            ? pageParam
+            : {
+                query: {
+                  page: pageParam,
+                },
+              };
+        const params = createInfiniteParams(queryKey, page);
+        const { data } = await listAgentQueries({
+          ...options,
+          ...params,
+          signal,
+          throwOnError: true,
+        });
+        return data;
+      },
+      queryKey: listAgentQueriesInfiniteQueryKey(options),
+    },
+  );
+};
+
+export const createAgentQueryQueryKey = (
+  options: Options<CreateAgentQueryData>,
+) => createQueryKey("createAgentQuery", options);
+
+/**
+ * Create a model query for an agent
+ */
+export const createAgentQueryOptions = (
+  options: Options<CreateAgentQueryData>,
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await createAgentQuery({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: createAgentQueryQueryKey(options),
+  });
+};
+
+/**
+ * Create a model query for an agent
+ */
+export const createAgentQueryMutation = (
+  options?: Partial<Options<CreateAgentQueryData>>,
+): UseMutationOptions<
+  CreateAgentQueryResponse,
+  AxiosError<DefaultError>,
+  Options<CreateAgentQueryData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    CreateAgentQueryResponse,
+    AxiosError<DefaultError>,
+    Options<CreateAgentQueryData>
+  > = {
+    mutationFn: async (localOptions) => {
+      const { data } = await createAgentQuery({
+        ...options,
+        ...localOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
+
+/**
+ * Delete model query
+ */
+export const deleteAgentQueryMutation = (
+  options?: Partial<Options<DeleteAgentQueryData>>,
+): UseMutationOptions<
+  DeleteAgentQueryResponse,
+  AxiosError<DefaultError>,
+  Options<DeleteAgentQueryData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    DeleteAgentQueryResponse,
+    AxiosError<DefaultError>,
+    Options<DeleteAgentQueryData>
+  > = {
+    mutationFn: async (localOptions) => {
+      const { data } = await deleteAgentQuery({
+        ...options,
+        ...localOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
+
+export const getAgentQueryByIdQueryKey = (
+  options: Options<GetAgentQueryByIdData>,
+) => createQueryKey("getAgentQueryById", options);
+
+/**
+ * Get model query by ID
+ */
+export const getAgentQueryByIdOptions = (
+  options: Options<GetAgentQueryByIdData>,
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await getAgentQueryById({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: getAgentQueryByIdQueryKey(options),
+  });
+};
+
+/**
+ * Update model query
+ */
+export const updateAgentQueryMutation = (
+  options?: Partial<Options<UpdateAgentQueryData>>,
+): UseMutationOptions<
+  UpdateAgentQueryResponse,
+  AxiosError<DefaultError>,
+  Options<UpdateAgentQueryData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    UpdateAgentQueryResponse,
+    AxiosError<DefaultError>,
+    Options<UpdateAgentQueryData>
+  > = {
+    mutationFn: async (localOptions) => {
+      const { data } = await updateAgentQuery({
+        ...options,
+        ...localOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
+
+export const listAgentStatsQueryKey = (options: Options<ListAgentStatsData>) =>
+  createQueryKey("listAgentStats", options);
+
+/**
+ * List daily stats for an agent
+ */
+export const listAgentStatsOptions = (options: Options<ListAgentStatsData>) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await listAgentStats({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: listAgentStatsQueryKey(options),
+  });
+};
+
+export const listAgentStatsInfiniteQueryKey = (
+  options: Options<ListAgentStatsData>,
+): QueryKey<Options<ListAgentStatsData>> =>
+  createQueryKey("listAgentStats", options, true);
+
+/**
+ * List daily stats for an agent
+ */
+export const listAgentStatsInfiniteOptions = (
+  options: Options<ListAgentStatsData>,
+) => {
+  return infiniteQueryOptions<
+    ListAgentStatsResponse,
+    AxiosError<DefaultError>,
+    InfiniteData<ListAgentStatsResponse>,
+    QueryKey<Options<ListAgentStatsData>>,
+    | number
+    | Pick<
+        QueryKey<Options<ListAgentStatsData>>[0],
+        "body" | "headers" | "path" | "query"
+      >
+  >(
+    // @ts-ignore
+    {
+      queryFn: async ({ pageParam, queryKey, signal }) => {
+        // @ts-ignore
+        const page: Pick<
+          QueryKey<Options<ListAgentStatsData>>[0],
+          "body" | "headers" | "path" | "query"
+        > =
+          typeof pageParam === "object"
+            ? pageParam
+            : {
+                query: {
+                  page: pageParam,
+                },
+              };
+        const params = createInfiniteParams(queryKey, page);
+        const { data } = await listAgentStats({
+          ...options,
+          ...params,
+          signal,
+          throwOnError: true,
+        });
+        return data;
+      },
+      queryKey: listAgentStatsInfiniteQueryKey(options),
+    },
+  );
+};
+
+export const createAgentStatQueryKey = (
+  options: Options<CreateAgentStatData>,
+) => createQueryKey("createAgentStat", options);
+
+/**
+ * Create daily stat for an agent
+ */
+export const createAgentStatOptions = (
+  options: Options<CreateAgentStatData>,
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await createAgentStat({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: createAgentStatQueryKey(options),
+  });
+};
+
+/**
+ * Create daily stat for an agent
+ */
+export const createAgentStatMutation = (
+  options?: Partial<Options<CreateAgentStatData>>,
+): UseMutationOptions<
+  CreateAgentStatResponse,
+  AxiosError<DefaultError>,
+  Options<CreateAgentStatData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    CreateAgentStatResponse,
+    AxiosError<DefaultError>,
+    Options<CreateAgentStatData>
+  > = {
+    mutationFn: async (localOptions) => {
+      const { data } = await createAgentStat({
+        ...options,
+        ...localOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
+
+export const getAgentStatByDateQueryKey = (
+  options: Options<GetAgentStatByDateData>,
+) => createQueryKey("getAgentStatByDate", options);
+
+/**
+ * Get daily stat by agent and date
+ */
+export const getAgentStatByDateOptions = (
+  options: Options<GetAgentStatByDateData>,
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await getAgentStatByDate({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: getAgentStatByDateQueryKey(options),
+  });
+};
+
+/**
+ * Delete daily stat
+ */
+export const deleteAgentStatMutation = (
+  options?: Partial<Options<DeleteAgentStatData>>,
+): UseMutationOptions<
+  DeleteAgentStatResponse,
+  AxiosError<DefaultError>,
+  Options<DeleteAgentStatData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    DeleteAgentStatResponse,
+    AxiosError<DefaultError>,
+    Options<DeleteAgentStatData>
+  > = {
+    mutationFn: async (localOptions) => {
+      const { data } = await deleteAgentStat({
+        ...options,
+        ...localOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
+
+export const getAgentStatByIdQueryKey = (
+  options: Options<GetAgentStatByIdData>,
+) => createQueryKey("getAgentStatById", options);
+
+/**
+ * Get daily stat by ID
+ */
+export const getAgentStatByIdOptions = (
+  options: Options<GetAgentStatByIdData>,
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await getAgentStatById({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: getAgentStatByIdQueryKey(options),
+  });
+};
+
+/**
+ * Update daily stat
+ */
+export const updateAgentStatMutation = (
+  options?: Partial<Options<UpdateAgentStatData>>,
+): UseMutationOptions<
+  UpdateAgentStatResponse,
+  AxiosError<DefaultError>,
+  Options<UpdateAgentStatData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    UpdateAgentStatResponse,
+    AxiosError<DefaultError>,
+    Options<UpdateAgentStatData>
+  > = {
+    mutationFn: async (localOptions) => {
+      const { data } = await updateAgentStat({
+        ...options,
+        ...localOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
+
 export const listToolsQueryKey = (options?: Options<ListToolsData>) =>
   createQueryKey("listTools", options);
 
@@ -275,6 +1203,55 @@ export const listToolsOptions = (options?: Options<ListToolsData>) => {
     },
     queryKey: listToolsQueryKey(options),
   });
+};
+
+export const listToolsInfiniteQueryKey = (
+  options?: Options<ListToolsData>,
+): QueryKey<Options<ListToolsData>> =>
+  createQueryKey("listTools", options, true);
+
+/**
+ * List tools
+ */
+export const listToolsInfiniteOptions = (options?: Options<ListToolsData>) => {
+  return infiniteQueryOptions<
+    ListToolsResponse,
+    AxiosError<DefaultError>,
+    InfiniteData<ListToolsResponse>,
+    QueryKey<Options<ListToolsData>>,
+    | number
+    | Pick<
+        QueryKey<Options<ListToolsData>>[0],
+        "body" | "headers" | "path" | "query"
+      >
+  >(
+    // @ts-ignore
+    {
+      queryFn: async ({ pageParam, queryKey, signal }) => {
+        // @ts-ignore
+        const page: Pick<
+          QueryKey<Options<ListToolsData>>[0],
+          "body" | "headers" | "path" | "query"
+        > =
+          typeof pageParam === "object"
+            ? pageParam
+            : {
+                query: {
+                  page: pageParam,
+                },
+              };
+        const params = createInfiniteParams(queryKey, page);
+        const { data } = await listTools({
+          ...options,
+          ...params,
+          signal,
+          throwOnError: true,
+        });
+        return data;
+      },
+      queryKey: listToolsInfiniteQueryKey(options),
+    },
+  );
 };
 
 export const createToolQueryKey = (options: Options<CreateToolData>) =>
@@ -421,6 +1398,57 @@ export const listHumanTasksOptions = (
     },
     queryKey: listHumanTasksQueryKey(options),
   });
+};
+
+export const listHumanTasksInfiniteQueryKey = (
+  options?: Options<ListHumanTasksData>,
+): QueryKey<Options<ListHumanTasksData>> =>
+  createQueryKey("listHumanTasks", options, true);
+
+/**
+ * List human tasks
+ */
+export const listHumanTasksInfiniteOptions = (
+  options?: Options<ListHumanTasksData>,
+) => {
+  return infiniteQueryOptions<
+    ListHumanTasksResponse,
+    AxiosError<DefaultError>,
+    InfiniteData<ListHumanTasksResponse>,
+    QueryKey<Options<ListHumanTasksData>>,
+    | number
+    | Pick<
+        QueryKey<Options<ListHumanTasksData>>[0],
+        "body" | "headers" | "path" | "query"
+      >
+  >(
+    // @ts-ignore
+    {
+      queryFn: async ({ pageParam, queryKey, signal }) => {
+        // @ts-ignore
+        const page: Pick<
+          QueryKey<Options<ListHumanTasksData>>[0],
+          "body" | "headers" | "path" | "query"
+        > =
+          typeof pageParam === "object"
+            ? pageParam
+            : {
+                query: {
+                  page: pageParam,
+                },
+              };
+        const params = createInfiniteParams(queryKey, page);
+        const { data } = await listHumanTasks({
+          ...options,
+          ...params,
+          signal,
+          throwOnError: true,
+        });
+        return data;
+      },
+      queryKey: listHumanTasksInfiniteQueryKey(options),
+    },
+  );
 };
 
 export const createHumanTaskQueryKey = (
@@ -757,14 +1785,14 @@ export const updatePerformanceMetricMutation = (
 };
 
 export const listNotificationsQueryKey = (
-  options: Options<ListNotificationsData>,
+  options?: Options<ListNotificationsData>,
 ) => createQueryKey("listNotifications", options);
 
 /**
- * List notifications for user
+ * List notifications
  */
 export const listNotificationsOptions = (
-  options: Options<ListNotificationsData>,
+  options?: Options<ListNotificationsData>,
 ) => {
   return queryOptions({
     queryFn: async ({ queryKey, signal }) => {
@@ -780,55 +1808,55 @@ export const listNotificationsOptions = (
   });
 };
 
-export const createNotificationQueryKey = (
-  options: Options<CreateNotificationData>,
-) => createQueryKey("createNotification", options);
+export const listNotificationsInfiniteQueryKey = (
+  options?: Options<ListNotificationsData>,
+): QueryKey<Options<ListNotificationsData>> =>
+  createQueryKey("listNotifications", options, true);
 
 /**
- * Create notification
+ * List notifications
  */
-export const createNotificationOptions = (
-  options: Options<CreateNotificationData>,
+export const listNotificationsInfiniteOptions = (
+  options?: Options<ListNotificationsData>,
 ) => {
-  return queryOptions({
-    queryFn: async ({ queryKey, signal }) => {
-      const { data } = await createNotification({
-        ...options,
-        ...queryKey[0],
-        signal,
-        throwOnError: true,
-      });
-      return data;
-    },
-    queryKey: createNotificationQueryKey(options),
-  });
-};
-
-/**
- * Create notification
- */
-export const createNotificationMutation = (
-  options?: Partial<Options<CreateNotificationData>>,
-): UseMutationOptions<
-  unknown,
-  AxiosError<DefaultError>,
-  Options<CreateNotificationData>
-> => {
-  const mutationOptions: UseMutationOptions<
-    unknown,
+  return infiniteQueryOptions<
+    ListNotificationsResponse,
     AxiosError<DefaultError>,
-    Options<CreateNotificationData>
-  > = {
-    mutationFn: async (localOptions) => {
-      const { data } = await createNotification({
-        ...options,
-        ...localOptions,
-        throwOnError: true,
-      });
-      return data;
+    InfiniteData<ListNotificationsResponse>,
+    QueryKey<Options<ListNotificationsData>>,
+    | number
+    | Pick<
+        QueryKey<Options<ListNotificationsData>>[0],
+        "body" | "headers" | "path" | "query"
+      >
+  >(
+    // @ts-ignore
+    {
+      queryFn: async ({ pageParam, queryKey, signal }) => {
+        // @ts-ignore
+        const page: Pick<
+          QueryKey<Options<ListNotificationsData>>[0],
+          "body" | "headers" | "path" | "query"
+        > =
+          typeof pageParam === "object"
+            ? pageParam
+            : {
+                query: {
+                  page: pageParam,
+                },
+              };
+        const params = createInfiniteParams(queryKey, page);
+        const { data } = await listNotifications({
+          ...options,
+          ...params,
+          signal,
+          throwOnError: true,
+        });
+        return data;
+      },
+      queryKey: listNotificationsInfiniteQueryKey(options),
     },
-  };
-  return mutationOptions;
+  );
 };
 
 export const markAllNotificationsReadQueryKey = (
@@ -882,33 +1910,6 @@ export const markAllNotificationsReadMutation = (
   return mutationOptions;
 };
 
-/**
- * Delete notification
- */
-export const deleteNotificationMutation = (
-  options?: Partial<Options<DeleteNotificationData>>,
-): UseMutationOptions<
-  DeleteNotificationResponse,
-  AxiosError<DefaultError>,
-  Options<DeleteNotificationData>
-> => {
-  const mutationOptions: UseMutationOptions<
-    DeleteNotificationResponse,
-    AxiosError<DefaultError>,
-    Options<DeleteNotificationData>
-  > = {
-    mutationFn: async (localOptions) => {
-      const { data } = await deleteNotification({
-        ...options,
-        ...localOptions,
-        throwOnError: true,
-      });
-      return data;
-    },
-  };
-  return mutationOptions;
-};
-
 export const getNotificationByIdQueryKey = (
   options: Options<GetNotificationByIdData>,
 ) => createQueryKey("getNotificationById", options);
@@ -931,33 +1932,6 @@ export const getNotificationByIdOptions = (
     },
     queryKey: getNotificationByIdQueryKey(options),
   });
-};
-
-/**
- * Update notification
- */
-export const updateNotificationMutation = (
-  options?: Partial<Options<UpdateNotificationData>>,
-): UseMutationOptions<
-  unknown,
-  AxiosError<DefaultError>,
-  Options<UpdateNotificationData>
-> => {
-  const mutationOptions: UseMutationOptions<
-    unknown,
-    AxiosError<DefaultError>,
-    Options<UpdateNotificationData>
-  > = {
-    mutationFn: async (localOptions) => {
-      const { data } = await updateNotification({
-        ...options,
-        ...localOptions,
-        throwOnError: true,
-      });
-      return data;
-    },
-  };
-  return mutationOptions;
 };
 
 export const markNotificationReadQueryKey = (
@@ -1001,6 +1975,159 @@ export const markNotificationReadMutation = (
   > = {
     mutationFn: async (localOptions) => {
       const { data } = await markNotificationRead({
+        ...options,
+        ...localOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
+
+export const listApiTokensQueryKey = (options?: Options<ListApiTokensData>) =>
+  createQueryKey("listApiTokens", options);
+
+/**
+ * List API tokens
+ * List current user's API tokens (paginated). Token values are never returned.
+ */
+export const listApiTokensOptions = (options?: Options<ListApiTokensData>) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await listApiTokens({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: listApiTokensQueryKey(options),
+  });
+};
+
+export const listApiTokensInfiniteQueryKey = (
+  options?: Options<ListApiTokensData>,
+): QueryKey<Options<ListApiTokensData>> =>
+  createQueryKey("listApiTokens", options, true);
+
+/**
+ * List API tokens
+ * List current user's API tokens (paginated). Token values are never returned.
+ */
+export const listApiTokensInfiniteOptions = (
+  options?: Options<ListApiTokensData>,
+) => {
+  return infiniteQueryOptions<
+    ListApiTokensResponse,
+    AxiosError<DefaultError>,
+    InfiniteData<ListApiTokensResponse>,
+    QueryKey<Options<ListApiTokensData>>,
+    | number
+    | Pick<
+        QueryKey<Options<ListApiTokensData>>[0],
+        "body" | "headers" | "path" | "query"
+      >
+  >(
+    // @ts-ignore
+    {
+      queryFn: async ({ pageParam, queryKey, signal }) => {
+        // @ts-ignore
+        const page: Pick<
+          QueryKey<Options<ListApiTokensData>>[0],
+          "body" | "headers" | "path" | "query"
+        > =
+          typeof pageParam === "object"
+            ? pageParam
+            : {
+                query: {
+                  page: pageParam,
+                },
+              };
+        const params = createInfiniteParams(queryKey, page);
+        const { data } = await listApiTokens({
+          ...options,
+          ...params,
+          signal,
+          throwOnError: true,
+        });
+        return data;
+      },
+      queryKey: listApiTokensInfiniteQueryKey(options),
+    },
+  );
+};
+
+export const createApiTokenQueryKey = (options?: Options<CreateApiTokenData>) =>
+  createQueryKey("createApiToken", options);
+
+/**
+ * Create API token
+ * Create an API token for the authenticated user. The plain token is returned only in this response; use it as Authorization: Bearer <token>.
+ */
+export const createApiTokenOptions = (
+  options?: Options<CreateApiTokenData>,
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await createApiToken({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: createApiTokenQueryKey(options),
+  });
+};
+
+/**
+ * Create API token
+ * Create an API token for the authenticated user. The plain token is returned only in this response; use it as Authorization: Bearer <token>.
+ */
+export const createApiTokenMutation = (
+  options?: Partial<Options<CreateApiTokenData>>,
+): UseMutationOptions<
+  CreateApiTokenResponse2,
+  AxiosError<DefaultError>,
+  Options<CreateApiTokenData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    CreateApiTokenResponse2,
+    AxiosError<DefaultError>,
+    Options<CreateApiTokenData>
+  > = {
+    mutationFn: async (localOptions) => {
+      const { data } = await createApiToken({
+        ...options,
+        ...localOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
+
+/**
+ * Revoke API token
+ */
+export const revokeApiTokenMutation = (
+  options?: Partial<Options<RevokeApiTokenData>>,
+): UseMutationOptions<
+  RevokeApiTokenResponse,
+  AxiosError<DefaultError>,
+  Options<RevokeApiTokenData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    RevokeApiTokenResponse,
+    AxiosError<DefaultError>,
+    Options<RevokeApiTokenData>
+  > = {
+    mutationFn: async (localOptions) => {
+      const { data } = await revokeApiToken({
         ...options,
         ...localOptions,
         throwOnError: true,
