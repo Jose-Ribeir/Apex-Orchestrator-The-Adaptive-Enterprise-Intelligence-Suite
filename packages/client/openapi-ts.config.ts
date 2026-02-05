@@ -6,7 +6,10 @@ export default defineConfig({
   plugins: [
     ...defaultPlugins,
     "@hey-api/schemas",
-    "@hey-api/client-axios",
+    {
+      name: "@hey-api/client-axios",
+      runtimeConfigPath: "./src/client.config.ts",
+    },
     "@tanstack/react-query",
     "@hey-api/transformers",
     { enums: "javascript", name: "@hey-api/typescript" },

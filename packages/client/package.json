@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "generate": "openapi-ts",
-    "update": "curl -s http://localhost:${PORT:-4000}/openapi.json > openapi.json && node -e \"const fs=require('fs');const pkg=require('./package.json');const spec=JSON.parse(fs.readFileSync('openapi.json','utf8'));if(pkg.apiUrl){spec.servers=spec.servers||[];spec.servers[0]={url:pkg.apiUrl,description:spec.servers[0]?.description||'Default'};fs.writeFileSync('openapi.json',JSON.stringify(spec));}\"",
+    "update": "curl -s http://localhost:${PORT:-4000}/openapi.json > openapi.json",
     "upgrade": "pnpm update && pnpm generate",
     "build": "tsup"
   },
@@ -36,7 +36,7 @@
   "devDependencies": {
     "@ai-router/eslint-config": "workspace:*",
     "@hey-api/openapi-ts": "^0.77.0",
-    "@types/node": "^24.10.10",
+    "@types/node": "^24.10.11",
     "eslint": "^9.39.2",
     "tsup": "^8.5.1",
     "typescript": "5.9.3"

@@ -1,28 +1,36 @@
 {
-  "name": "@ai-router/web",
+  "name": "web",
   "version": "0.1.0",
-  "type": "module",
   "private": true,
   "scripts": {
-    "dev": "next dev --port 3000",
+    "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint --max-warnings 0",
-    "check-types": "next typegen && tsc --noEmit"
+    "lint": "eslint . --max-warnings 0",
+    "check-types": "tsc --noEmit"
   },
   "dependencies": {
+    "@ai-router/client": "workspace:*",
     "@ai-router/ui": "workspace:*",
-    "next": "16.1.0",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "@tanstack/react-query": "^5.90.20",
+    "better-auth": "^1.4.18",
+    "lucide-react": "^0.563.0",
+    "next": "16.1.6",
+    "next-themes": "^0.4.4",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "tw-animate-css": "^1.4.0"
   },
   "devDependencies": {
     "@ai-router/eslint-config": "workspace:*",
     "@ai-router/typescript-config": "workspace:*",
-    "@types/node": "^22.15.3",
-    "@types/react": "19.2.2",
-    "@types/react-dom": "19.2.2",
-    "eslint": "^9.39.1",
-    "typescript": "5.9.2"
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.1.6",
+    "tailwindcss": "^4",
+    "typescript": "^5"
   }
 }
