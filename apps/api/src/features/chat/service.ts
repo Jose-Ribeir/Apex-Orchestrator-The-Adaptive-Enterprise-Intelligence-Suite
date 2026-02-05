@@ -1,4 +1,4 @@
-import { agentService, modelQueryService } from "../agents";
+import { agentService } from "../agents";
 import { env } from "../../config/env";
 
 export interface AgentWithInstructions {

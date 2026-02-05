@@ -1,6 +1,6 @@
+import bcrypt from "bcrypt";
 import { betterAuth } from "better-auth";
 import { openAPI } from "better-auth/plugins";
-import bcrypt from "bcrypt";
 import { Pool } from "pg";
 import { env } from "../config/env";
 
@@ -13,7 +13,10 @@ export const auth = betterAuth({
   basePath: "/auth",
   baseURL: env.betterAuthUrl,
   secret: env.betterAuthSecret,
-  trustedOrigins: [env.betterAuthUrl, env.appUrl],
+  advanced: {
+    disableOriginCheck: true,
+    disableCSRFCheck: true,
+  },
   emailAndPassword: {
     enabled: true,
     password: {
