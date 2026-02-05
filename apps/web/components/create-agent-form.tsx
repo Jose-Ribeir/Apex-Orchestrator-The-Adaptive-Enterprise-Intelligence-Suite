@@ -1,13 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useActiveAgent } from "@/providers/active-agent";
+import type { Agent, Tool } from "@ai-router/client";
 import {
   createAgentMutation,
   listAgentsQueryKey,
   listToolsOptions,
 } from "@ai-router/client/react-query";
-import type { Agent, Tool } from "@ai-router/client";
 import { Button } from "@ai-router/ui/button";
 import { Field, FieldGroup, FieldLabel } from "@ai-router/ui/field";
 import { Input } from "@ai-router/ui/input";
@@ -19,8 +18,10 @@ import {
   SelectValue,
 } from "@ai-router/ui/select";
 import { Textarea } from "@ai-router/ui/textarea";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bot } from "lucide-react";
-import { useActiveAgent } from "@/providers/active-agent";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export interface CreateAgentFormProps {
   onSuccess?: (agent: Agent) => void;
@@ -37,6 +38,7 @@ export function CreateAgentForm({
   submitLabel = "Create agent",
   showHeader = true,
 }: CreateAgentFormProps) {
+  const router = useRouter();
   const queryClient = useQueryClient();
   const { setAgentId } = useActiveAgent();
   const [mode, setMode] = useState<"EFFICIENCY" | "PERFORMANCE">("EFFICIENCY");
@@ -48,10 +50,11 @@ export function CreateAgentForm({
 
   const createAgent = useMutation({
     ...createAgentMutation(),
-    onSuccess: (created) => {
-      queryClient.invalidateQueries({ queryKey: listAgentsQueryKey({}) });
+    onSuccess: async (created) => {
       if (created?.id) setAgentId(created.id);
+      await queryClient.refetchQueries({ queryKey: listAgentsQueryKey({}) });
       onSuccess?.(created as Agent);
+      router.push("/");
     },
   });
 
