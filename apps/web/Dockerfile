@@ -17,7 +17,11 @@ RUN pnpm install --frozen-lockfile
 # Build: reuse deps, no install
 FROM base AS builder
 ARG API_SERVER_URL=http://localhost:4000
+ARG NEXT_PUBLIC_API_URL=http://localhost:4000
+ARG NEXT_PUBLIC_APP_URL=http://localhost:3000
 ENV API_SERVER_URL=$API_SERVER_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_APP_URL=$NEXT_PUBLIC_APP_URL
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
