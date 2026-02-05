@@ -45,4 +45,4 @@ EXPOSE 8000
 ENV FLASH_RAG_PATH=/app/FlashRAG
 
 # Command to run the application
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "ai_engine:app", "--host", "0.0.0.0", "--port", "8000"]
