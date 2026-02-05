@@ -4,31 +4,31 @@ on:
   push:
     branches: [main]
     paths:
-      - "apps/web/**"
-      - "packages/client/**"
-      - "packages/ui/**"
-      - "packages/typescript-config/**"
-      - "packages/eslint-config/**"
-      - "package.json"
-      - "pnpm-lock.yaml"
-      - "pnpm-workspace.yaml"
-      - "turbo.json"
+      - "app/apps/web/**"
+      - "app/packages/client/**"
+      - "app/packages/ui/**"
+      - "app/packages/typescript-config/**"
+      - "app/packages/eslint-config/**"
+      - "app/package.json"
+      - "app/pnpm-lock.yaml"
+      - "app/pnpm-workspace.yaml"
+      - "app/turbo.json"
   pull_request:
     branches: [main]
     paths:
-      - "apps/web/**"
-      - "packages/client/**"
-      - "packages/ui/**"
-      - "packages/typescript-config/**"
-      - "packages/eslint-config/**"
-      - "package.json"
-      - "pnpm-lock.yaml"
-      - "pnpm-workspace.yaml"
-      - "turbo.json"
+      - "app/apps/web/**"
+      - "app/packages/client/**"
+      - "app/packages/ui/**"
+      - "app/packages/typescript-config/**"
+      - "app/packages/eslint-config/**"
+      - "app/package.json"
+      - "app/pnpm-lock.yaml"
+      - "app/pnpm-workspace.yaml"
+      - "app/turbo.json"
 
 defaults:
   run:
-    working-directory: .
+    working-directory: app
 
 env:
   NODE_VERSION: "20"
@@ -47,6 +47,7 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "pnpm"
+          cache-dependency-path: app/pnpm-lock.yaml
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -93,8 +94,8 @@ jobs:
       - name: Build and push Web image
         uses: docker/build-push-action@v6
         with:
-          context: .
-          file: apps/web/Dockerfile
+          context: app
+          file: app/apps/web/Dockerfile
           push: ${{ github.event_name == 'push' }}
           load: ${{ github.event_name != 'push' }}
           tags: |
