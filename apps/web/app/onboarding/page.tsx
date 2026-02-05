@@ -1,8 +1,8 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { Card, CardContent } from "@ai-router/ui/card";
 import { CreateAgentForm } from "@/components/create-agent-form";
+import { Card, CardContent } from "@ai-router/ui/card";
+import { useRouter } from "next/navigation";
 
 export default function OnboardingPage() {
   const router = useRouter();
