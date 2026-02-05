@@ -1,5 +1,5 @@
 {
-  "name": "ai-router",
+  "name": "gemini-mesh",
   "private": true,
   "scripts": {
     "build": "turbo run build",

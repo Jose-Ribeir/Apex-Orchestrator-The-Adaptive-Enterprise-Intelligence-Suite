@@ -1,3 +1,11 @@
+import type {
+  NavMainItem,
+  NavSecondaryItem,
+  ProjectItem,
+  SidebarTeam,
+  SidebarUser,
+} from "@/types/dashboard";
+import type { LucideIcon } from "lucide-react";
 import {
   AudioWaveform,
   BookOpen,
@@ -12,14 +20,6 @@ import {
   Settings2,
   SquareTerminal,
 } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
-import type {
-  NavMainItem,
-  NavSecondaryItem,
-  ProjectItem,
-  SidebarUser,
-  SidebarTeam,
-} from "@/types/dashboard";
 
 export const sidebarIconMap: Record<string, LucideIcon> = {
   AudioWaveform,
@@ -37,7 +37,7 @@ export const sidebarIconMap: Record<string, LucideIcon> = {
 };
 
 export const defaultTeams: SidebarTeam[] = [
-  { name: "AI Router", logo: GalleryVerticalEnd, plan: "Enterprise" },
+  { name: "GeminiMesh", logo: GalleryVerticalEnd, plan: "Enterprise" },
 ];
 
 export const defaultNavMain: NavMainItem[] = [

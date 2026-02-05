@@ -1,4 +1,4 @@
-# AI Router API
+# GeminiMesh API
 
 Node.js backend with Express, Sequelize (PostgreSQL), Scalar API docs, and Better Auth.
 

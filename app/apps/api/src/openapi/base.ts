@@ -3,7 +3,7 @@ import { env } from "../config/env";
 export const openApiBase = {
   openapi: "3.0.3" as const,
   info: {
-    title: "AI Router API",
+    title: "GeminiMesh API",
     version: "1.0.0",
     description:
       "Backend API for agents, queries, human tasks, metrics, and notifications. Authenticate with a session cookie (Better Auth) or with `Authorization: Bearer <api-token>`.",
