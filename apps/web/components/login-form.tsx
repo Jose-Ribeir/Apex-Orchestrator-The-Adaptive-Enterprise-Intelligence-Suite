@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import Image from "next/image";
+import { AuthCardGradient } from "@/components/auth-card-gradient";
+import { authClient } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { Button } from "@ai-router/ui/button";
 import { Card, CardContent } from "@ai-router/ui/card";
@@ -14,12 +13,20 @@ import {
   FieldSeparator,
 } from "@ai-router/ui/field";
 import { Input } from "@ai-router/ui/input";
-import { authClient } from "@/lib/auth";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@ai-router/ui/tooltip";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
 export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -34,11 +41,13 @@ export function LoginForm({
     if (!email || !password) return;
 
     setIsLoading(true);
+    const callbackURL =
+      typeof window !== "undefined" ? `${window.location.origin}/` : "/";
     const { error: signInError } = await authClient.signIn.email(
       {
         email,
         password,
-        callbackURL: "/",
+        callbackURL,
       },
       {
         onError: (ctx) => {
@@ -50,6 +59,9 @@ export function LoginForm({
 
     if (signInError) {
       setError(signInError.message ?? "Invalid email or password");
+    } else {
+      router.push("/");
+      router.refresh();
     }
   }
 
@@ -88,12 +100,14 @@ export function LoginForm({
               <Field>
                 <div className="flex items-center">
                   <FieldLabel htmlFor="password">Password</FieldLabel>
-                  <Link
-                    href="/forgot-password"
-                    className="ml-auto text-sm underline-offset-2 hover:underline"
-                  >
-                    Forgot your password?
-                  </Link>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="ml-auto cursor-not-allowed text-sm text-muted-foreground underline-offset-2">
+                        Forgot your password?
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>Disabled for now</TooltipContent>
+                  </Tooltip>
                 </div>
                 <Input
                   id="password"
@@ -129,14 +143,7 @@ export function LoginForm({
               </FieldDescription>
             </FieldGroup>
           </form>
-          <div className="bg-muted relative hidden md:block">
-            <Image
-              src="/placeholder.svg"
-              alt=""
-              fill
-              className="absolute inset-0 h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
-            />
-          </div>
+          <AuthCardGradient />
         </CardContent>
       </Card>
       <FieldDescription className="px-6 text-center">

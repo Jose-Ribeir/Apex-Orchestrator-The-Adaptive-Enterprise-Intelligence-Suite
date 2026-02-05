@@ -1,19 +1,19 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
+import { AuthCardGradient } from "@/components/auth-card-gradient";
+import { authClient } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 import { Button } from "@ai-router/ui/button";
+import { Card, CardContent } from "@ai-router/ui/card";
 import {
   Field,
   FieldDescription,
   FieldGroup,
   FieldLabel,
 } from "@ai-router/ui/field";
-import { Card, CardContent } from "@ai-router/ui/card";
 import { Input } from "@ai-router/ui/input";
-import { authClient } from "@/lib/auth";
-import { AuthCardGradient } from "@/components/auth-card-gradient";
+import Link from "next/link";
+import { useState } from "react";
 
 export function SignUpForm({
   className,
@@ -34,12 +34,14 @@ export function SignUpForm({
     if (!name || !email || !password) return;
 
     setIsLoading(true);
+    const callbackURL =
+      typeof window !== "undefined" ? `${window.location.origin}/` : "/";
     const { error: signUpError } = await authClient.signUp.email(
       {
         name,
         email,
         password,
-        callbackURL: "/",
+        callbackURL,
       },
       {
         onError: (ctx) => {
@@ -115,7 +117,8 @@ export function SignUpForm({
                 </Button>
               </Field>
               <FieldDescription className="text-center">
-                Already have an account? <Link href="/auth/sign-in">Login</Link>
+                Already have an account?{" "}
+                <Link href="/auth/sign-in">Login</Link>
               </FieldDescription>
             </FieldGroup>
           </form>
