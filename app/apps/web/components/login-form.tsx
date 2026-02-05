@@ -35,12 +35,19 @@ export function LoginForm({
     if (!email || !password) return;
 
     setIsLoading(true);
+    const redirectTo =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("redirect") ?? "/"
+        : "/";
     const { error: signInError } = await authClient.signIn.email(
       {
         email,
         password,
       },
       {
+        onSuccess: () => {
+          window.location.replace(redirectTo);
+        },
         onError: (ctx) => {
           setError(ctx.error?.message ?? "Something went wrong");
         },
@@ -50,11 +57,7 @@ export function LoginForm({
 
     if (signInError) {
       setError(signInError.message ?? "Invalid email or password");
-    } else {
-      const redirectTo =
-        typeof window !== "undefined"
-          ? (new URLSearchParams(window.location.search).get("redirect") ?? "/")
-          : "/";
+    } else if (typeof window !== "undefined") {
       window.location.replace(redirectTo);
     }
   }
