@@ -21,7 +21,12 @@ import { getOpenApiSpec } from "./openapi/spec";
 const app = express();
 
 app.use(helmet({ contentSecurityPolicy: false }));
-app.use(cors());
+app.use(
+  cors({
+    origin: true,
+    credentials: true,
+  }),
+);
 
 app.all("/auth/{*any}", toNodeHandler(auth) as express.RequestHandler);
 
