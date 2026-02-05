@@ -15,6 +15,7 @@ on:
       - "app/turbo.json"
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened]
     paths:
       - "app/apps/web/**"
       - "app/packages/client/**"
@@ -25,6 +26,7 @@ on:
       - "app/pnpm-lock.yaml"
       - "app/pnpm-workspace.yaml"
       - "app/turbo.json"
+  workflow_dispatch:
 
 defaults:
   run:
