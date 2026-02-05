@@ -117,8 +117,7 @@ export function SignUpForm({
                 </Button>
               </Field>
               <FieldDescription className="text-center">
-                Already have an account?{" "}
-                <Link href="/auth/sign-in">Login</Link>
+                Already have an account? <Link href="/auth/sign-in">Login</Link>
               </FieldDescription>
             </FieldGroup>
           </form>

@@ -13,11 +13,7 @@ import {
   FieldSeparator,
 } from "@ai-router/ui/field";
 import { Input } from "@ai-router/ui/input";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@ai-router/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@ai-router/ui/tooltip";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
