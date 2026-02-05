@@ -1,12 +1,9 @@
 import type { NextConfig } from "next";
+import path from "node:path";
 
 const nextConfig: NextConfig = {
-  async redirects() {
-    return [
-      { source: "/login", destination: "/auth/sign-in", permanent: false },
-      { source: "/signup", destination: "/auth/sign-up", permanent: false },
-    ];
-  },
+  output: "standalone",
+  outputFileTracingRoot: path.join(__dirname, "../.."),
 };
 
 export default nextConfig;
