@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
     paths:
+      - ".github/workflows/**"
       - "app/apps/api/**"
       - "app/apps/web/**"
       - "app/packages/client/**"
@@ -18,6 +19,7 @@ on:
     branches: [main]
     types: [opened, synchronize, reopened]
     paths:
+      - ".github/workflows/**"
       - "app/apps/api/**"
       - "app/apps/web/**"
       - "app/packages/client/**"
@@ -80,11 +82,19 @@ jobs:
       - name: Set repository (lowercase for GHCR)
         run: echo "REPOSITORY_LOWER=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
 
+      - name: GHCR push mode (API)
+        run: |
+          if [ "${{ github.event_name }}" = "push" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Will PUSH API image to ghcr.io/${{ env.REPOSITORY_LOWER }}/api:latest and :${{ github.sha }}"
+          else
+            echo "Skipping push (event=${{ github.event_name }}); image will only be built/loaded."
+          fi
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to GitHub Container Registry
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -96,8 +106,8 @@ jobs:
         with:
           context: app
           file: app/apps/api/Dockerfile
-          push: ${{ github.event_name == 'push' }}
-          load: ${{ github.event_name != 'push' }}
+          push: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
+          load: ${{ github.event_name != 'push' && github.event_name != 'workflow_dispatch' }}
           tags: |
             ${{ env.REGISTRY }}/${{ env.REPOSITORY_LOWER }}/api:latest
             ${{ env.REGISTRY }}/${{ env.REPOSITORY_LOWER }}/api:${{ github.sha }}
@@ -123,11 +133,19 @@ jobs:
       - name: Set repository (lowercase for GHCR)
         run: echo "REPOSITORY_LOWER=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
 
+      - name: GHCR push mode (Web)
+        run: |
+          if [ "${{ github.event_name }}" = "push" ] || [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "Will PUSH Web image to ghcr.io/${{ env.REPOSITORY_LOWER }}/web:latest and :${{ github.sha }}"
+          else
+            echo "Skipping push (event=${{ github.event_name }}); image will only be built/loaded."
+          fi
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       - name: Log in to GitHub Container Registry
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
@@ -139,8 +157,8 @@ jobs:
         with:
           context: app
           file: app/apps/web/Dockerfile
-          push: ${{ github.event_name == 'push' }}
-          load: ${{ github.event_name != 'push' }}
+          push: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
+          load: ${{ github.event_name != 'push' && github.event_name != 'workflow_dispatch' }}
           tags: |
             ${{ env.REGISTRY }}/${{ env.REPOSITORY_LOWER }}/web:latest
             ${{ env.REGISTRY }}/${{ env.REPOSITORY_LOWER }}/web:${{ github.sha }}
