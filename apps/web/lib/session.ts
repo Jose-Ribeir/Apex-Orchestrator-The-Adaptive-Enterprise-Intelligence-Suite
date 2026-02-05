@@ -1,10 +1,5 @@
-import { headers } from "next/headers";
 import type { Session } from "@/lib/auth";
-
-const apiUrl =
-  typeof process.env.NEXT_PUBLIC_API_URL !== "undefined"
-    ? process.env.NEXT_PUBLIC_API_URL
-    : "http://localhost:4200";
+import { headers } from "next/headers";
 
 export type { Session, User } from "@/lib/auth";
 
