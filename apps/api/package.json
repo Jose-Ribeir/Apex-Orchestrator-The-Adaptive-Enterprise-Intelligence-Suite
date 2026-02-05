@@ -2,7 +2,6 @@
   "name": "@ai-router/api",
   "private": true,
   "version": "0.0.1",
-  "type": "module",
   "scripts": {
     "build": "tsc",
     "dev": "tsx watch src/index.ts",
