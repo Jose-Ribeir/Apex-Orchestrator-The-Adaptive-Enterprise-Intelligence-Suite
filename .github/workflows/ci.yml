@@ -101,6 +101,8 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ env.REPOSITORY_LOWER }}/api:latest
             ${{ env.REGISTRY }}/${{ env.REPOSITORY_LOWER }}/api:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -142,6 +144,8 @@ jobs:
           tags: |
             ${{ env.REGISTRY }}/${{ env.REPOSITORY_LOWER }}/web:latest
             ${{ env.REGISTRY }}/${{ env.REPOSITORY_LOWER }}/web:${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
