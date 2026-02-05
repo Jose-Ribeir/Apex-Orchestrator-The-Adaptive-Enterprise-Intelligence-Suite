@@ -125,9 +125,11 @@ export const agentService = {
   ): Promise<{ data: AgentResponse[]; total: number }> {
     const { page, limit } = pagination;
     const offset = (page - 1) * limit;
-    const total = await Agent.count({ where: { userId } });
-    const agents = await Agent.findAll({
-      where: { userId },
+    const where = { userId };
+    const { count, rows: agents } = await Agent.findAndCountAll({
+      where,
+      distinct: true,
+      col: "id",
       order: [["createdAt", "DESC"]],
       limit,
       offset,
@@ -140,7 +142,7 @@ export const agentService = {
         { model: Tool, as: "tools", through: { attributes: [] } },
       ],
     });
-    return { data: agents.map(toAgentResponse), total };
+    return { data: agents.map(toAgentResponse), total: count };
   },
 
   /**
@@ -179,7 +181,16 @@ export const agentService = {
       prompt: input.prompt?.trim() ?? null,
     });
     if (input.instructions?.length) {
-      await agent.setInstructions(input.instructions as unknown as string[]);
+      for (let i = 0; i < input.instructions.length; i++) {
+        const content = (input.instructions[i] ?? "").trim();
+        if (content) {
+          await AgentInstruction.create({
+            agentId: agent.id,
+            content,
+            order: i,
+          });
+        }
+      }
     }
     if (input.tools?.length) {
       await agent.setTools(input.tools);
