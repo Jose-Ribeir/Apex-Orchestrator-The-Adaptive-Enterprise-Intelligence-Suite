@@ -15,14 +15,12 @@ import {
 import { Input } from "@ai-router/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@ai-router/ui/tooltip";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export function LoginForm({
   className,
   ...props
 }: React.ComponentProps<"div">) {
-  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,13 +35,10 @@ export function LoginForm({
     if (!email || !password) return;
 
     setIsLoading(true);
-    const callbackURL =
-      typeof window !== "undefined" ? `${window.location.origin}/` : "/";
     const { error: signInError } = await authClient.signIn.email(
       {
         email,
         password,
-        callbackURL,
       },
       {
         onError: (ctx) => {
@@ -56,8 +51,11 @@ export function LoginForm({
     if (signInError) {
       setError(signInError.message ?? "Invalid email or password");
     } else {
-      router.push("/");
-      router.refresh();
+      const redirectTo =
+        typeof window !== "undefined"
+          ? (new URLSearchParams(window.location.search).get("redirect") ?? "/")
+          : "/";
+      window.location.replace(redirectTo);
     }
   }
 

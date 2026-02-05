@@ -34,14 +34,11 @@ export function SignUpForm({
     if (!name || !email || !password) return;
 
     setIsLoading(true);
-    const callbackURL =
-      typeof window !== "undefined" ? `${window.location.origin}/` : "/";
     const { error: signUpError } = await authClient.signUp.email(
       {
         name,
         email,
         password,
-        callbackURL,
       },
       {
         onError: (ctx) => {
@@ -53,6 +50,8 @@ export function SignUpForm({
 
     if (signUpError) {
       setError(signUpError.message ?? "Failed to create account");
+    } else {
+      window.location.replace("/auth/sign-in");
     }
   }
 
