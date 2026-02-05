@@ -90,5 +90,6 @@ ModelQuery.init(
     sequelize,
     tableName: "model_queries",
     indexes: [{ fields: ["agent_id"] }],
+    defaultScope: { where: { isDeleted: false } },
   },
 );

@@ -41,5 +41,6 @@ AgentTool.init(
     tableName: "agent_tools",
     timestamps: true,
     updatedAt: false,
+    defaultScope: {},
   },
 );

@@ -102,5 +102,6 @@ DailyStat.init(
     sequelize,
     tableName: "daily_stats",
     indexes: [{ unique: true, fields: ["agent_id", "date"] }],
+    defaultScope: { where: { isDeleted: false } },
   },
 );

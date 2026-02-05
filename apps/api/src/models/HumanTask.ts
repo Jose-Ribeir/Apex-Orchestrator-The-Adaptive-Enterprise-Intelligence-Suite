@@ -97,5 +97,6 @@ HumanTask.init(
   {
     sequelize,
     tableName: "human_tasks",
+    defaultScope: { where: { isDeleted: false } },
   },
 );

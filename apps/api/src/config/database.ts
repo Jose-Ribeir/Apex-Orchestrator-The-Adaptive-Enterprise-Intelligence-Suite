@@ -39,8 +39,5 @@ export const sequelize = new Sequelize(env.databaseUrl, {
     underscored: true,
     timestamps: true,
     paranoid: false,
-    defaultScope: {
-      where: { isDeleted: false },
-    },
   },
 });

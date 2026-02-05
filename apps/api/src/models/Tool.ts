@@ -53,5 +53,6 @@ Tool.init(
   {
     sequelize,
     tableName: "tools",
+    defaultScope: { where: { isDeleted: false } },
   },
 );

@@ -100,5 +100,6 @@ PerformanceMetric.init(
   {
     sequelize,
     tableName: "performance_metrics",
+    defaultScope: { where: { isDeleted: false } },
   },
 );

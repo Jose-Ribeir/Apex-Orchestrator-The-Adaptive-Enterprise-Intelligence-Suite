@@ -90,5 +90,6 @@ Notification.init(
     sequelize,
     tableName: "notifications",
     indexes: [{ fields: ["user_id"] }, { fields: ["type"] }],
+    defaultScope: { where: { isDeleted: false } },
   },
 );

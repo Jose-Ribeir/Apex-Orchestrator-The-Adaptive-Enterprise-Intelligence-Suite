@@ -104,5 +104,6 @@ Agent.init(
     sequelize,
     tableName: "agents",
     indexes: [{ fields: ["user_id"] }],
+    defaultScope: { where: { isDeleted: false } },
   },
 );

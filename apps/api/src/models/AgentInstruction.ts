@@ -74,5 +74,6 @@ AgentInstruction.init(
     sequelize,
     tableName: "agent_instructions",
     indexes: [{ fields: ["agent_id"] }],
+    defaultScope: { where: { isDeleted: false } },
   },
 );
