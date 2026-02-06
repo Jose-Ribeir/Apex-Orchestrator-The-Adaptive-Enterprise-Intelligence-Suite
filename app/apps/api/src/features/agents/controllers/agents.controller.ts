@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
-import { agentService } from "../services/agents.service";
+import { paginatedResponse, parsePageLimit } from "../../../lib/pagination";
 import { paramUuid } from "../../../lib/params";
-import { parsePageLimit, paginatedResponse } from "../../../lib/pagination";
+import { AgentMode } from "../../../models/Agent";
+import { agentService } from "../services/agents.service";
 
 export const agentsController = {
   list: async (req: Request, res: Response) => {
@@ -32,7 +33,7 @@ export const agentsController = {
     const agent = await agentService.create({
       userId: req.user!.id,
       name: body.name,
-      mode: (body.mode as "PERFORMANCE" | "EFFICIENCY") || "EFFICIENCY",
+      mode: body.mode as AgentMode,
       prompt: body.prompt,
       instructions: body.instructions,
       tools: body.tools,
@@ -53,7 +54,7 @@ export const agentsController = {
       req.user!.id,
       {
         name: body.name,
-        mode: body.mode as "PERFORMANCE" | "EFFICIENCY" | undefined,
+        mode: body.mode as AgentMode,
         prompt: body.prompt,
         instructions: body.instructions,
         tools: body.tools,
