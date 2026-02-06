@@ -32,6 +32,10 @@ on:
       - "app/turbo.json"
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 defaults:
   run:
     working-directory: app
@@ -124,8 +128,8 @@ jobs:
       packages: write
     env:
       API_SERVER_URL: ${{ secrets.API_SERVER_URL || 'http://api:4000' }}
-      NEXT_PUBLIC_API_URL: ${{ secrets.NEXT_PUBLIC_API_URL || 'http://localhost:4000' }}
-      NEXT_PUBLIC_APP_URL: ${{ secrets.NEXT_PUBLIC_APP_URL || 'http://localhost:3000' }}
+      API_URL: ${{ secrets.API_URL || 'http://localhost:4000' }}
+      APP_URL: ${{ secrets.APP_URL || 'http://localhost:3000' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -168,5 +172,5 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             API_SERVER_URL=${{ env.API_SERVER_URL }}
-            NEXT_PUBLIC_API_URL=${{ env.NEXT_PUBLIC_API_URL }}
-            NEXT_PUBLIC_APP_URL=${{ env.NEXT_PUBLIC_APP_URL }}
+            API_URL=${{ env.API_URL }}
+            APP_URL=${{ env.NEXT_PUBLIC_APP_URL }}
