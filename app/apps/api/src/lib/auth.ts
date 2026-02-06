@@ -20,13 +20,6 @@ export const auth = betterAuth({
       sameSite: "none",
       secure: true,
     },
-    ...(env.appUrl &&
-      env.nodeEnv === "production" && {
-        crossSubDomainCookies: {
-          enabled: true,
-          domain: env.appUrl,
-        },
-      }),
   },
   emailAndPassword: {
     enabled: true,
