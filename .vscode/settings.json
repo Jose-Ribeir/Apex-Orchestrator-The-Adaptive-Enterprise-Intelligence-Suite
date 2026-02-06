@@ -1,7 +1,10 @@
 {
-  "eslint.workingDirectories": ["app"],
+  "eslint.workingDirectories": [
+    "app"
+  ],
   "editor.formatOnSave": true,
   "editor.codeActionsOnSave": {
     "source.organizeImports": "explicit"
-  }
+  },
+  "python.defaultInterpreterPath": "${workspaceFolder}/python/.venv/bin/python"
 }
