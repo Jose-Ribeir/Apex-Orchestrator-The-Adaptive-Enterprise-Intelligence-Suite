@@ -1,48 +1,40 @@
-# Use an official Python runtime as a parent image
-# We use 3.10-slim to keep the image size reasonable while ensuring compatibility
+# Use official Python 3.10 slim for smaller image size
 FROM python:3.10-slim
 
-# Set environment variables
-# PYTHONDONTWRITEBYTECODE: Prevents Python from writing pyc files to disc
-# PYTHONUNBUFFERED: Prevents Python from buffering stdout and stderr
+# Set environment variables for Python
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
 
-# Set the working directory in the container
+# Set working directory
 WORKDIR /app
 
-# Install system dependencies required for building Python packages
-# git is often needed for installing packages directly from repositories (like FlashRAG)
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
     build-essential \
     git \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy the requirements file into the container
+# Copy requirements first (for better Docker layer caching)
 COPY requirements.txt .
 
 # Install Python dependencies
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
-# --- FlashRAG Installation ---
-# Since FlashRAG might not be on PyPI or requires specific setup,
-# we clone it directly. Adjust the repo URL if you are using a fork.
-RUN git clone https://github.com/RUC-NLPIR/FlashRAG.git /app/FlashRAG
-
-# Install FlashRAG dependencies
-RUN pip install --no-cache-dir -e /app/FlashRAG
-
-# Copy the rest of the application code
+# Copy application code
 COPY . .
 
-# Create the data directory to ensure permissions are correct
-RUN mkdir -p data
+# Create data directory with proper permissions
+RUN mkdir -p data && chmod -R 755 data
 
-# Expose the port the app runs on
+# Expose port
 EXPOSE 8000
 
-# Define environment variable for FlashRAG path so the code can find it
-ENV FLASH_RAG_PATH=/app/FlashRAG
+# Healthcheck
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:8000/health || exit 1
 
-# Command to run the application
-CMD ["uvicorn", "ai_engine:app", "--host", "0.0.0.0", "--port", "8000"]
+# Default command - can be overridden
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
