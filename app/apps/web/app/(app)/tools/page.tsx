@@ -38,12 +38,7 @@ import {
   AlertDialogTitle,
 } from "@ai-router/ui/alert-dialog";
 import { Pencil, Plus, Trash2 } from "lucide-react";
-
-function formatDate(d: Date | null | undefined): string {
-  if (!d) return "—";
-  const date = typeof d === "string" ? new Date(d) : d;
-  return date.toLocaleString();
-}
+import { formatDateTime } from "@/lib/format";
 
 export default function ToolsPage() {
   const queryClient = useQueryClient();
@@ -139,7 +134,7 @@ export default function ToolsPage() {
                 <TableCell className="font-medium">
                   {tool.name ?? tool.id ?? "—"}
                 </TableCell>
-                <TableCell>{formatDate(tool.createdAt)}</TableCell>
+                <TableCell>{formatDateTime(tool.createdAt)}</TableCell>
                 <TableCell>
                   <div className="flex gap-1">
                     <Button

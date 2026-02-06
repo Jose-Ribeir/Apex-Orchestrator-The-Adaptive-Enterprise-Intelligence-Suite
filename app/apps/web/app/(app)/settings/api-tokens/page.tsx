@@ -41,11 +41,7 @@ import {
 } from "@ai-router/ui/alert-dialog";
 import { Copy, Plus, Trash2 } from "lucide-react";
 
-function formatDate(d: Date | null | undefined): string {
-  if (!d) return "—";
-  const date = typeof d === "string" ? new Date(d) : d;
-  return date.toLocaleString();
-}
+import { formatDateTime } from "@/lib/format";
 
 export default function ApiTokensPage() {
   const queryClient = useQueryClient();
@@ -142,9 +138,9 @@ export default function ApiTokensPage() {
                 <TableCell className="font-medium">
                   {token.name ?? "—"}
                 </TableCell>
-                <TableCell>{formatDate(token.createdAt)}</TableCell>
-                <TableCell>{formatDate(token.lastUsedAt)}</TableCell>
-                <TableCell>{formatDate(token.expiresAt)}</TableCell>
+                <TableCell>{formatDateTime(token.createdAt)}</TableCell>
+                <TableCell>{formatDateTime(token.lastUsedAt)}</TableCell>
+                <TableCell>{formatDateTime(token.expiresAt)}</TableCell>
                 <TableCell>
                   <Button
                     variant="ghost"

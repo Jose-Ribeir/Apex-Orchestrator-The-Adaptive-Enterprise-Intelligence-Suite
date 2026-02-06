@@ -10,12 +10,7 @@ import {
 } from "@ai-router/ui/table";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
-
-function formatDate(d: Date | string | null | undefined): string {
-  if (!d) return "—";
-  const date = typeof d === "string" ? new Date(d) : d;
-  return date.toLocaleDateString();
-}
+import { formatDate } from "@/lib/format";
 
 export default function AgentStatsPage() {
   const params = useParams();

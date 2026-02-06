@@ -7,6 +7,7 @@ import HumanTasksPage from "@/app/(app)/human-tasks/page";
 import NotificationsPage from "@/app/(app)/notifications/page";
 import DashboardPage from "@/app/(app)/page";
 import ApiTokensPage from "@/app/(app)/settings/api-tokens/page";
+import SettingsAgentsPage from "@/app/(app)/settings/agents/page";
 import ToolsPage from "@/app/(app)/tools/page";
 import OnboardingPage from "@/app/onboarding/page";
 import { LoginForm } from "@/components/login-form";
@@ -44,6 +45,7 @@ export default function App() {
           path="settings"
         />
         <Route element={<ApiTokensPage />} path="settings/api-tokens" />
+        <Route element={<SettingsAgentsPage />} path="settings/agents" />
         <Route element={<AgentIdRouteWrapper />} path="agents/:agentId">
           <Route element={<AgentInstructionsPage />} path="instructions" />
           <Route element={<AgentToolsPage />} path="tools" />

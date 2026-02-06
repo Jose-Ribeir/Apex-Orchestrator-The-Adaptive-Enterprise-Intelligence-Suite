@@ -24,12 +24,7 @@ import {
   SheetTitle,
 } from "@ai-router/ui/sheet";
 import { Check, Pencil } from "lucide-react";
-
-function formatDate(d: Date | string | null | undefined): string {
-  if (!d) return "—";
-  const date = typeof d === "string" ? new Date(d) : d;
-  return date.toLocaleString();
-}
+import { formatDateTime } from "@/lib/format";
 
 export default function HumanTasksPage() {
   const queryClient = useQueryClient();
@@ -127,7 +122,7 @@ export default function HumanTasksPage() {
                 <TableCell className="max-w-xs truncate">
                   {task.modelMessage ?? "—"}
                 </TableCell>
-                <TableCell>{formatDate(task.createdAt)}</TableCell>
+                <TableCell>{formatDateTime(task.createdAt)}</TableCell>
                 <TableCell>
                   <div className="flex gap-1">
                     <Button
@@ -198,7 +193,7 @@ export default function HumanTasksPage() {
               </div>
               <div>
                 <span className="text-muted-foreground text-sm">Created</span>
-                <p>{formatDate(detailTask.createdAt)}</p>
+                <p>{formatDateTime(detailTask.createdAt)}</p>
               </div>
               {detailTask.status === "PENDING" && (
                 <Button

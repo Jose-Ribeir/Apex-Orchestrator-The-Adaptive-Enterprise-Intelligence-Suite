@@ -30,18 +30,10 @@ import { Bot, ChevronsUpDown, Plus } from "lucide-react";
 import * as React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
+import { agentModeLabel } from "@/lib/format";
+
 const AGENT_SUB_PATH =
   /^\/agents\/([^/]+)\/(instructions|tools|queries|stats)$/;
-
-function agentModeLabel(mode: string | undefined): string {
-  if (!mode) return "Select an agent";
-  const labels: Record<NonNullable<Agent["mode"]>, string> = {
-    PERFORMANCE: "Performance",
-    EFFICIENCY: "Efficiency",
-    BALANCED: "Balanced",
-  };
-  return labels[mode as NonNullable<Agent["mode"]>] ?? mode;
-}
 
 export function AgentSwitcher() {
   const { isMobile } = useSidebar();

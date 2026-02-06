@@ -10,12 +10,7 @@ import {
 } from "@ai-router/ui/table";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
-
-function formatDate(d: Date | string | null | undefined): string {
-  if (!d) return "—";
-  const date = typeof d === "string" ? new Date(d) : d;
-  return date.toLocaleString();
-}
+import { formatDateTime } from "@/lib/format";
 
 export default function AgentQueriesPage() {
   const params = useParams();
@@ -60,7 +55,7 @@ export default function AgentQueriesPage() {
                   {q.userQuery ?? "—"}
                 </TableCell>
                 <TableCell>{q.methodUsed ?? "—"}</TableCell>
-                <TableCell>{formatDate(q.createdAt)}</TableCell>
+                <TableCell>{formatDateTime(q.createdAt)}</TableCell>
               </TableRow>
             ))}
           </TableBody>

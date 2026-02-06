@@ -3,6 +3,7 @@
 import {
   Activity,
   BarChart3,
+  Bot,
   FileText,
   MessageSquare,
   Sliders,
@@ -42,7 +43,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     { title: "Human tasks", url: "/human-tasks", icon: Sliders },
   ];
 
-  const settingsNav = [{ title: "Tools", url: "/tools", icon: Wrench }];
+  const settingsNav = [
+    { title: "Agents", url: "/settings/agents", icon: Bot },
+    { title: "Tools", url: "/tools", icon: Wrench },
+  ];
 
   return (
     <Sidebar collapsible="icon" {...props}>
