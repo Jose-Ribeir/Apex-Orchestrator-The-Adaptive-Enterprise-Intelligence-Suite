@@ -17,9 +17,7 @@ export type AgentFormBody = {
 /**
  * Parse form values into the API body shape (name, mode, instructions array, tools).
  */
-export function getAgentBodyFromValues(
-  values: AgentFormValues,
-): AgentFormBody {
+export function getAgentBodyFromValues(values: AgentFormValues): AgentFormBody {
   const instructions = values.instructionsText
     .split("\n")
     .map((s) => s.trim())
@@ -28,7 +26,9 @@ export function getAgentBodyFromValues(
     name: values.name.trim(),
     mode: values.mode,
     ...(instructions.length > 0 ? { instructions } : {}),
-    ...(values.selectedToolIds.length > 0 ? { tools: values.selectedToolIds } : {}),
+    ...(values.selectedToolIds.length > 0
+      ? { tools: values.selectedToolIds }
+      : {}),
   };
 }
 
@@ -50,7 +50,9 @@ export function agentToFormValues(agent: Agent): AgentFormValues {
     .sort((a, b) => (a.order ?? 0) - (b.order ?? 0))
     .map((i) => i.content ?? "")
     .join("\n");
-  const selectedToolIds = (agent.tools ?? []).map((t) => t.id ?? "").filter(Boolean);
+  const selectedToolIds = (agent.tools ?? [])
+    .map((t) => t.id ?? "")
+    .filter(Boolean);
   return {
     name: agent.name ?? "",
     mode: (agent.mode as NonNullable<Agent["mode"]>) ?? "EFFICIENCY",

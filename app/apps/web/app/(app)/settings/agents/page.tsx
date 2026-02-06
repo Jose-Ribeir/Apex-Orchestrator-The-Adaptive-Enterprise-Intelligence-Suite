@@ -165,7 +165,10 @@ export default function SettingsAgentsPage() {
         </Table>
       )}
 
-      <Sheet open={editAgent != null} onOpenChange={(o) => !o && setEditAgent(null)}>
+      <Sheet
+        open={editAgent != null}
+        onOpenChange={(o) => !o && setEditAgent(null)}
+      >
         <SheetContent side="right" className="w-full max-w-md sm:max-w-md">
           <SheetHeader>
             <SheetTitle>Edit agent</SheetTitle>
@@ -219,8 +222,9 @@ export default function SettingsAgentsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete agent?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete &quot;{deleteAgent?.name ?? "this agent"}&quot; and
-              its instructions. This action cannot be undone.
+              This will permanently delete &quot;
+              {deleteAgent?.name ?? "this agent"}&quot; and its instructions.
+              This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -229,7 +233,9 @@ export default function SettingsAgentsPage() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() =>
                 deleteAgent &&
-                deleteAgentMutationState.mutate({ path: { id: deleteAgent.id! } })
+                deleteAgentMutationState.mutate({
+                  path: { id: deleteAgent.id! },
+                })
               }
               disabled={deleteAgentMutationState.isPending}
             >
