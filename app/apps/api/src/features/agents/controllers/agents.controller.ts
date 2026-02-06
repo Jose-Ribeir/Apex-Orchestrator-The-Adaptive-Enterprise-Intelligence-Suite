@@ -63,6 +63,17 @@ export const agentsController = {
     res.json(agent);
   },
 
+  /** Update only prompt (used by Python; no sync back to Python). */
+  updatePrompt: async (req: Request, res: Response) => {
+    const body = req.body as { prompt: string | null };
+    const agent = await agentService.updatePromptOnly(
+      paramUuid(req.params.id),
+      req.user!.id,
+      body.prompt ?? null,
+    );
+    res.json(agent);
+  },
+
   delete: async (req: Request, res: Response) => {
     await agentService.delete(paramUuid(req.params.id), req.user!.id);
     res.status(204).send();

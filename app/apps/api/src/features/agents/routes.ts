@@ -1,10 +1,10 @@
 import { Router } from "express";
 import { asyncHandler } from "../../middleware/asyncHandler";
-import { agentsController } from "./controllers/agents.controller";
-import { agentInstructionsController } from "./controllers/instructions.controller";
 import { agentToolsController } from "./controllers/agent-tools.controller";
-import { modelQueriesController } from "./controllers/model-queries.controller";
+import { agentsController } from "./controllers/agents.controller";
 import { dailyStatsController } from "./controllers/daily-stats.controller";
+import { agentInstructionsController } from "./controllers/instructions.controller";
+import { modelQueriesController } from "./controllers/model-queries.controller";
 
 const router = Router();
 
@@ -67,7 +67,7 @@ router.post("/:agentId/stats", asyncHandler(dailyStatsController.create));
 router.patch("/:agentId/stats/:id", asyncHandler(dailyStatsController.update));
 router.delete("/:agentId/stats/:id", asyncHandler(dailyStatsController.delete));
 
-// By-id routes last
+router.post("/:id/prompt", asyncHandler(agentsController.updatePrompt));
 router.get("/:id", asyncHandler(agentsController.getById));
 router.patch("/:id", asyncHandler(agentsController.update));
 router.delete("/:id", asyncHandler(agentsController.delete));

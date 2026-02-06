@@ -244,7 +244,17 @@ export const agentService = {
     if (input.mode !== undefined) agent.mode = input.mode;
     if (input.prompt !== undefined) agent.prompt = input.prompt?.trim() ?? null;
     if (input.instructions !== undefined) {
-      await agent.setInstructions(input.instructions as unknown as string[]);
+      await AgentInstruction.destroy({ where: { agentId: agent.id } });
+      for (let i = 0; i < input.instructions.length; i++) {
+        const content = (input.instructions[i] ?? "").trim();
+        if (content) {
+          await AgentInstruction.create({
+            agentId: agent.id,
+            content,
+            order: i,
+          });
+        }
+      }
     }
     if (input.tools !== undefined) {
       await agent.setTools(input.tools);
@@ -253,6 +263,21 @@ export const agentService = {
     const updated = await this.getById(agent.id);
     await syncAgentPromptToGeminimesh(updated);
     return updated;
+  },
+
+  /**
+   * Update only the prompt.
+   */
+  async updatePromptOnly(
+    id: string,
+    userId: string,
+    prompt: string | null,
+  ): Promise<AgentResponse> {
+    const agent = await Agent.findOne({ where: { id, userId } });
+    if (!agent) throw new NotFoundError("Agent", id);
+    agent.prompt = prompt?.trim() ?? null;
+    await agent.save();
+    return this.getById(agent.id);
   },
 
   /**
