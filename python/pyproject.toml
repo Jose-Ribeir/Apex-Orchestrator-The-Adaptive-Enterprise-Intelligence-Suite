@@ -1,0 +1,24 @@
+[project]
+name = "gemini-agent-factory"
+version = "6.4.0"
+description = "FastAPI service: dynamic 2-call pipeline + per-agent RAG"
+requires-python = ">=3.10"
+dependencies = []  # use requirements.txt for runtime
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+src = ["app", "main.py"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+ignore = []
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
