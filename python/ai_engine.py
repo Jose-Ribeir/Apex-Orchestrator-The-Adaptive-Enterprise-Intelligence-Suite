@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 """
-🏆 GEMINI AGENT FACTORY v6.3 - DYNAMIC 2-CALL PIPELINE
+🏆 GEMINI AGENT FACTORY v6.4 - DYNAMIC 2-CALL PIPELINE + GEMINIMESH UPDATE API
 ✅ Call #1: gemini-2.5-flash-lite (CHEAP ROUTER)
 ✅ Call #2: DYNAMIC MODEL (router decides: 3-pro/3-flash/2.5-flash)
 ✅ Tool prediction + V5 routing + token metrics
 ✅ Per-agent LanceDB isolation
+✅ Receives agent_id + generates prompt → POST /agents to GeminiMesh
 """
 
 import os
 import json
 import time
+import requests
 from pathlib import Path
 from typing import List, Optional, Dict, Any
 from dotenv import load_dotenv
@@ -21,12 +23,18 @@ import google.generativeai as genai
 load_dotenv()
 
 API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINIMESH_API_URL = os.getenv("GEMINIMESH_API_URL", "https://api.geminimesh.com/api")
+GEMINIMESH_API_TOKEN = os.getenv("GEMINIMESH_API_TOKEN")
 HOST = os.getenv("HOST", "127.0.0.1")
 PORT = int(os.getenv("PORT", 8000))
 BASE_DATA_FOLDER = os.getenv("DATA_FOLDER", "data")
 
 if not API_KEY:
     raise ValueError("❌ GEMINI_API_KEY missing!")
+if GEMINIMESH_API_TOKEN:
+    print(f"✅ GeminiMesh POST API configured: {GEMINIMESH_API_URL}/agents")
+else:
+    print("⚠️  GEMINIMESH_API_TOKEN not configured")
 
 genai.configure(api_key=API_KEY)
 
@@ -71,10 +79,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from fastapi.responses import StreamingResponse
 
-app = FastAPI(title="Gemini Agent Factory v6.3")
+app = FastAPI(title="Gemini Agent Factory v6.4")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_credentials=True, allow_methods=["*"], allow_headers=[""])
 
-print(f"🚀 v6.3 Dynamic Router on {HOST}:{PORT}")
+print(f"🚀 v6.4 Dynamic Router + GeminiMesh Update on {HOST}:{PORT}")
 
 # --- LANCEDB ---
 retriever_cache: Dict[str, 'LanceRAG'] = {}
@@ -146,10 +154,11 @@ def get_or_create_retriever(agent_name: str):
 
 # --- MODELS ---
 class AgentConfig(BaseModel):
+    agent_id: str  # REQUIRED for GeminiMesh updates
     name: str
-    mode: str
+    mode: str = "PERFORMANCE"
     instructions: List[str]
-    tools: List[str]
+    tools: List[str] = []
 
 
 class ChatRequest(BaseModel):
@@ -166,17 +175,104 @@ class UpdateAgentRequest(BaseModel):
     metadata: Optional[Dict] = None
 
 
-# --- API ENDPOINTS ---
+# --- GEMINIMESH API ENDPOINT ---
+@app.post("/update_agent_prompt_geminimesh")
+async def update_agent_prompt_geminimesh(config: AgentConfig):
+    """Receives agent_id + config → generates prompt → POST /agents to GeminiMesh."""
+
+    if not GEMINIMESH_API_TOKEN:
+        raise HTTPException(400, "❌ GEMINIMESH_API_TOKEN not configured in .env")
+
+    # Validate required agent_id
+    if not config.agent_id:
+        raise HTTPException(400, "❌ agent_id is required to update agent")
+
+    try:
+        # Step 1: Generate optimized prompt locally
+        model = genai.GenerativeModel("gemini-3-pro-preview")
+        analysis_prompt = f"""
+        AGENT: {config.name}, MODE: {config.mode}
+        INSTRUCTIONS: {json.dumps(config.instructions)}
+        TOOLS: {config.tools}
+
+        JSON ONLY:
+        {{
+          "agent_type": "engineering|sales|research|creative|general",
+          "complexity": "low|medium|high",
+          "needs_rag": {bool(config.tools)}
+        }}
+        """
+
+        analysis_raw = model.generate_content(analysis_prompt).text.strip()
+        try:
+            analysis = json.loads(analysis_raw)
+        except:
+            analysis = {"agent_type": "general", "complexity": "medium", "needs_rag": bool(config.tools)}
+
+        optimized_prompt = f"""You are **{config.name}** ({config.mode}).
+
+INSTRUCTIONS:
+{chr(10).join(f"- {i}" for i in config.instructions)}
+
+TOOLS: {', '.join(config.tools) if config.tools else 'None'}
+
+{ANALYSIS_V5_TEMPLATE}
+
+ANALYSIS: {json.dumps(analysis)}"""
+
+        print(f"🧠 Generated optimized prompt for agent '{config.name}' (ID: {config.agent_id})")
+
+        # Step 2: POST to GeminiMesh /agents with EXACT format
+        response = requests.post(
+            f"{GEMINIMESH_API_URL}/agents",
+            headers={
+                "Content-Type": "application/json"
+            },
+            json={
+                "agent_id": config.agent_id,  # For updates
+                "name": config.name,
+                "mode": config.mode,
+                "prompt": optimized_prompt,
+                "instructions": config.instructions,
+                "tools": config.tools
+            },
+            timeout=30
+        )
+
+        if response.status_code in [200, 201, 202]:
+            geminimesh_data = response.json()
+
+            # Step 3: Initialize/update local RAG storage
+            rag = get_or_create_retriever(config.name)
+
+            return {
+                "status": "success",
+                "agent_id": config.agent_id,
+                "geminimesh_response": geminimesh_data,
+                "optimized_prompt": optimized_prompt,
+                "local_rag_docs": rag.count_documents(),
+                "message": f"Agent '{config.name}' (ID: {config.agent_id}) updated successfully"
+            }
+        else:
+            raise HTTPException(
+                status_code=response.status_code,
+                detail=f"GeminiMesh API error: {response.status_code} - {response.text}"
+            )
+
+    except requests.exceptions.RequestException as e:
+        raise HTTPException(500, f"Network error: {str(e)}")
+    except Exception as e:
+        raise HTTPException(500, f"Error updating agent: {str(e)}")
+
 
 @app.post("/optimize_prompt")
 async def optimize_prompt(config: AgentConfig):
-    """Creates agent system prompt."""
+    """Standalone prompt optimization (no GeminiMesh call)."""
     try:
         model = genai.GenerativeModel("gemini-3-pro-preview")
     except Exception as e:
         raise HTTPException(400, f"Model error: {str(e)}")
 
-    # Instruction analysis
     analysis_prompt = f"""
     AGENT: {config.name}, MODE: {config.mode}
     INSTRUCTIONS: {json.dumps(config.instructions)}
@@ -196,7 +292,6 @@ async def optimize_prompt(config: AgentConfig):
     except:
         analysis = {"agent_type": "general", "complexity": "medium", "needs_rag": bool(config.tools)}
 
-    # System prompt with V5 routing
     system_prompt = f"""You are **{config.name}** ({config.mode}).
 
 INSTRUCTIONS:
@@ -217,7 +312,7 @@ ANALYSIS: {json.dumps(analysis)}"""
 
 @app.post("/generate_stream")
 async def generate_stream(request: ChatRequest):
-    """v6.3: Cheap router → Dynamic generator."""
+    """v6.4: Cheap router → Dynamic generator."""
 
     # STEP 1: Extract tools from system_prompt
     tools_line = next((line for line in request.system_prompt.split('\n') if 'TOOLS:' in line), "TOOLS: []")
@@ -324,7 +419,6 @@ async def generate_stream(request: ChatRequest):
     return StreamingResponse(two_call_stream(), media_type="application/x-ndjson")
 
 
-# --- Other endpoints (unchanged) ---
 @app.post("/update_agent_index")
 async def update_agent_index(request: UpdateAgentRequest):
     rag = get_or_create_retriever(request.agent_name)
@@ -371,6 +465,7 @@ async def health():
     return {
         "status": "healthy",
         "agents": list(retriever_cache.keys()),
+        "geminimesh_configured": bool(GEMINIMESH_API_TOKEN),
         "embedding_model": "loaded" if embedding_model else "not_loaded"
     }
 
