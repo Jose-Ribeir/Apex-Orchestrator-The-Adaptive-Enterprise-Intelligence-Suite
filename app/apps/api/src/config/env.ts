@@ -18,4 +18,6 @@ export const env = {
   betterAuthSecret: getEnv("BETTER_AUTH_SECRET", ""),
   betterAuthUrl: getEnv("BETTER_AUTH_URL", "http://localhost:4200"),
   appUrl: getEnv("APP_URL", ""),
+  googleClientId: getEnv("GOOGLE_CLIENT_ID", ""),
+  googleClientSecret: getEnv("GOOGLE_CLIENT_SECRET", ""),
 } as const;

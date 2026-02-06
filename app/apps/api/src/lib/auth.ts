@@ -39,6 +39,14 @@ export const auth = betterAuth({
       },
     },
   },
+  socialProviders: {
+    google: {
+      clientId: env.googleClientId,
+      clientSecret: env.googleClientSecret,
+      accessType: "offline",
+      prompt: "select_account consent",
+    },
+  },
   plugins: [
     openAPI({
       path: "/reference",
