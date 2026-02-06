@@ -7,7 +7,7 @@ const schemas = {
       id: { type: "string", format: "uuid" },
       userId: { type: "string" },
       name: { type: "string" },
-      mode: { type: "string", enum: ["PERFORMANCE", "EFFICIENCY"] },
+      mode: { type: "string", enum: ["PERFORMANCE", "EFFICIENCY", "BALANCED"] },
       prompt: {
         type: "string",
         nullable: true,
@@ -127,7 +127,10 @@ const paths = {
               required: ["name"],
               properties: {
                 name: { type: "string" },
-                mode: { type: "string", enum: ["PERFORMANCE", "EFFICIENCY"] },
+                mode: {
+                  type: "string",
+                  enum: ["PERFORMANCE", "EFFICIENCY", "BALANCED"],
+                },
                 prompt: {
                   type: "string",
                   nullable: true,
@@ -205,7 +208,10 @@ const paths = {
               type: "object",
               properties: {
                 name: { type: "string" },
-                mode: { type: "string", enum: ["PERFORMANCE", "EFFICIENCY"] },
+                mode: {
+                  type: "string",
+                  enum: ["PERFORMANCE", "EFFICIENCY", "BALANCED"],
+                },
                 prompt: {
                   type: "string",
                   nullable: true,

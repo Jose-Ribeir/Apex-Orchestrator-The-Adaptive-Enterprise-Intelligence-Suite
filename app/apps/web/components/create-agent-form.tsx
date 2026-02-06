@@ -41,7 +41,7 @@ export function CreateAgentForm({
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { setAgentId } = useActiveAgent();
-  const [mode, setMode] = useState<"EFFICIENCY" | "PERFORMANCE">("EFFICIENCY");
+  const [mode, setMode] = useState<NonNullable<Agent["mode"]>>("EFFICIENCY");
   const [instructionsText, setInstructionsText] = useState("");
   const [selectedToolIds, setSelectedToolIds] = useState<string[]>([]);
 
@@ -118,9 +118,7 @@ export function CreateAgentForm({
           <FieldLabel htmlFor="create-agent-mode">Mode</FieldLabel>
           <Select
             value={mode}
-            onValueChange={(v) =>
-              setMode(v === "PERFORMANCE" ? "PERFORMANCE" : "EFFICIENCY")
-            }
+            onValueChange={(v) => setMode(v as NonNullable<Agent["mode"]>)}
             disabled={createAgent.isPending}
           >
             <SelectTrigger id="create-agent-mode">
@@ -128,6 +126,7 @@ export function CreateAgentForm({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="EFFICIENCY">Efficiency</SelectItem>
+              <SelectItem value="BALANCED">Balanced</SelectItem>
               <SelectItem value="PERFORMANCE">Performance</SelectItem>
             </SelectContent>
           </Select>

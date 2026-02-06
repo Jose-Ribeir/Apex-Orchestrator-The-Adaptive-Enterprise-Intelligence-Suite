@@ -1,22 +1,22 @@
 import {
-  Model,
-  DataTypes,
-  Optional,
-  HasManyGetAssociationsMixin,
-  HasManyAddAssociationMixin,
-  HasManySetAssociationsMixin,
-  BelongsToManyGetAssociationsMixin,
   BelongsToManyAddAssociationMixin,
+  BelongsToManyGetAssociationsMixin,
   BelongsToManySetAssociationsMixin,
+  DataTypes,
+  HasManyAddAssociationMixin,
+  HasManyGetAssociationsMixin,
+  HasManySetAssociationsMixin,
+  Model,
+  Optional,
 } from "sequelize";
+import { sequelize } from "../config/database";
 import type { AgentInstruction } from "./AgentInstruction";
 import type { AgentTool } from "./AgentTool";
-import type { ModelQuery } from "./ModelQuery";
 import type { DailyStat } from "./DailyStat";
+import type { ModelQuery } from "./ModelQuery";
 import type { Tool } from "./Tool";
-import { sequelize } from "../config/database";
 
-export type AgentMode = "PERFORMANCE" | "EFFICIENCY";
+export type AgentMode = "PERFORMANCE" | "EFFICIENCY" | "BALANCED";
 
 export interface AgentAttributes {
   id: string;
@@ -82,7 +82,7 @@ Agent.init(
       allowNull: false,
     },
     mode: {
-      type: DataTypes.ENUM("PERFORMANCE", "EFFICIENCY"),
+      type: DataTypes.ENUM("PERFORMANCE", "EFFICIENCY", "BALANCED"),
       allowNull: false,
     },
     prompt: {

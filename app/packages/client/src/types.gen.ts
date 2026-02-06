@@ -27,7 +27,7 @@ export type Agent = {
   id?: string;
   userId?: string;
   name?: string;
-  mode?: "PERFORMANCE" | "EFFICIENCY";
+  mode?: "PERFORMANCE" | "EFFICIENCY" | "BALANCED";
   /**
    * System prompt for the agent
    */
@@ -172,7 +172,7 @@ export type ListAgentsResponse = ListAgentsResponses[keyof ListAgentsResponses];
 export type CreateAgentData = {
   body: {
     name: string;
-    mode?: "PERFORMANCE" | "EFFICIENCY";
+    mode?: "PERFORMANCE" | "EFFICIENCY" | "BALANCED";
     /**
      * System prompt for the agent
      */
@@ -256,7 +256,7 @@ export type GetAgentByIdResponse =
 export type UpdateAgentData = {
   body: {
     name?: string;
-    mode?: "PERFORMANCE" | "EFFICIENCY";
+    mode?: "PERFORMANCE" | "EFFICIENCY" | "BALANCED";
     /**
      * System prompt for the agent
      */

@@ -1,9 +1,9 @@
-import { agentService } from "../agents";
 import { env } from "../../config/env";
+import { agentService } from "../agents";
 
 export interface AgentWithInstructions {
   agentId: string;
-  mode: "PERFORMANCE" | "EFFICIENCY";
+  mode: "PERFORMANCE" | "EFFICIENCY" | "BALANCED";
   instructionsText: string;
 }
 
