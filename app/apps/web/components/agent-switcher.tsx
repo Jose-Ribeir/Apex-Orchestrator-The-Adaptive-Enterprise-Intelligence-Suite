@@ -33,6 +33,16 @@ import { useLocation, useNavigate } from "react-router-dom";
 const AGENT_SUB_PATH =
   /^\/agents\/([^/]+)\/(instructions|tools|queries|stats)$/;
 
+function agentModeLabel(mode: string | undefined): string {
+  if (!mode) return "Select an agent";
+  const labels: Record<NonNullable<Agent["mode"]>, string> = {
+    PERFORMANCE: "Performance",
+    EFFICIENCY: "Efficiency",
+    BALANCED: "Balanced",
+  };
+  return labels[mode as NonNullable<Agent["mode"]>] ?? mode;
+}
+
 export function AgentSwitcher() {
   const { isMobile } = useSidebar();
   const { agentId, setAgentId } = useActiveAgent();
@@ -113,7 +123,7 @@ export function AgentSwitcher() {
                   {activeAgent?.name ?? "No agent"}
                 </span>
                 <span className="truncate text-xs text-muted-foreground">
-                  {activeAgent?.mode ?? "Select an agent"}
+                  {agentModeLabel(activeAgent?.mode)}
                 </span>
               </div>
               <ChevronsUpDown className="ml-auto size-4" />
@@ -141,7 +151,7 @@ export function AgentSwitcher() {
                   </div>
                   <span className="truncate">{agent.name}</span>
                   <span className="ml-auto truncate text-xs text-muted-foreground">
-                    {agent.mode}
+                    {agentModeLabel(agent.mode)}
                   </span>
                 </DropdownMenuItem>
               ))}
