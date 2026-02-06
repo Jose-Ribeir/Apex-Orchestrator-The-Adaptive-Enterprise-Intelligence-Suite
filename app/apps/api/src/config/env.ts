@@ -14,7 +14,7 @@ export const env = {
   ),
   // eslint-disable-next-line turbo/no-undeclared-env-vars
   sqlLogging: process.env.SQL_LOGGING === "true",
-  pythonApiUrl: getEnv("PYTHON_API_URL", "http://localhost:5000"),
+  pythonApiUrl: getEnv("PYTHON_API_URL", "http://localhost:8000"),
   betterAuthSecret: getEnv("BETTER_AUTH_SECRET", ""),
   betterAuthUrl: getEnv("BETTER_AUTH_URL", "http://localhost:4200"),
   appUrl: getEnv("APP_URL", ""),
