@@ -9,15 +9,13 @@ export type { Session, User } from "@/lib/auth";
 export async function getSession(): Promise<Session | null> {
   const headersList = await headers();
   const cookie = headersList.get("cookie");
+  const apiUrl = process.env.API_URL ?? "http://localhost:4200";
 
   try {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL}/auth/get-session`,
-      {
-        headers: cookie ? { cookie } : {},
-        cache: "no-store",
-      },
-    );
+    const res = await fetch(`${apiUrl}/auth/get-session`, {
+      headers: cookie ? { cookie } : {},
+      cache: "no-store",
+    });
 
     if (!res.ok) return null;
 

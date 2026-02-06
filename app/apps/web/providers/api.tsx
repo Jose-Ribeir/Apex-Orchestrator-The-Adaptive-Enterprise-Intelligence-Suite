@@ -7,8 +7,19 @@ import {
 } from "@tanstack/react-query";
 import { useState } from "react";
 
+function getApiBaseURL(): string {
+  if (typeof window !== "undefined") {
+    const runtime = (window as Window & { __API_BASE_URL__?: string })
+      .__API_BASE_URL__;
+    if (runtime) return runtime;
+  }
+  return process.env.API_URL ?? "";
+}
+
+const apiBaseURL = getApiBaseURL();
+
 client.setConfig({
-  baseURL: process.env.NEXT_PUBLIC_API_URL,
+  baseURL: apiBaseURL,
   withCredentials: true,
   headers: { "Content-Type": "application/json" },
 });
