@@ -46,8 +46,57 @@ env:
   REGISTRY: ghcr.io
 
 jobs:
-  lint-and-build:
+  detect-changes:
     runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.set-outputs.outputs.backend }}
+      frontend: ${{ steps.set-outputs.outputs.frontend }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect path changes
+        if: github.event_name != 'workflow_dispatch'
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - '.github/workflows/**'
+              - 'app/apps/api/**'
+              - 'app/package.json'
+              - 'app/pnpm-lock.yaml'
+              - 'app/turbo.json'
+              - 'app/packages/typescript-config/**'
+              - 'app/packages/eslint-config/**'
+            frontend:
+              - '.github/workflows/**'
+              - 'app/apps/web/**'
+              - 'app/packages/client/**'
+              - 'app/packages/ui/**'
+              - 'app/package.json'
+              - 'app/pnpm-lock.yaml'
+              - 'app/turbo.json'
+              - 'app/packages/typescript-config/**'
+              - 'app/packages/eslint-config/**'
+
+      - name: Set job outputs
+        id: set-outputs
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "backend=true" >> $GITHUB_OUTPUT
+            echo "frontend=true" >> $GITHUB_OUTPUT
+          else
+            echo "backend=${{ steps.filter.outputs.backend }}" >> $GITHUB_OUTPUT
+            echo "frontend=${{ steps.filter.outputs.frontend }}" >> $GITHUB_OUTPUT
+          fi
+
+  lint-api:
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.backend == 'true'
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -70,12 +119,36 @@ jobs:
       - name: Lint, typecheck, build (API)
         run: pnpm exec turbo run lint check-types build --filter=@ai-router/api
 
+  lint-web:
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.frontend == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+          cache-dependency-path: app/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Lint, typecheck, build (Web)
         run: pnpm exec turbo run lint check-types build --filter=web
 
-  docker-build-api:
+  build-api:
     runs-on: ubuntu-latest
-    needs: lint-and-build
+    needs: [detect-changes, lint-api]
+    if: needs.detect-changes.outputs.backend == 'true'
     permissions:
       contents: read
       packages: write
@@ -120,9 +193,10 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  docker-build-web:
+  build-web:
     runs-on: ubuntu-latest
-    needs: lint-and-build
+    needs: [detect-changes, lint-web]
+    if: needs.detect-changes.outputs.frontend == 'true'
     permissions:
       contents: read
       packages: write
