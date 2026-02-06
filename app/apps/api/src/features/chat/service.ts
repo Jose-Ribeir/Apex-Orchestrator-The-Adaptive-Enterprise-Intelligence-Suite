@@ -1,4 +1,4 @@
-import { env } from "../../config/env";
+import { generateStream } from "../../integrations/geminimesh";
 import { agentService } from "../agents";
 
 export interface AgentWithInstructions {
@@ -29,28 +29,22 @@ export async function getAgentAndInstructions(
   };
 }
 
-const PYTHON_STREAM_PATH = "/chat/stream";
-
 /**
- * Sends message and instructions to the Python API and returns the streaming
- * Response. The caller is responsible for reading the body stream and closing it.
+ * Sends message and system prompt (instructions) to the Python/GeminiMesh API
+ * generate_stream. The caller is responsible for reading the body stream and closing it.
+ * @param agentId - Agent ID
  * @param message - User message
- * @param instructions - Agent instructions text
+ * @param systemPrompt - Agent instructions / system prompt text
  * @returns Fetch Response with readable body stream
  */
 export async function callPythonStream(
+  agentId: string,
   message: string,
-  instructions: string,
+  systemPrompt: string,
 ): Promise<Response> {
-  const url = `${env.pythonApiUrl.replace(/\/$/, "")}${PYTHON_STREAM_PATH}`;
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ message, instructions }),
+  return generateStream({
+    agent_id: agentId,
+    message,
+    system_prompt: systemPrompt,
   });
-  if (!res.ok) {
-    const text = await res.text().catch(() => res.statusText);
-    throw new Error(`Python API error ${res.status}: ${text}`);
-  }
-  return res;
 }

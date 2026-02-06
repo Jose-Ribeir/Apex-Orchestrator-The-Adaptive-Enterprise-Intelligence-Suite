@@ -15,7 +15,8 @@
       ],
       "env": [
         "APP_URL",
-        "API_URL"
+        "API_URL",
+        "PYTHON_API_URL"
       ]
     },
     "lint": {
@@ -33,7 +34,8 @@
       "persistent": true,
       "env": [
         "APP_URL",
-        "API_URL"
+        "API_URL",
+        "PYTHON_API_URL"
       ]
     }
   }

@@ -1,7 +1,9 @@
-import { Agent, AgentInstruction, Tool } from "../../../models";
+import type { AgentConfig } from "../../../integrations/geminimesh";
+import { updateAgentPromptGeminimesh } from "../../../integrations/geminimesh";
 import { NotFoundError, ValidationError } from "../../../lib/errors";
-import type { AgentMode } from "../../../models/Agent";
 import type { PageLimit } from "../../../lib/pagination";
+import { Agent, AgentInstruction, Tool } from "../../../models";
+import type { AgentMode } from "../../../models/Agent";
 
 export interface AgentInstructionResponse {
   id: string;
@@ -112,6 +114,28 @@ export interface UpdateAgentInput {
   tools?: string[];
 }
 
+function toAgentConfig(agent: AgentResponse): AgentConfig {
+  return {
+    agent_id: agent.id,
+    name: agent.name,
+    mode: agent.mode,
+    instructions: agent.instructions
+      .sort((a, b) => a.order - b.order)
+      .map((i) => i.content),
+    tools: agent.tools.map((t) => t.name),
+  };
+}
+
+async function syncAgentPromptToGeminimesh(
+  agent: AgentResponse,
+): Promise<void> {
+  try {
+    await updateAgentPromptGeminimesh(toAgentConfig(agent));
+  } catch (err) {
+    console.error("GeminiMesh update_agent_prompt_geminimesh failed:", err);
+  }
+}
+
 export const agentService = {
   /**
    * List agents for a user with pagination.
@@ -195,7 +219,9 @@ export const agentService = {
     if (input.tools?.length) {
       await agent.setTools(input.tools);
     }
-    return this.getById(agent.id);
+    const created = await this.getById(agent.id);
+    await syncAgentPromptToGeminimesh(created);
+    return created;
   },
 
   /**
@@ -224,7 +250,9 @@ export const agentService = {
       await agent.setTools(input.tools);
     }
     await agent.save();
-    return this.getById(agent.id);
+    const updated = await this.getById(agent.id);
+    await syncAgentPromptToGeminimesh(updated);
+    return updated;
   },
 
   /**
