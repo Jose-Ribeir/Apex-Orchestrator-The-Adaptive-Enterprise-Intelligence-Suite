@@ -1,15 +1,14 @@
 "use client";
 
-import * as React from "react";
 import {
   Activity,
   BarChart3,
   FileText,
-  KeyRound,
   MessageSquare,
   Sliders,
   Wrench,
 } from "lucide-react";
+import * as React from "react";
 
 import { AgentSwitcher } from "@/components/agent-switcher";
 import { NavMain } from "@/components/nav-main";
@@ -43,10 +42,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     { title: "Human tasks", url: "/human-tasks", icon: Sliders },
   ];
 
-  const settingsNav = [
-    { title: "Tools", url: "/tools", icon: Wrench },
-    { title: "API Keys", url: "/settings/api-tokens", icon: KeyRound },
-  ];
+  const settingsNav = [{ title: "Tools", url: "/tools", icon: Wrench }];
 
   return (
     <Sidebar collapsible="icon" {...props}>

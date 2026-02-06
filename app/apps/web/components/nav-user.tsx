@@ -5,13 +5,15 @@ import {
   Bell,
   ChevronsUpDown,
   CreditCard,
+  KeyRound,
   LogOut,
-  Moon,
   Monitor,
+  Moon,
   Sparkles,
   Sun,
 } from "lucide-react";
 import { useTheme } from "next-themes";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { authClient } from "@/lib/auth";
@@ -145,6 +147,12 @@ export function NavUser({
               <DropdownMenuItem disabled>
                 <BadgeCheck />
                 Account
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/settings/api-tokens">
+                  <KeyRound />
+                  API Keys
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuItem disabled>
                 <CreditCard />
