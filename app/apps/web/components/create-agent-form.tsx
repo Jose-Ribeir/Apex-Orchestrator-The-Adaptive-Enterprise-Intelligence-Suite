@@ -20,8 +20,8 @@ import {
 import { Textarea } from "@ai-router/ui/textarea";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bot } from "lucide-react";
-import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export interface CreateAgentFormProps {
   onSuccess?: (agent: Agent) => void;
@@ -38,7 +38,7 @@ export function CreateAgentForm({
   submitLabel = "Create agent",
   showHeader = true,
 }: CreateAgentFormProps) {
-  const router = useRouter();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { setAgentId } = useActiveAgent();
   const [mode, setMode] = useState<"EFFICIENCY" | "PERFORMANCE">("EFFICIENCY");
@@ -54,7 +54,7 @@ export function CreateAgentForm({
       if (created?.id) setAgentId(created.id);
       await queryClient.refetchQueries({ queryKey: listAgentsQueryKey({}) });
       onSuccess?.(created as Agent);
-      router.push("/");
+      navigate("/");
     },
   });
 

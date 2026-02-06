@@ -1,19 +1,13 @@
 import type { Session } from "@/lib/auth";
-import { headers } from "next/headers";
 
 export type { Session, User } from "@/lib/auth";
 
-/**
- * Get the current session by calling the backend auth API with request cookies.
- */
 export async function getSession(): Promise<Session | null> {
-  const headersList = await headers();
-  const cookie = headersList.get("cookie");
-  const apiUrl = process.env.API_URL ?? "http://localhost:4200";
+  const API_BASE_URL = window.__API_BASE_URL__ || import.meta.env.VITE_API_URL;
 
   try {
-    const res = await fetch(`${apiUrl}/auth/get-session`, {
-      headers: cookie ? { cookie } : {},
+    const res = await fetch(`${API_BASE_URL}/auth/get-session`, {
+      credentials: "include",
       cache: "no-store",
     });
 

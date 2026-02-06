@@ -1,11 +1,9 @@
-"use client";
-
-import { useParams, useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { listAgentsOptions } from "@ai-router/client/react-query";
-import type { Agent } from "@ai-router/client";
 import { useUser } from "@/providers/user";
+import type { Agent } from "@ai-router/client";
+import { listAgentsOptions } from "@ai-router/client/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 
 export default function AgentIdLayout({
   children,
@@ -13,7 +11,7 @@ export default function AgentIdLayout({
   children: React.ReactNode;
 }) {
   const params = useParams();
-  const router = useRouter();
+  const navigate = useNavigate();
   const agentId = params.agentId as string;
   const user = useUser();
 
@@ -28,11 +26,11 @@ export default function AgentIdLayout({
   useEffect(() => {
     if (isPending || !agentId) return;
     if (!agentInList && agents.length > 0) {
-      router.replace("/");
+      navigate("/", { replace: true });
     } else if (!agentInList && agents.length === 0) {
-      router.replace("/onboarding");
+      navigate("/onboarding", { replace: true });
     }
-  }, [isPending, agentId, agentInList, agents.length, router]);
+  }, [isPending, agentId, agentInList, agents.length, navigate]);
 
   if (!agentInList) {
     return null;

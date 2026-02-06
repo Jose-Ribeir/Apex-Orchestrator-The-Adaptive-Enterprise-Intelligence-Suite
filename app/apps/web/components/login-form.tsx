@@ -14,8 +14,8 @@ import {
 } from "@ai-router/ui/field";
 import { Input } from "@ai-router/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@ai-router/ui/tooltip";
-import Link from "next/link";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 export function LoginForm({
   className,
@@ -59,6 +59,23 @@ export function LoginForm({
       setError(signInError.message ?? "Invalid email or password");
     } else if (typeof window !== "undefined") {
       window.location.replace(redirectTo);
+    }
+  }
+
+  async function onGoogleSignIn() {
+    setError(null);
+    const redirectTo =
+      typeof window !== "undefined"
+        ? (new URLSearchParams(window.location.search).get("redirect") ?? "/")
+        : "/";
+    setIsLoading(true);
+    const { error: socialError } = await authClient.signIn.social({
+      provider: "google",
+      callbackURL: redirectTo,
+    });
+    setIsLoading(false);
+    if (socialError) {
+      setError(socialError.message ?? "Google sign-in failed");
     }
   }
 
@@ -110,6 +127,7 @@ export function LoginForm({
                   id="password"
                   name="password"
                   type="password"
+                  placeholder="••••••••"
                   required
                   disabled={isLoading}
                   autoComplete="current-password"
@@ -124,19 +142,28 @@ export function LoginForm({
                 Or continue with
               </FieldSeparator>
               <Field>
-                <Button variant="outline" type="button" disabled={isLoading}>
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                <Button
+                  variant="outline"
+                  type="button"
+                  disabled={isLoading}
+                  onClick={onGoogleSignIn}
+                >
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    viewBox="0 0 24 24"
+                    className="size-5"
+                  >
                     <path
                       d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z"
                       fill="currentColor"
                     />
                   </svg>
-                  <span className="sr-only">Login with Google</span>
+                  {isLoading ? "Signing in…" : "Continue with Google"}
                 </Button>
               </Field>
               <FieldDescription className="text-center">
                 Don&apos;t have an account?{" "}
-                <Link href="/auth/sign-up">Sign up</Link>
+                <Link to="/auth/sign-up">Sign up</Link>
               </FieldDescription>
             </FieldGroup>
           </form>
@@ -145,11 +172,11 @@ export function LoginForm({
       </Card>
       <FieldDescription className="px-6 text-center">
         By clicking continue, you agree to our{" "}
-        <Link href="#" className="underline underline-offset-4">
+        <Link to="#" className="underline underline-offset-4">
           Terms of Service
         </Link>{" "}
         and{" "}
-        <Link href="#" className="underline underline-offset-4">
+        <Link to="#" className="underline underline-offset-4">
           Privacy Policy
         </Link>
         .

@@ -1,31 +1,11 @@
-"use client";
-
-import { useParams } from "next/navigation";
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import type { Tool } from "@ai-router/client";
 import {
+  addAgentToolMutation,
   listAgentToolsOptions,
   listAgentToolsQueryKey,
   listToolsOptions,
-  addAgentToolMutation,
   removeAgentToolMutation,
 } from "@ai-router/client/react-query";
-import type { Tool } from "@ai-router/client";
-import { Button } from "@ai-router/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@ai-router/ui/table";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@ai-router/ui/sheet";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,7 +16,25 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@ai-router/ui/alert-dialog";
+import { Button } from "@ai-router/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@ai-router/ui/sheet";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@ai-router/ui/table";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { useParams } from "react-router-dom";
 
 export default function AgentToolsPage() {
   const params = useParams();

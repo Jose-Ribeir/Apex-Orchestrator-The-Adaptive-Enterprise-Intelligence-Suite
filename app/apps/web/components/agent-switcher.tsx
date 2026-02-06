@@ -1,11 +1,10 @@
 "use client";
 
-import * as React from "react";
-import { usePathname, useRouter } from "next/navigation";
-import { Bot, ChevronsUpDown, Plus } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { listAgentsOptions } from "@ai-router/client/react-query";
+import { CreateAgentForm } from "@/components/create-agent-form";
+import { useActiveAgent } from "@/providers/active-agent";
+import { useUser } from "@/providers/user";
 import type { Agent } from "@ai-router/client";
+import { listAgentsOptions } from "@ai-router/client/react-query";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,9 +25,10 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@ai-router/ui/sidebar";
-import { useUser } from "@/providers/user";
-import { useActiveAgent } from "@/providers/active-agent";
-import { CreateAgentForm } from "@/components/create-agent-form";
+import { useQuery } from "@tanstack/react-query";
+import { Bot, ChevronsUpDown, Plus } from "lucide-react";
+import * as React from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 const AGENT_SUB_PATH =
   /^\/agents\/([^/]+)\/(instructions|tools|queries|stats)$/;
@@ -37,8 +37,8 @@ export function AgentSwitcher() {
   const { isMobile } = useSidebar();
   const { agentId, setAgentId } = useActiveAgent();
   const user = useUser();
-  const pathname = usePathname();
-  const router = useRouter();
+  const pathname = useLocation().pathname;
+  const navigate = useNavigate();
   const [addAgentOpen, setAddAgentOpen] = React.useState(false);
 
   const handleSwitchAgent = React.useCallback(
@@ -47,10 +47,10 @@ export function AgentSwitcher() {
       const match = pathname?.match(AGENT_SUB_PATH);
       if (match && newAgentId) {
         const subPath = match[2];
-        router.replace(`/agents/${newAgentId}/${subPath}`);
+        navigate(`/agents/${newAgentId}/${subPath}`, { replace: true });
       }
     },
-    [pathname, router, setAgentId],
+    [pathname, navigate, setAgentId],
   );
 
   const { data: agentsData, isPending } = useQuery({

@@ -1,14 +1,7 @@
 import { createAuthClient } from "better-auth/react";
 
-// Browser: from EnvScript (window.__API_BASE_URL__). Server: API_URL.
-const baseURL =
-  typeof window !== "undefined"
-    ? ((window as Window & { __API_BASE_URL__?: string }).__API_BASE_URL__ ??
-      "")
-    : (process.env.API_URL ?? "");
-
 export const authClient = createAuthClient({
-  baseURL,
+  baseURL: window.__API_BASE_URL__ || import.meta.env.VITE_API_URL,
   basePath: "/auth",
   fetchOptions: {
     credentials: "include",

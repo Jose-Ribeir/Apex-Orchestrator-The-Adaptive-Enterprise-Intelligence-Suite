@@ -1,14 +1,9 @@
+import { config as reactConfig } from "@ai-router/eslint-config/react-internal";
 import { defineConfig, globalIgnores } from "eslint/config";
-import { nextJsConfig } from "@ai-router/eslint-config/next-js";
 
 const eslintConfig = defineConfig([
-  ...nextJsConfig,
-  globalIgnores([
-    ".next/**",
-    "out/**",
-    "build/**",
-    "next-env.d.ts",
-  ]),
+  ...reactConfig,
+  globalIgnores(["dist/**", "node_modules/**"]),
 ]);
 
 export default eslintConfig;

@@ -1,22 +1,20 @@
-"use client";
-
 import { CreateAgentForm } from "@/components/create-agent-form";
 import { LoadingScreen } from "@/components/loading-screen";
 import { listAgentsOptions } from "@ai-router/client/react-query";
 import { Card, CardContent } from "@ai-router/ui/card";
 import { useQuery } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function OnboardingPage() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { data: agents, isPending } = useQuery(listAgentsOptions({}));
 
   useEffect(() => {
     if (!isPending && agents?.data?.length && agents.data.length > 0) {
-      router.replace("/");
+      navigate("/", { replace: true });
     }
-  }, [isPending, agents?.data?.length, router]);
+  }, [isPending, agents?.data?.length, navigate]);
 
   if (!isPending && agents?.data?.length && agents.data.length > 0) {
     return <LoadingScreen />;

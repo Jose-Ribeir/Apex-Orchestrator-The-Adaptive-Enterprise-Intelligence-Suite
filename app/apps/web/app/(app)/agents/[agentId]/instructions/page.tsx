@@ -1,34 +1,11 @@
-"use client";
-
-import { useParams } from "next/navigation";
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import type { AgentInstruction } from "@ai-router/client";
 import {
+  createAgentInstructionMutation,
+  deleteAgentInstructionMutation,
   listAgentInstructionsOptions,
   listAgentInstructionsQueryKey,
-  createAgentInstructionMutation,
   updateAgentInstructionMutation,
-  deleteAgentInstructionMutation,
 } from "@ai-router/client/react-query";
-import type { AgentInstruction } from "@ai-router/client";
-import { Button } from "@ai-router/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@ai-router/ui/table";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@ai-router/ui/sheet";
-import { Field, FieldGroup, FieldLabel } from "@ai-router/ui/field";
-import { Input } from "@ai-router/ui/input";
-import { Textarea } from "@ai-router/ui/textarea";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,7 +16,28 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@ai-router/ui/alert-dialog";
+import { Button } from "@ai-router/ui/button";
+import { Field, FieldGroup, FieldLabel } from "@ai-router/ui/field";
+import { Input } from "@ai-router/ui/input";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@ai-router/ui/sheet";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@ai-router/ui/table";
+import { Textarea } from "@ai-router/ui/textarea";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { useParams } from "react-router-dom";
 
 export default function AgentInstructionsPage() {
   const params = useParams();

@@ -13,8 +13,7 @@ import {
   Sun,
 } from "lucide-react";
 import { useTheme } from "next-themes";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { Link, useNavigate } from "react-router-dom";
 
 import { authClient } from "@/lib/auth";
 import { Avatar, AvatarFallback, AvatarImage } from "@ai-router/ui/avatar";
@@ -49,12 +48,12 @@ export function NavUser({
   };
 }) {
   const { isMobile } = useSidebar();
-  const router = useRouter();
+  const navigate = useNavigate();
   const { theme, setTheme } = useTheme();
 
   async function handleLogout() {
     await authClient.signOut();
-    router.push("/auth/sign-in");
+    navigate("/auth/sign-in");
   }
 
   return (
@@ -149,7 +148,7 @@ export function NavUser({
                 Account
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
-                <Link href="/settings/api-tokens">
+                <Link to="/settings/api-tokens">
                   <KeyRound />
                   API Keys
                 </Link>

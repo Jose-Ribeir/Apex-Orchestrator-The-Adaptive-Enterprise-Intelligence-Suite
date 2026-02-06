@@ -14,14 +14,12 @@ COPY packages/typescript-config/package.json ./packages/typescript-config/
 COPY packages/eslint-config/package.json ./packages/eslint-config/
 RUN pnpm install --frozen-lockfile
 
-# Build: reuse deps, no install
+# Build: Vite build with env (only VITE_* are exposed to the client)
 FROM base AS builder
-ARG API_SERVER_URL=http://localhost:4000
-ARG API_URL=http://localhost:4000
-ARG APP_URL=http://localhost:3000
-ENV API_SERVER_URL=$API_SERVER_URL
-ENV API_URL=$API_URL
-ENV APP_URL=$APP_URL
+ARG VITE_API_URL=http://localhost:4000
+ARG VITE_APP_URL=http://localhost:3000
+ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_APP_URL=$VITE_APP_URL
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
 COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
@@ -29,15 +27,11 @@ COPY --from=deps /app/packages ./packages
 COPY . .
 RUN pnpm --filter web build
 
-# Runner: Next.js standalone (minimal image)
-FROM base AS runner
-ENV NODE_ENV=production
-ENV PORT=3000
+# Runner: serve static files with Node
+FROM node:20-alpine AS runner
 WORKDIR /app
-COPY --from=builder /app/apps/web/.next/standalone ./
-COPY --from=builder /app/apps/web/.next/static ./apps/web/.next/static
-COPY --from=builder /app/apps/web/public ./apps/web/public
-USER node
-EXPOSE ${PORT}
-WORKDIR /app/apps/web
-CMD ["node", "server.js"]
+ENV NODE_ENV=production
+RUN npm install -g serve
+COPY --from=builder /app/apps/web/dist ./dist
+EXPOSE 3000
+CMD ["serve", "-s", "dist", "-l", "3000"]

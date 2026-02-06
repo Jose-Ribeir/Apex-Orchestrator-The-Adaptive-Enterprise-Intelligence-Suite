@@ -11,9 +11,7 @@
         ".env*"
       ],
       "outputs": [
-        "dist/**",
-        ".next/**",
-        "!.next/cache/**"
+        "dist/**"
       ],
       "env": [
         "APP_URL",

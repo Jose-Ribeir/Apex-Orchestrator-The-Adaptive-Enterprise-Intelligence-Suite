@@ -1,25 +1,23 @@
 {
-  "extends": "@ai-router/typescript-config/nextjs.json",
+  "extends": "@ai-router/typescript-config/react-library.json",
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"]
+      "@/*": [
+        "./*"
+      ]
     },
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ]
+    "noEmit": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler"
   },
   "include": [
     "**/*.ts",
     "**/*.tsx",
-    "next-env.d.ts",
-    "next.config.js",
-    ".next/types/**/*.ts"
+    "src/vite-env.d.ts"
   ],
   "exclude": [
     "node_modules",
-    ".next"
+    "dist"
   ]
 }

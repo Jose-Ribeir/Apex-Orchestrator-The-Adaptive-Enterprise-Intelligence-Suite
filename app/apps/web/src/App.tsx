@@ -1,0 +1,56 @@
+import AgentInstructionsPage from "@/app/(app)/agents/[agentId]/instructions/page";
+import AgentIdLayout from "@/app/(app)/agents/[agentId]/layout";
+import AgentQueriesPage from "@/app/(app)/agents/[agentId]/queries/page";
+import AgentStatsPage from "@/app/(app)/agents/[agentId]/stats/page";
+import AgentToolsPage from "@/app/(app)/agents/[agentId]/tools/page";
+import HumanTasksPage from "@/app/(app)/human-tasks/page";
+import NotificationsPage from "@/app/(app)/notifications/page";
+import DashboardPage from "@/app/(app)/page";
+import ApiTokensPage from "@/app/(app)/settings/api-tokens/page";
+import ToolsPage from "@/app/(app)/tools/page";
+import OnboardingPage from "@/app/onboarding/page";
+import { LoginForm } from "@/components/login-form";
+import { SignUpForm } from "@/components/signup-form";
+import { Navigate, Outlet, Route, Routes } from "react-router-dom";
+import { AppLayout } from "./layouts/AppLayout";
+import { AuthLayout } from "./layouts/AuthLayout";
+import { OnboardingLayout } from "./layouts/OnboardingLayout";
+
+function AgentIdRouteWrapper() {
+  return (
+    <AgentIdLayout>
+      <Outlet />
+    </AgentIdLayout>
+  );
+}
+
+export default function App() {
+  return (
+    <Routes>
+      <Route element={<AuthLayout />} path="auth">
+        <Route element={<LoginForm />} path="sign-in" />
+        <Route element={<SignUpForm />} path="sign-up" />
+      </Route>
+      <Route element={<OnboardingLayout />} path="onboarding">
+        <Route index element={<OnboardingPage />} />
+      </Route>
+      <Route element={<AppLayout />} path="/">
+        <Route index element={<DashboardPage />} />
+        <Route element={<HumanTasksPage />} path="human-tasks" />
+        <Route element={<NotificationsPage />} path="notifications" />
+        <Route element={<ToolsPage />} path="tools" />
+        <Route
+          element={<Navigate to="/settings/api-tokens" replace />}
+          path="settings"
+        />
+        <Route element={<ApiTokensPage />} path="settings/api-tokens" />
+        <Route element={<AgentIdRouteWrapper />} path="agents/:agentId">
+          <Route element={<AgentInstructionsPage />} path="instructions" />
+          <Route element={<AgentToolsPage />} path="tools" />
+          <Route element={<AgentQueriesPage />} path="queries" />
+          <Route element={<AgentStatsPage />} path="stats" />
+        </Route>
+      </Route>
+    </Routes>
+  );
+}

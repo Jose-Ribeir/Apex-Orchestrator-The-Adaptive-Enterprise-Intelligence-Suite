@@ -1,9 +1,5 @@
-"use client";
-
-import { useParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
-import { listAgentStatsOptions } from "@ai-router/client/react-query";
 import type { DailyStat } from "@ai-router/client";
+import { listAgentStatsOptions } from "@ai-router/client/react-query";
 import {
   Table,
   TableBody,
@@ -12,6 +8,8 @@ import {
   TableHeader,
   TableRow,
 } from "@ai-router/ui/table";
+import { useQuery } from "@tanstack/react-query";
+import { useParams } from "react-router-dom";
 
 function formatDate(d: Date | string | null | undefined): string {
   if (!d) return "—";

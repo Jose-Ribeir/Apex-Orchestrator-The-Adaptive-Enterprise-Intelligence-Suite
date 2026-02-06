@@ -1,23 +1,21 @@
-import { redirect } from "next/navigation";
-import { getSession } from "@/lib/session";
 import { AgentGate } from "@/components/agent-gate";
 import { AppSidebar } from "@/components/app-sidebar";
+import { LoadingScreen } from "@/components/loading-screen";
+import { useSession } from "@/providers/session";
+import { Separator } from "@ai-router/ui/separator";
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
 } from "@ai-router/ui/sidebar";
-import { Separator } from "@ai-router/ui/separator";
+import { Navigate, Outlet } from "react-router-dom";
 
-export default async function AppLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const session = await getSession();
-  if (!session) {
-    redirect("/auth/sign-in");
-  }
+export function AppLayout() {
+  const { data: session, isPending } = useSession();
+
+  if (isPending) return <LoadingScreen />;
+  if (!session) return <Navigate to="/auth/sign-in" replace />;
+
   return (
     <AgentGate>
       <SidebarProvider>
@@ -28,7 +26,7 @@ export default async function AppLayout({
             <Separator orientation="vertical" className="mr-2 h-4 shrink-0" />
           </header>
           <main className="flex min-h-0 flex-1 flex-col overflow-auto p-4">
-            {children}
+            <Outlet />
           </main>
         </SidebarInset>
       </SidebarProvider>

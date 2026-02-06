@@ -1,7 +1,7 @@
 "use client";
 
 import { ChevronRight, type LucideIcon } from "lucide-react";
-import Link from "next/link";
+import { Link } from "react-router-dom";
 
 import {
   Collapsible,
@@ -46,7 +46,7 @@ export function NavMain({
             return (
               <SidebarMenuItem key={item.title}>
                 <SidebarMenuButton tooltip={item.title} asChild>
-                  <Link href={item.url}>
+                  <Link to={item.url}>
                     {item.icon && <item.icon />}
                     <span>{item.title}</span>
                   </Link>
@@ -74,7 +74,7 @@ export function NavMain({
                     {item.items?.map((subItem) => (
                       <SidebarMenuSubItem key={subItem.title}>
                         <SidebarMenuSubButton asChild>
-                          <Link href={subItem.url}>
+                          <Link to={subItem.url}>
                             {subItem.icon && <subItem.icon />}
                             <span>{subItem.title}</span>
                           </Link>

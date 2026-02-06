@@ -12,8 +12,8 @@ import {
   FieldLabel,
 } from "@ai-router/ui/field";
 import { Input } from "@ai-router/ui/input";
-import Link from "next/link";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 export function SignUpForm({
   className,
@@ -116,7 +116,7 @@ export function SignUpForm({
                 </Button>
               </Field>
               <FieldDescription className="text-center">
-                Already have an account? <Link href="/auth/sign-in">Login</Link>
+                Already have an account? <Link to="/auth/sign-in">Login</Link>
               </FieldDescription>
             </FieldGroup>
           </form>

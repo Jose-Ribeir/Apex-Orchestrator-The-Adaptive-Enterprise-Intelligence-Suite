@@ -1,33 +1,22 @@
-"use client";
-
 import { client } from "@ai-router/client/client.gen";
 import {
   QueryClient,
   QueryClientProvider as TanStackQueryClientProvider,
 } from "@tanstack/react-query";
-import { useState } from "react";
-
-function getApiBaseURL(): string {
-  if (typeof window !== "undefined") {
-    const runtime = (window as Window & { __API_BASE_URL__?: string })
-      .__API_BASE_URL__;
-    if (runtime) return runtime;
-  }
-  return process.env.API_URL ?? "";
-}
-
-const apiBaseURL = getApiBaseURL();
-
-client.setConfig({
-  baseURL: apiBaseURL,
-  withCredentials: true,
-  headers: { "Content-Type": "application/json" },
-});
-if (client.instance) {
-  client.instance.defaults.withCredentials = true;
-}
+import { useEffect, useState } from "react";
 
 export function ApiProvider({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    client.setConfig({
+      baseURL: window.__API_BASE_URL__ || import.meta.env.VITE_API_URL,
+      withCredentials: true,
+      headers: { "Content-Type": "application/json" },
+    });
+    if (client.instance) {
+      client.instance.defaults.withCredentials = true;
+    }
+  }, []);
+
   const [queryClient] = useState(
     () =>
       new QueryClient({
