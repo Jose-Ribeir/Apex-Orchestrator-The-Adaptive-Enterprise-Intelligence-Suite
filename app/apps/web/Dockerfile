@@ -33,5 +33,7 @@ WORKDIR /app
 ENV NODE_ENV=production
 RUN npm install -g serve
 COPY --from=builder /app/apps/web/dist ./dist
+COPY apps/web/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 EXPOSE 3000
-CMD ["serve", "-s", "dist", "-l", "3000"]
+ENTRYPOINT ["/entrypoint.sh"]
