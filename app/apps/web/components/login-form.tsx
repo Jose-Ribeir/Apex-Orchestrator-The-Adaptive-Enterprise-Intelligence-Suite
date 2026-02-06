@@ -37,7 +37,7 @@ export function LoginForm({
     setIsLoading(true);
     const redirectTo =
       typeof window !== "undefined"
-        ? new URLSearchParams(window.location.search).get("redirect") ?? "/"
+        ? (new URLSearchParams(window.location.search).get("redirect") ?? "/")
         : "/";
     const { error: signInError } = await authClient.signIn.email(
       {
