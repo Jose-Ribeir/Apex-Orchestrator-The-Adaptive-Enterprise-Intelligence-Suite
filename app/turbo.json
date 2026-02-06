@@ -15,7 +15,8 @@
       ],
       "env": [
         "APP_URL",
-        "API_URL",
+        "VITE_APP_URL",
+        "VITE_API_URL",
         "PYTHON_API_URL"
       ]
     },
@@ -34,7 +35,8 @@
       "persistent": true,
       "env": [
         "APP_URL",
-        "API_URL",
+        "VITE_APP_URL",
+        "VITE_API_URL",
         "PYTHON_API_URL"
       ]
     }
