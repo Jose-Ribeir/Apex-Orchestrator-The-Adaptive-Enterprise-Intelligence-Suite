@@ -1,1 +1,0 @@
-export { notificationsRoutes } from "./routes";

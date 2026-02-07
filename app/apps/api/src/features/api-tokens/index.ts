@@ -1,1 +1,0 @@
-export { apiTokensRoutes } from "./routes";
