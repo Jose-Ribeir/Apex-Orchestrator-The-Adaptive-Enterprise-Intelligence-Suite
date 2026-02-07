@@ -1,20 +1,30 @@
-"""Agent prompt optimization and GeminiMesh update endpoints."""
+"""Agent CRUD and prompt optimization. DB is source of truth when configured."""
 
 import asyncio
 import logging
+from uuid import UUID
 
 import requests
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from app.config import get_settings
 
 logger = logging.getLogger("app.agents")
-from app.schemas.requests import AgentConfig
+from app.schemas.requests import AgentConfig, CreateAgentRequest, UpdateAgentRequest
 from app.schemas.responses import (
+    AgentDetailResponse,
     AgentInfo,
+    CreateAgentResponse,
     ListAgentsResponse,
     OptimizePromptResponse,
     UpdateAgentGeminimeshResponse,
+)
+from app.services.agent_service import (
+    create_agent as create_agent_db,
+    delete_agent as delete_agent_db,
+    get_agent,
+    list_agents_from_db,
+    update_agent as update_agent_db,
 )
 from app.services.gemini_router import optimize_agent_prompt
 from app.services.geminimesh import update_agent_in_geminimesh
@@ -23,17 +33,147 @@ from app.services.rag import get_or_create_retriever, list_agents_with_doc_count
 router = APIRouter(tags=["Agents"])
 
 
+def _agent_detail(agent, doc_count: int) -> AgentDetailResponse:
+    instructions = [i.content for i in sorted(agent.instructions, key=lambda x: x.order)]
+    tools = [at.tool.name for at in agent.agent_tools]
+    return AgentDetailResponse(
+        agent_id=str(agent.id),
+        user_id=agent.user_id,
+        name=agent.name,
+        mode=agent.mode,
+        prompt=agent.prompt,
+        instructions=instructions,
+        tools=tools,
+        doc_count=doc_count,
+    )
+
+
 @router.get(
     "/agents",
     response_model=ListAgentsResponse,
     summary="List agents",
-    description="List all agents that have RAG data (persisted under DATA_FOLDER). "
-    "Returns agent name and document count for each.",
+    description="From DB when configured (optionally by user_id), else from RAG registry. Includes RAG doc count.",
     operation_id="listAgents",
 )
-async def list_agents() -> ListAgentsResponse:
+async def list_agents(
+    user_id: str | None = Query(None, description="Filter by owner (when using DB)"),
+) -> ListAgentsResponse:
+    settings = get_settings()
+    if settings.database_configured:
+        items = await asyncio.to_thread(list_agents_from_db, user_id)
+        return ListAgentsResponse(
+            agents=[
+                AgentInfo(
+                    agent_id=str(agent.id),
+                    name=agent.name,
+                    doc_count=doc_count,
+                    user_id=agent.user_id,
+                )
+                for agent, doc_count in items
+            ]
+        )
     items = await asyncio.to_thread(list_agents_with_doc_counts)
-    return ListAgentsResponse(agents=[AgentInfo(name=name, doc_count=count) for name, count in items])
+    return ListAgentsResponse(
+        agents=[AgentInfo(agent_id=key, name=key, doc_count=count, user_id=None) for key, count in items]
+    )
+
+
+@router.post(
+    "/agents",
+    response_model=CreateAgentResponse,
+    summary="Create agent",
+    description="Create agent in DB (and init RAG). Pass agent_id to use a specific UUID (e.g. from Node).",
+    operation_id="createAgent",
+)
+async def create_agent(body: CreateAgentRequest) -> CreateAgentResponse:
+    if not get_settings().database_configured:
+        raise HTTPException(status_code=503, detail="Database not configured; set DATABASE_URL")
+    try:
+        agent = await asyncio.to_thread(
+            create_agent_db,
+            user_id=body.user_id,
+            name=body.name,
+            mode=body.mode,
+            prompt=body.prompt,
+            instructions=body.instructions,
+            tools=body.tools,
+            agent_id=body.agent_id,
+        )
+        return CreateAgentResponse(agent_id=str(agent.id), message="created")
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get(
+    "/agents/{agent_id}",
+    response_model=AgentDetailResponse,
+    summary="Get agent",
+    description="Get agent by id (from DB when configured).",
+    operation_id="getAgent",
+)
+async def get_agent_by_id(
+    agent_id: UUID,
+    user_id: str | None = Query(None, description="Require owner (when using DB)"),
+) -> AgentDetailResponse:
+    settings = get_settings()
+    if not settings.database_configured:
+        raise HTTPException(status_code=503, detail="Database not configured")
+    agent = await asyncio.to_thread(get_agent, agent_id, user_id=user_id, with_relations=True)
+    if agent is None:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    from app.services.agent_service import _rag_doc_count
+
+    doc_count = await asyncio.to_thread(_rag_doc_count, str(agent.id))
+    return _agent_detail(agent, doc_count)
+
+
+@router.patch(
+    "/agents/{agent_id}",
+    response_model=AgentDetailResponse,
+    summary="Update agent",
+    operation_id="updateAgent",
+)
+async def update_agent_by_id(
+    agent_id: UUID,
+    body: UpdateAgentRequest,
+    user_id: str | None = Query(None, description="Require owner"),
+) -> AgentDetailResponse:
+    if not get_settings().database_configured:
+        raise HTTPException(status_code=503, detail="Database not configured")
+    agent = await asyncio.to_thread(
+        update_agent_db,
+        agent_id,
+        user_id=user_id,
+        name=body.name,
+        mode=body.mode,
+        prompt=body.prompt,
+        instructions=body.instructions,
+        tools=body.tools,
+    )
+    if agent is None:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    from app.services.agent_service import _rag_doc_count
+
+    doc_count = await asyncio.to_thread(_rag_doc_count, str(agent.id))
+    return _agent_detail(agent, doc_count)
+
+
+@router.delete(
+    "/agents/{agent_id}",
+    status_code=204,
+    summary="Delete agent (soft)",
+    operation_id="deleteAgent",
+)
+async def delete_agent_by_id(
+    agent_id: UUID,
+    user_id: str | None = Query(None, description="Require owner"),
+    soft: bool = Query(True, description="Soft delete (default) or hard delete"),
+) -> None:
+    if not get_settings().database_configured:
+        raise HTTPException(status_code=503, detail="Database not configured")
+    ok = await asyncio.to_thread(delete_agent_db, agent_id, user_id=user_id, soft=soft)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Agent not found")
 
 
 @router.post(
@@ -62,7 +202,7 @@ async def update_agent_prompt_geminimesh(
             name=config.name,
             prompt=optimized_prompt,
         )
-        rag = get_or_create_retriever(config.name)
+        rag = get_or_create_retriever(config.agent_id)
         return UpdateAgentGeminimeshResponse(
             status="success",
             agent_id=config.agent_id,

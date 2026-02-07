@@ -3,6 +3,7 @@ import { asyncHandler } from "../../middleware/asyncHandler";
 import { agentToolsController } from "./controllers/agent-tools.controller";
 import { agentsController } from "./controllers/agents.controller";
 import { dailyStatsController } from "./controllers/daily-stats.controller";
+import { documentsController } from "./controllers/documents.controller";
 import { agentInstructionsController } from "./controllers/instructions.controller";
 import { modelQueriesController } from "./controllers/model-queries.controller";
 
@@ -58,6 +59,10 @@ router.delete(
   asyncHandler(modelQueriesController.delete),
 );
 
+router.post(
+  "/:agentId/documents/ingest",
+  asyncHandler(documentsController.ingest),
+);
 router.get("/:agentId/stats", asyncHandler(dailyStatsController.listByAgent));
 router.get(
   "/:agentId/stats/date/:date",

@@ -42,7 +42,7 @@ export const AgentSchema = {
     },
     mode: {
       type: "string",
-      enum: ["PERFORMANCE", "EFFICIENCY"],
+      enum: ["PERFORMANCE", "EFFICIENCY", "BALANCED"],
     },
     prompt: {
       type: "string",

@@ -434,6 +434,55 @@ export type UpdateAgentInstructionResponses = {
 export type UpdateAgentInstructionResponse =
   UpdateAgentInstructionResponses[keyof UpdateAgentInstructionResponses];
 
+export type IngestAgentDocumentData = {
+  body: {
+    /**
+     * Original file name (e.g. document.pdf)
+     */
+    filename: string;
+    /**
+     * File content as base64-encoded string
+     */
+    contentBase64: string;
+  };
+  path: {
+    agentId: string;
+  };
+  query?: never;
+  url: "/api/agents/{agentId}/documents/ingest";
+};
+
+export type IngestAgentDocumentErrors = {
+  /**
+   * Validation error (file type, size, or invalid base64)
+   */
+  400: unknown;
+  /**
+   * Agent not found
+   */
+  404: unknown;
+};
+
+export type IngestAgentDocumentResponses = {
+  /**
+   * Document ingested; chunks indexed
+   */
+  200: {
+    status?: string;
+    /**
+     * Number of chunks added
+     */
+    docs_added?: number;
+    /**
+     * Total documents in RAG
+     */
+    total_docs?: number;
+  };
+};
+
+export type IngestAgentDocumentResponse =
+  IngestAgentDocumentResponses[keyof IngestAgentDocumentResponses];
+
 export type ListAgentToolsData = {
   body?: never;
   path: {

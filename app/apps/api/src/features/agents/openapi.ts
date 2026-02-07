@@ -446,6 +446,71 @@ const paths = {
       },
     },
   },
+  "/api/agents/{agentId}/documents/ingest": {
+    post: {
+      operationId: "ingestAgentDocument",
+      tags: ["Agents"],
+      summary: "Ingest document for RAG",
+      description:
+        "Upload a PDF, TXT, or DOCX file. Content is extracted to text, chunked, embedded, and added to the agent's RAG index.",
+      parameters: [
+        {
+          name: "agentId",
+          in: "path",
+          required: true,
+          schema: { type: "string", format: "uuid" },
+        },
+      ],
+      requestBody: {
+        required: true,
+        content: {
+          "application/json": {
+            schema: {
+              type: "object",
+              required: ["filename", "contentBase64"],
+              properties: {
+                filename: {
+                  type: "string",
+                  description: "Original file name (e.g. document.pdf)",
+                },
+                contentBase64: {
+                  type: "string",
+                  description: "File content as base64-encoded string",
+                },
+              },
+            },
+          },
+        },
+      },
+      responses: {
+        200: {
+          description: "Document ingested; chunks indexed",
+          content: {
+            "application/json": {
+              schema: {
+                type: "object",
+                properties: {
+                  status: { type: "string", example: "success" },
+                  docs_added: {
+                    type: "integer",
+                    description: "Number of chunks added",
+                  },
+                  total_docs: {
+                    type: "integer",
+                    description: "Total documents in RAG",
+                  },
+                },
+              },
+            },
+          },
+        },
+        400: {
+          description: "Validation error (file type, size, or invalid base64)",
+        },
+        404: { description: "Agent not found" },
+      },
+    },
+  },
   "/api/agents/{agentId}/tools": {
     get: {
       operationId: "listAgentTools",

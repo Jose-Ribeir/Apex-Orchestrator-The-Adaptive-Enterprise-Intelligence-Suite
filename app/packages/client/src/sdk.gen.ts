@@ -29,6 +29,9 @@ import type {
   UpdateAgentInstructionData,
   UpdateAgentInstructionResponses,
   UpdateAgentInstructionErrors,
+  IngestAgentDocumentData,
+  IngestAgentDocumentResponses,
+  IngestAgentDocumentErrors,
   ListAgentToolsData,
   ListAgentToolsResponses,
   AddAgentToolData,
@@ -347,6 +350,28 @@ export const updateAgentInstruction = <ThrowOnError extends boolean = false>(
     responseTransformer: updateAgentInstructionResponseTransformer,
     responseType: "json",
     url: "/api/agents/{agentId}/instructions/{id}",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * Ingest document for RAG
+ * Upload a PDF, TXT, or DOCX file. Content is extracted to text, chunked, embedded, and added to the agent's RAG index.
+ */
+export const ingestAgentDocument = <ThrowOnError extends boolean = false>(
+  options: Options<IngestAgentDocumentData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).post<
+    IngestAgentDocumentResponses,
+    IngestAgentDocumentErrors,
+    ThrowOnError
+  >({
+    responseType: "json",
+    url: "/api/agents/{agentId}/documents/ingest",
     ...options,
     headers: {
       "Content-Type": "application/json",

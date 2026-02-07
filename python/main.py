@@ -11,6 +11,24 @@ Run locally:
 Environment: see .env.example and app.config.Settings.
 """
 
+import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+
+# Load .env from the python app root (directory containing main.py) so credentials are found
+# regardless of current working directory when uvicorn is started.
+_APP_DIR = Path(__file__).resolve().parent
+load_dotenv(_APP_DIR / ".env")
+
+# If GOOGLE_APPLICATION_CREDENTIALS is a relative path, resolve it relative to this app dir
+# so GCS/Vertex clients find the key file no matter where the process was started.
+_creds = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+if _creds:
+    _creds_path = Path(_creds)
+    if not _creds_path.is_absolute():
+        os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = str((_APP_DIR / _creds_path).resolve())
+
 import logging
 import sys
 from contextlib import asynccontextmanager
@@ -24,11 +42,11 @@ logging.basicConfig(
     stream=sys.stdout,
 )
 logger = logging.getLogger("app")
-from app.routers import agents, chat, health, index
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
+from app.routers import agents, chat, health, index
 
 
 @asynccontextmanager

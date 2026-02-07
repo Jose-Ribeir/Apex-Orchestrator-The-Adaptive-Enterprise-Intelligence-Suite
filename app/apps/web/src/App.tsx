@@ -1,3 +1,4 @@
+import AgentDocumentsPage from "@/app/(app)/agents/[agentId]/documents/page";
 import AgentInstructionsPage from "@/app/(app)/agents/[agentId]/instructions/page";
 import AgentIdLayout from "@/app/(app)/agents/[agentId]/layout";
 import AgentQueriesPage from "@/app/(app)/agents/[agentId]/queries/page";
@@ -6,8 +7,8 @@ import AgentToolsPage from "@/app/(app)/agents/[agentId]/tools/page";
 import HumanTasksPage from "@/app/(app)/human-tasks/page";
 import NotificationsPage from "@/app/(app)/notifications/page";
 import DashboardPage from "@/app/(app)/page";
-import ApiTokensPage from "@/app/(app)/settings/api-tokens/page";
 import SettingsAgentsPage from "@/app/(app)/settings/agents/page";
+import ApiTokensPage from "@/app/(app)/settings/api-tokens/page";
 import ToolsPage from "@/app/(app)/tools/page";
 import OnboardingPage from "@/app/onboarding/page";
 import { LoginForm } from "@/components/login-form";
@@ -48,6 +49,7 @@ export default function App() {
         <Route element={<SettingsAgentsPage />} path="settings/agents" />
         <Route element={<AgentIdRouteWrapper />} path="agents/:agentId">
           <Route element={<AgentInstructionsPage />} path="instructions" />
+          <Route element={<AgentDocumentsPage />} path="documents" />
           <Route element={<AgentToolsPage />} path="tools" />
           <Route element={<AgentQueriesPage />} path="queries" />
           <Route element={<AgentStatsPage />} path="stats" />

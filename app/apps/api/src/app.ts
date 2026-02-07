@@ -1,22 +1,22 @@
-import "./types/express-augment";
-import express from "express";
-import cors from "cors";
-import helmet from "helmet";
-import { toNodeHandler } from "better-auth/node";
 import { apiReference } from "@scalar/express-api-reference";
-import { auth } from "./lib/auth";
+import { toNodeHandler } from "better-auth/node";
+import cors from "cors";
+import express from "express";
+import helmet from "helmet";
+import { env } from "./config/env";
 import { agentsRoutes } from "./features/agents";
-import { toolsRoutes } from "./features/tools";
-import { humanTasksRoutes } from "./features/human-tasks";
-import { performanceMetricsRoutes } from "./features/performance-metrics";
-import { notificationsRoutes } from "./features/notifications";
 import { apiTokensRoutes } from "./features/api-tokens";
 import { chatRoutes } from "./features/chat";
-import { errorHandler } from "./middleware/errorHandler";
+import { humanTasksRoutes } from "./features/human-tasks";
+import { notificationsRoutes } from "./features/notifications";
+import { performanceMetricsRoutes } from "./features/performance-metrics";
+import { toolsRoutes } from "./features/tools";
+import { auth } from "./lib/auth";
 import { asyncHandler } from "./middleware/asyncHandler";
+import { errorHandler } from "./middleware/errorHandler";
 import { requireAuth } from "./middleware/requireAuth";
-import { env } from "./config/env";
 import { getOpenApiSpec } from "./openapi/spec";
+import "./types/express-augment";
 
 const app = express();
 
@@ -30,7 +30,8 @@ app.use(
 
 app.all("/auth/{*any}", toNodeHandler(auth) as express.RequestHandler);
 
-app.use(express.json());
+// 21mb limit for document ingest (base64 adds ~33% overhead; backend allows 20mb decoded)
+app.use(express.json({ limit: "21mb" }));
 
 app.get("/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });

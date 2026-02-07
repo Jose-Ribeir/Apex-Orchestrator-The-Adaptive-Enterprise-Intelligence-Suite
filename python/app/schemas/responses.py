@@ -6,16 +6,38 @@ from pydantic import BaseModel, Field
 
 
 class AgentInfo(BaseModel):
-    """Single agent in list: name and RAG document count."""
+    """Single agent in list: agent_id, name, RAG document count; optional user_id when from DB."""
 
-    name: str = Field(..., description="Agent name (used in API as agent_name)")
+    agent_id: str = Field(..., description="Agent ID (UUID)")
+    name: str = Field(..., description="Display name")
     doc_count: int = Field(..., description="Number of documents in this agent's RAG index")
+    user_id: str | None = Field(None, description="Owner (when from DB)")
+
+
+class AgentDetailResponse(BaseModel):
+    """Single agent full detail (GET /agents/{id})."""
+
+    agent_id: str = Field(..., description="Agent ID (UUID)")
+    user_id: str = Field(..., description="Owner user id")
+    name: str = Field(..., description="Display name")
+    mode: str = Field(..., description="PERFORMANCE | EFFICIENCY | BALANCED")
+    prompt: str | None = Field(None, description="System prompt")
+    instructions: list[str] = Field(..., description="Instruction lines in order")
+    tools: list[str] = Field(..., description="Tool names")
+    doc_count: int = Field(..., description="RAG document count for this agent")
 
 
 class ListAgentsResponse(BaseModel):
     """Response for GET /agents: all known agents with doc counts."""
 
     agents: list[AgentInfo] = Field(..., description="Agents that have RAG data (from DATA_FOLDER)")
+
+
+class CreateAgentResponse(BaseModel):
+    """Response after creating an agent."""
+
+    agent_id: str = Field(..., description="Agent ID (UUID)")
+    message: str = Field(default="created", description="Human-readable status")
 
 
 class HealthResponse(BaseModel):
@@ -25,6 +47,8 @@ class HealthResponse(BaseModel):
     agents: list[str] = Field(..., description="List of agent names with loaded RAG")
     geminimesh_configured: bool = Field(..., description="Whether GeminiMesh API token is set")
     embedding_model: str = Field(..., description="'loaded' or 'not_loaded'")
+    database_configured: bool = Field(..., description="Whether DATABASE_URL is set")
+    database_connected: bool = Field(..., description="Whether DB connection succeeds")
 
 
 class OptimizePromptResponse(BaseModel):

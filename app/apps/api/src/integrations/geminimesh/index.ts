@@ -2,6 +2,7 @@ export {
   geminimeshClient,
   generateStream,
   health,
+  ingestDocument,
   optimizePrompt,
   updateAgentIndex,
   updateAgentPromptGeminimesh,

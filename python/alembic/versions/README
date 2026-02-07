@@ -1,0 +1,4 @@
+# Migration scripts live here.
+# Create one with: alembic revision -m "description"
+# Apply: alembic upgrade head
+# Rollback one: alembic downgrade -1

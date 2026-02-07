@@ -89,7 +89,7 @@ export async function updateAgentIndex(
 }
 
 /**
- * POST /upload_and_index – Multipart upload (agent_id + file).
+ * POST /upload_and_index – Multipart upload (agent_id + file). Expects JSONL.
  */
 export async function uploadAndIndex(
   agentId: string,
@@ -113,6 +113,41 @@ export async function uploadAndIndex(
   return undefined;
 }
 
+/**
+ * POST /ingest_document – Upload PDF, TXT, or DOCX; backend extracts text and indexes with embeddings.
+ * When file is a Blob (e.g. from Node), pass filename so the backend can detect file type.
+ */
+export async function ingestDocument(
+  agentId: string,
+  file: Blob | File,
+  filename?: string,
+): Promise<{ status: string; docs_added: number; total_docs: number }> {
+  const form = new FormData();
+  form.append("agent_id", agentId);
+  if (file instanceof File) {
+    form.append("file", file);
+  } else {
+    form.append("file", file, filename ?? "document");
+  }
+  const res = await fetch(`${baseUrl()}/ingest_document`, {
+    method: "POST",
+    body: form,
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText);
+    throw new Error(`ingest_document ${res.status}: ${text}`);
+  }
+  const contentType = res.headers.get("content-type");
+  if (contentType?.includes("application/json")) {
+    return res.json() as Promise<{
+      status: string;
+      docs_added: number;
+      total_docs: number;
+    }>;
+  }
+  return { status: "success", docs_added: 0, total_docs: 0 };
+}
+
 export const geminimeshClient = {
   health,
   updateAgentPromptGeminimesh,
@@ -120,4 +155,5 @@ export const geminimeshClient = {
   generateStream,
   updateAgentIndex,
   uploadAndIndex,
+  ingestDocument,
 };

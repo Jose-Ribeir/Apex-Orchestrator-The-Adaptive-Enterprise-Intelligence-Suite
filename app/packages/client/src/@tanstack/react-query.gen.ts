@@ -12,6 +12,7 @@ import {
   deleteAgentInstruction,
   getAgentInstructionById,
   updateAgentInstruction,
+  ingestAgentDocument,
   listAgentTools,
   addAgentTool,
   removeAgentTool,
@@ -77,6 +78,8 @@ import type {
   GetAgentInstructionByIdData,
   UpdateAgentInstructionData,
   UpdateAgentInstructionResponse,
+  IngestAgentDocumentData,
+  IngestAgentDocumentResponse,
   ListAgentToolsData,
   ListAgentToolsResponse,
   AddAgentToolData,
@@ -598,6 +601,59 @@ export const updateAgentInstructionMutation = (
   > = {
     mutationFn: async (localOptions) => {
       const { data } = await updateAgentInstruction({
+        ...options,
+        ...localOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
+
+export const ingestAgentDocumentQueryKey = (
+  options: Options<IngestAgentDocumentData>,
+) => createQueryKey("ingestAgentDocument", options);
+
+/**
+ * Ingest document for RAG
+ * Upload a PDF, TXT, or DOCX file. Content is extracted to text, chunked, embedded, and added to the agent's RAG index.
+ */
+export const ingestAgentDocumentOptions = (
+  options: Options<IngestAgentDocumentData>,
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await ingestAgentDocument({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: ingestAgentDocumentQueryKey(options),
+  });
+};
+
+/**
+ * Ingest document for RAG
+ * Upload a PDF, TXT, or DOCX file. Content is extracted to text, chunked, embedded, and added to the agent's RAG index.
+ */
+export const ingestAgentDocumentMutation = (
+  options?: Partial<Options<IngestAgentDocumentData>>,
+): UseMutationOptions<
+  IngestAgentDocumentResponse,
+  AxiosError<DefaultError>,
+  Options<IngestAgentDocumentData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    IngestAgentDocumentResponse,
+    AxiosError<DefaultError>,
+    Options<IngestAgentDocumentData>
+  > = {
+    mutationFn: async (localOptions) => {
+      const { data } = await ingestAgentDocument({
         ...options,
         ...localOptions,
         throwOnError: true,

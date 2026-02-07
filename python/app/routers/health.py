@@ -1,10 +1,12 @@
 """Health check endpoint."""
 
+import asyncio
+
 from fastapi import APIRouter
 
 from app.config import get_settings
+from app.db import check_connection
 from app.schemas.responses import HealthResponse
-from app.services.embedding import get_embedding_model
 from app.services.rag import retriever_cache
 
 router = APIRouter(tags=["Health"])
@@ -14,15 +16,19 @@ router = APIRouter(tags=["Health"])
     "/health",
     response_model=HealthResponse,
     summary="Health check",
-    description="Returns status, list of agents with loaded RAG, GeminiMesh config flag, and embedding model load state.",
+    description="Returns status, list of agents with loaded RAG, GeminiMesh config flag, embedding backend, and Cloud SQL status.",
     operation_id="getHealth",
 )
 async def health() -> HealthResponse:
     settings = get_settings()
-    model = get_embedding_model()
+    database_connected = False
+    if settings.database_configured:
+        database_connected = await asyncio.to_thread(check_connection)
     return HealthResponse(
         status="healthy",
         agents=list(retriever_cache.keys()),
         geminimesh_configured=settings.geminimesh_configured,
-        embedding_model="loaded" if model else "not_loaded",
+        embedding_model="vertex",
+        database_configured=settings.database_configured,
+        database_connected=database_connected,
     )

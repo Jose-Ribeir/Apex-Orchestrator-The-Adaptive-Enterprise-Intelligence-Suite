@@ -9,11 +9,17 @@ python-multipart>=0.0.9
 # Gemini
 google-genai>=1.0.0
 
-# RAG
-lancedb>=0.5.7
-requests>=2.32.0
+# Google Cloud (RAG + files)
+google-cloud-aiplatform>=1.38.0
+google-cloud-storage>=2.14.0
 
-# Embeddings (CPU)
---extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.4.1+cpu
-sentence-transformers>=3.1.0
+# Cloud SQL (PostgreSQL)
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.9
+alembic>=1.13.0
+
+# Document parsing (ingest)
+requests>=2.32.0
+pypdf>=6.0.0
+pymupdf>=1.24.0
+python-docx>=1.0.0
