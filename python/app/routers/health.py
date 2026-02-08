@@ -16,7 +16,7 @@ router = APIRouter(tags=["Health"])
     "/health",
     response_model=HealthResponse,
     summary="Health check",
-    description="Returns status, list of agents with loaded RAG, GeminiMesh config flag, embedding backend, and Cloud SQL status.",
+    description="Returns status, agents with RAG, GeminiMesh flag, embedding backend, and DB status.",
     operation_id="getHealth",
 )
 async def health() -> HealthResponse:

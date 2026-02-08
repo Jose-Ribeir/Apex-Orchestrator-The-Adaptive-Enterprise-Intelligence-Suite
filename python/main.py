@@ -46,24 +46,36 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import __version__
-from app.routers import agents, chat, health, index
+from app.auth.routes import router as auth_router
+from app.routers import chat, health, index
+from app.routers.api_router import api_router
+from app.seed import seed_tools
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Startup: validate config and log GeminiMesh status."""
-    settings = get_settings()
-    if settings.geminimesh_configured:
-        logger.info(
-            "GeminiMesh POST API configured: %s/agents",
-            settings.geminimesh_api_url,
-        )
-    else:
-        logger.warning("GEMINIMESH_API_TOKEN not configured")
+    """Startup/shutdown lifecycle."""
+    try:
+        seed_tools()
+    except Exception as e:
+        logger.warning("Startup seed skipped: %s", e)
     yield
-    # Shutdown if needed (e.g. close DB connections)
-    pass
 
+
+OPENAPI_TAGS = [
+    {"name": "Health", "description": "Service health and configuration status."},
+    {"name": "Auth", "description": "Login, register, logout, and current user (cookie-based)."},
+    {"name": "Agents", "description": "Agent CRUD."},
+    {"name": "Agents -> Documents", "description": "List, add, get, and delete agent documents (RAG)."},
+    {"name": "Agents -> Instructions", "description": "Per-agent instructions (order and content)."},
+    {"name": "Agents -> Tools", "description": "Link or unlink tools to/from an agent."},
+    {"name": "Agents -> Queries", "description": "Model queries: user query, response, and method used."},
+    {"name": "Tools", "description": "Global tool registry (list, create, update, delete)."},
+    {"name": "API Tokens", "description": "Create, list, and revoke API tokens."},
+    {"name": "Human Tasks", "description": "Human-in-the-loop tasks for model queries."},
+    {"name": "Chat", "description": "Streaming chat with router + generator pipeline."},
+    {"name": "Index", "description": "RAG index: add, update, delete, and ingest documents."},
+]
 
 app = FastAPI(
     title="Gemini Agent Factory",
@@ -73,6 +85,7 @@ app = FastAPI(
     lifespan=lifespan,
     docs_url="/docs",
     redoc_url="/redoc",
+    openapi_tags=OPENAPI_TAGS,
 )
 
 app.add_middleware(
@@ -83,8 +96,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount routers at root to keep same paths as original (e.g. /health, /generate_stream)
-app.include_router(agents.router)
+# Auth (cookie + Bearer API token; /auth/me for current user)
+app.include_router(auth_router)
+
+# Protected API (cookie or Bearer required)
+app.include_router(api_router)
+
+# Other routers at root (e.g. /health, /generate_stream)
 app.include_router(chat.router)
 app.include_router(index.router)
 app.include_router(health.router)

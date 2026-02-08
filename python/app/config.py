@@ -40,12 +40,21 @@ class Settings(BaseSettings):
     # Database: single URL for dev (local Postgres) and prod (Cloud SQL)
     database_url: str = ""
 
+    # Queue (BullMQ): Redis URL; when set, ingest/add-document use queue instead of sync
+    redis_url: str = ""
+
     # Optional with defaults
     geminimesh_api_url: str = "http://localhost:4200"
     geminimesh_api_token: str | None = None
     geminimesh_request_timeout: int = 90
     host: str = "127.0.0.1"
     port: int = 8000
+
+    # Auth
+    secret_key: str = "change-me-in-production"
+    cookie_name: str = "session_token"
+    cookie_max_age_seconds: int = 60 * 60 * 24 * 7  # 7 days
+    cookie_same_site: str = "lax"  # use "none" for cross-origin + secure
 
     @field_validator("gemini_api_key")
     @classmethod
@@ -90,6 +99,11 @@ class Settings(BaseSettings):
     def database_configured(self) -> bool:
         """True if DATABASE_URL is set."""
         return bool(self.database_url.strip())
+
+    @property
+    def queue_configured(self) -> bool:
+        """True if REDIS_URL is set (queue enabled for indexing jobs)."""
+        return bool(self.redis_url.strip())
 
     def get_database_url(self) -> str:
         """PostgreSQL URL from DATABASE_URL."""

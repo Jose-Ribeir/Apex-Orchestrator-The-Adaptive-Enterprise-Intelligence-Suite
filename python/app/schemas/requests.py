@@ -6,10 +6,9 @@ from pydantic import BaseModel, Field, model_validator
 
 
 class CreateAgentRequest(BaseModel):
-    """Request to create an agent (stored in DB; Node can pass agent_id to keep same id)."""
+    """Request to create an agent (stored in DB). Agent ID is always server-generated."""
 
-    agent_id: str | None = Field(None, description="Optional UUID; if omitted a new one is generated")
-    user_id: str = Field(..., description="Owner user id (from auth)")
+    user_id: str | None = Field(None, description="Owner user id (from auth; optional when under /api)")
     name: str = Field(..., description="Display name")
     mode: str = Field(default="EFFICIENCY", description="PERFORMANCE | EFFICIENCY | BALANCED")
     prompt: str | None = Field(None, description="System prompt")
@@ -38,11 +37,31 @@ class AgentConfig(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    """Request for streaming chat with 2-call router + generator."""
+    """Request for streaming chat with 2-call router + generator.
+    When agent_id is set, backend loads agent and builds system_prompt; agent_name and system_prompt are optional.
+    When agent_id is not set (legacy), agent_name and system_prompt are required."""
 
-    agent_name: str = Field(..., description="Agent name (used for RAG namespace)")
+    agent_id: str | None = Field(
+        None, description="Agent ID (UUID); when set, backend loads agent and builds system_prompt"
+    )
+    agent_name: str | None = Field(None, description="Agent name (legacy; required when agent_id is not provided)")
     message: str = Field(..., description="User message")
-    system_prompt: str = Field(..., description="Full system prompt including TOOLS line")
+    system_prompt: str | None = Field(
+        None, description="Full system prompt including TOOLS line (legacy; required when agent_id is not provided)"
+    )
+
+    @model_validator(mode="after")
+    def require_agent_id_or_legacy_fields(self) -> "ChatRequest":
+        has_id = bool(self.agent_id and str(self.agent_id).strip())
+        has_name = bool(self.agent_name and str(self.agent_name).strip())
+        has_prompt = bool(self.system_prompt is not None and str(self.system_prompt).strip())
+        if has_id:
+            return self
+        if not has_name or not has_prompt:
+            raise ValueError(
+                "When agent_id is not provided, both agent_name and system_prompt are required (legacy mode)."
+            )
+        return self
 
 
 class UpdateAgentIndexRequest(BaseModel):

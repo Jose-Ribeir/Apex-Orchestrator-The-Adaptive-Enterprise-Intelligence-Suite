@@ -1,4 +1,4 @@
-import type { ModelQuery } from "@ai-router/client";
+import { formatDateTime } from "@/lib/format";
 import { listAgentQueriesOptions } from "@ai-router/client/react-query";
 import {
   Table,
@@ -10,7 +10,6 @@ import {
 } from "@ai-router/ui/table";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
-import { formatDateTime } from "@/lib/format";
 
 export default function AgentQueriesPage() {
   const params = useParams();
@@ -18,13 +17,19 @@ export default function AgentQueriesPage() {
 
   const { data: response, isPending } = useQuery({
     ...listAgentQueriesOptions({
-      path: { agentId },
+      path: { agent_id: agentId },
       query: { page: 1, limit: 50 },
     }),
     enabled: Boolean(agentId),
   });
-  const queries: ModelQuery[] =
-    (response as { data?: ModelQuery[] } | undefined)?.data ?? [];
+  type QueryItem = {
+    id?: string;
+    userQuery?: string;
+    methodUsed?: string;
+    createdAt?: string;
+  };
+  const queries: QueryItem[] =
+    (response as { data?: QueryItem[] } | undefined)?.data ?? [];
 
   return (
     <div className="flex flex-col gap-6">
@@ -55,7 +60,9 @@ export default function AgentQueriesPage() {
                   {q.userQuery ?? "—"}
                 </TableCell>
                 <TableCell>{q.methodUsed ?? "—"}</TableCell>
-                <TableCell>{formatDateTime(q.createdAt)}</TableCell>
+                <TableCell>
+                  {q.createdAt ? formatDateTime(q.createdAt) : "—"}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>

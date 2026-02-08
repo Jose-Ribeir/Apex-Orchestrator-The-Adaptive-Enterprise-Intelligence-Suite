@@ -1,4 +1,16 @@
-# Migration scripts live here.
-# Create one with: alembic revision -m "description"
-# Apply: alembic upgrade head
-# Rollback one: alembic downgrade -1
+# Migration scripts live here. Schema is unified in 001_unified_schema.
+
+# Apply all migrations (fresh or after redo):
+#   alembic upgrade head
+#   # or from python/: make migrate-up
+
+# Roll back to empty state:
+#   alembic downgrade base
+#   # or: make migrate-down
+
+# Redo (full reset and re-apply): drop all tables, then run upgrade again.
+#   alembic downgrade base && alembic upgrade head
+#   # or from python/: make migrate-redo
+
+# Create a new revision (when adding schema changes):
+#   alembic revision -m "description"

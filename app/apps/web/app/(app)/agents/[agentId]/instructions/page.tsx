@@ -1,4 +1,3 @@
-import type { AgentInstruction } from "@ai-router/client";
 import {
   createAgentInstructionMutation,
   deleteAgentInstructionMutation,
@@ -39,28 +38,38 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 
+type InstructionItem = {
+  id: string;
+  content?: string;
+  order?: number;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
 export default function AgentInstructionsPage() {
   const params = useParams();
   const agentId = params?.agentId as string;
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
-  const [editing, setEditing] = useState<AgentInstruction | null>(null);
+  const [editing, setEditing] = useState<InstructionItem | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [content, setContent] = useState("");
   const [order, setOrder] = useState(0);
 
   const { data: response, isPending } = useQuery({
-    ...listAgentInstructionsOptions({ path: { agentId } }),
+    ...listAgentInstructionsOptions({ path: { agent_id: agentId } }),
     enabled: Boolean(agentId),
   });
-  const instructions: AgentInstruction[] =
-    (response as { data?: AgentInstruction[] } | undefined)?.data ?? [];
+  const instructions: InstructionItem[] =
+    (response as { data?: InstructionItem[] } | undefined)?.data ?? [];
 
   const createInstruction = useMutation({
     ...createAgentInstructionMutation(),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: listAgentInstructionsQueryKey({ path: { agentId } }),
+        queryKey: listAgentInstructionsQueryKey({
+          path: { agent_id: agentId },
+        }),
       });
       setCreateOpen(false);
       setContent("");
@@ -72,7 +81,9 @@ export default function AgentInstructionsPage() {
     ...updateAgentInstructionMutation(),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: listAgentInstructionsQueryKey({ path: { agentId } }),
+        queryKey: listAgentInstructionsQueryKey({
+          path: { agent_id: agentId },
+        }),
       });
       setEditing(null);
       setContent("");
@@ -84,7 +95,9 @@ export default function AgentInstructionsPage() {
     ...deleteAgentInstructionMutation(),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: listAgentInstructionsQueryKey({ path: { agentId } }),
+        queryKey: listAgentInstructionsQueryKey({
+          path: { agent_id: agentId },
+        }),
       });
       setDeleteId(null);
     },
@@ -96,7 +109,7 @@ export default function AgentInstructionsPage() {
     setCreateOpen(true);
   }
 
-  function openEdit(inst: AgentInstruction) {
+  function openEdit(inst: InstructionItem) {
     setEditing(inst);
     setContent(inst.content ?? "");
     setOrder(inst.order ?? 0);
@@ -106,7 +119,7 @@ export default function AgentInstructionsPage() {
     e.preventDefault();
     if (!content.trim()) return;
     createInstruction.mutate({
-      path: { agentId },
+      path: { agent_id: agentId },
       body: { content: content.trim(), order },
     });
   }
@@ -115,7 +128,7 @@ export default function AgentInstructionsPage() {
     e.preventDefault();
     if (!editing?.id || !content.trim()) return;
     updateInstruction.mutate({
-      path: { agentId, id: editing.id },
+      path: { agent_id: agentId, id: editing.id },
       body: { content: content.trim(), order },
     });
   }
@@ -320,7 +333,9 @@ export default function AgentInstructionsPage() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() =>
                 deleteId &&
-                deleteInstruction.mutate({ path: { agentId, id: deleteId } })
+                deleteInstruction.mutate({
+                  path: { agent_id: agentId, id: deleteId },
+                })
               }
               disabled={deleteInstruction.isPending}
             >

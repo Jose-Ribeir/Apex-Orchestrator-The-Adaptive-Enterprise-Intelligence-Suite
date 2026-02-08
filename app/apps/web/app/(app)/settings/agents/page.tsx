@@ -1,15 +1,31 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { AgentFormFields } from "@/components/agent-form-fields";
 import {
+  agentToFormValues,
+  defaultAgentFormValues,
+  getAgentBodyFromValues,
+} from "@/lib/agent-form";
+import { agentModeLabel, formatDate } from "@/lib/format";
+import { useActiveAgent } from "@/providers/active-agent";
+import type { AgentInfo, AgentMode } from "@ai-router/client";
+import {
+  deleteAgentMutation,
   listAgentsOptions,
   listAgentsQueryKey,
-  updateAgentMutation,
-  deleteAgentMutation,
   listToolsOptions,
+  updateAgentMutation,
 } from "@ai-router/client/react-query";
-import type { Agent, Tool } from "@ai-router/client";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@ai-router/ui/alert-dialog";
 import { Button } from "@ai-router/ui/button";
 import {
   Sheet,
@@ -25,42 +41,25 @@ import {
   TableHeader,
   TableRow,
 } from "@ai-router/ui/table";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@ai-router/ui/alert-dialog";
-import { Pencil, Trash2, Bot } from "lucide-react";
-import { useActiveAgent } from "@/providers/active-agent";
-import { AgentFormFields } from "@/components/agent-form-fields";
-import {
-  defaultAgentFormValues,
-  agentToFormValues,
-  getAgentBodyFromValues,
-} from "@/lib/agent-form";
-import { agentModeLabel, formatDate } from "@/lib/format";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Bot, Pencil, Trash2 } from "lucide-react";
+import { useState } from "react";
 
 export default function SettingsAgentsPage() {
   const queryClient = useQueryClient();
   const { agentId: activeAgentId, setAgentId } = useActiveAgent();
-  const [editAgent, setEditAgent] = useState<Agent | null>(null);
-  const [deleteAgent, setDeleteAgent] = useState<Agent | null>(null);
+  const [editAgent, setEditAgent] = useState<AgentInfo | null>(null);
+  const [deleteAgent, setDeleteAgent] = useState<AgentInfo | null>(null);
 
-  const { data: agentsResponse, isPending } = useQuery(listAgentsOptions({}));
-  const agents: Agent[] =
-    (agentsResponse as { data?: Agent[] } | undefined)?.data ?? [];
+  const { data: data, isPending } = useQuery(listAgentsOptions({}));
 
+  type ToolItem = { id?: string; name?: string };
   const { data: toolsData } = useQuery({
     ...listToolsOptions({}),
     enabled: editAgent != null,
   });
-  const toolsList: Tool[] =
-    (toolsData as { data?: Tool[] } | undefined)?.data ?? [];
+  const toolsList: ToolItem[] =
+    (toolsData as { data?: ToolItem[] } | undefined)?.data ?? [];
 
   const updateAgent = useMutation({
     ...updateAgentMutation(),
@@ -72,7 +71,7 @@ export default function SettingsAgentsPage() {
 
   const [editFormValues, setEditFormValues] = useState(defaultAgentFormValues);
 
-  const openEditSheet = (agent: Agent) => {
+  const openEditSheet = (agent: AgentInfo) => {
     setEditAgent(agent);
     setEditFormValues(agentToFormValues(agent));
   };
@@ -81,7 +80,7 @@ export default function SettingsAgentsPage() {
     ...deleteAgentMutation(),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: listAgentsQueryKey({}) });
-      if (activeAgentId === variables.path.id) {
+      if (activeAgentId === variables.path.agent_id) {
         setAgentId(null);
       }
       setDeleteAgent(null);
@@ -90,12 +89,12 @@ export default function SettingsAgentsPage() {
 
   const handleEditSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!editAgent?.id) return;
+    if (!editAgent?.agent_id) return;
     const name = editFormValues.name.trim();
     if (!name) return;
-    const body = getAgentBodyFromValues(editFormValues);
+    const body = getAgentBodyFromValues(editFormValues, toolsList);
     updateAgent.mutate({
-      path: { id: editAgent.id },
+      path: { agent_id: editAgent.agent_id },
       body,
     });
   };
@@ -112,7 +111,7 @@ export default function SettingsAgentsPage() {
 
       {isPending ? (
         <p className="text-muted-foreground text-sm">Loading agents…</p>
-      ) : agents.length === 0 ? (
+      ) : data?.agents.length === 0 ? (
         <p className="text-muted-foreground text-sm">
           No agents yet. Create one from the agent switcher in the sidebar.
         </p>
@@ -127,16 +126,16 @@ export default function SettingsAgentsPage() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {agents.map((agent) => (
-              <TableRow key={agent.id}>
+            {data?.agents.map((agent) => (
+              <TableRow key={agent.agent_id}>
                 <TableCell className="font-medium">
                   <span className="flex items-center gap-2">
                     <Bot className="size-4 text-muted-foreground" />
                     {agent.name ?? "—"}
                   </span>
                 </TableCell>
-                <TableCell>{agentModeLabel(agent.mode)}</TableCell>
-                <TableCell>{formatDate(agent.updatedAt)}</TableCell>
+                <TableCell>{agentModeLabel(agent.mode as AgentMode)}</TableCell>
+                <TableCell>{formatDate(agent.updated_at)}</TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1">
                     <Button
@@ -234,7 +233,7 @@ export default function SettingsAgentsPage() {
               onClick={() =>
                 deleteAgent &&
                 deleteAgentMutationState.mutate({
-                  path: { id: deleteAgent.id! },
+                  path: { agent_id: deleteAgent.agent_id },
                 })
               }
               disabled={deleteAgentMutationState.isPending}

@@ -1,6 +1,7 @@
 "use client";
 
-import type { Agent, Tool } from "@ai-router/client";
+type ToolItem = { id?: string; name?: string };
+import type { AgentFormValues } from "@/lib/agent-form";
 import { Field, FieldGroup, FieldLabel } from "@ai-router/ui/field";
 import { Input } from "@ai-router/ui/input";
 import {
@@ -11,12 +12,11 @@ import {
   SelectValue,
 } from "@ai-router/ui/select";
 import { Textarea } from "@ai-router/ui/textarea";
-import type { AgentFormValues } from "@/lib/agent-form";
 
 export interface AgentFormFieldsProps {
   value: AgentFormValues;
   onChange: (next: Partial<AgentFormValues>) => void;
-  toolsList: Tool[];
+  toolsList: ToolItem[];
   disabled?: boolean;
   idPrefix: string;
   nameLabel?: string;

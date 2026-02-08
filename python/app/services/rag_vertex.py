@@ -6,6 +6,9 @@ from typing import Any
 from google import genai
 from google.cloud import aiplatform, storage
 from google.cloud.aiplatform import matching_engine
+from google.cloud.aiplatform.matching_engine.matching_engine_index_endpoint import (
+    Namespace as RestrictNamespace,
+)
 from google.cloud.aiplatform_v1 import IndexDatapoint
 from google.genai import types
 
@@ -173,15 +176,22 @@ class VertexRAG:
             deployed_index_id=settings.vertex_rag_deployed_index_id,
             queries=[qvec],
             num_neighbors=top_k,
-            filter=[IndexDatapoint.Restriction(namespace=self._restrict_namespace, allow_list=[self._agent_restrict])],
+            filter=[RestrictNamespace(name=self._restrict_namespace, allow_tokens=[self._agent_restrict])],
+            return_full_datapoint=True,
         )
+        # API returns List[List[MatchNeighbor]]: one list per query; MatchNeighbor has embedding_metadata, distance
         results = []
-        if response and response.nearest_neighbors:
-            for nn in response.nearest_neighbors[0].neighbors:
+        if response and len(response) > 0:
+            neighbors = response[0]
+            for nn in neighbors:
                 content = ""
-                if nn.datapoint and nn.datapoint.embedding_metadata:
-                    meta = dict(nn.datapoint.embedding_metadata)
-                    content = meta.get("content", "")
+                emb_meta = getattr(nn, "embedding_metadata", None)
+                if emb_meta is not None:
+                    try:
+                        meta = dict(emb_meta) if hasattr(emb_meta, "items") else {}
+                    except Exception:
+                        meta = {}
+                    content = (meta.get("content") or "").strip()
                 results.append(
                     {
                         "contents": content,

@@ -18,8 +18,18 @@ sqlalchemy>=2.0.0
 psycopg2-binary>=2.9.9
 alembic>=1.13.0
 
+# Auth (cookie + Bearer API token)
+passlib[bcrypt]>=1.7.4
+python-jose[cryptography]>=3.3.0
+
+# Queue (BullMQ)
+bullmq>=0.1.0
+
 # Document parsing (ingest)
 requests>=2.32.0
 pypdf>=6.0.0
 pymupdf>=1.24.0
 python-docx>=1.0.0
+
+# Lint (CI + dev)
+ruff>=0.8.0

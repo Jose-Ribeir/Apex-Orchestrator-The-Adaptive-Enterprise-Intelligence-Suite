@@ -1,7 +1,12 @@
 "use client";
 
+import { AgentFormFields } from "@/components/agent-form-fields";
+import {
+  defaultAgentFormValues,
+  getAgentBodyFromValues,
+} from "@/lib/agent-form";
 import { useActiveAgent } from "@/providers/active-agent";
-import type { Agent } from "@ai-router/client";
+import type { AgentInfo } from "@ai-router/client";
 import {
   createAgentMutation,
   listAgentsQueryKey,
@@ -12,15 +17,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bot } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AgentFormFields } from "@/components/agent-form-fields";
-import {
-  defaultAgentFormValues,
-  getAgentBodyFromValues,
-} from "@/lib/agent-form";
-import type { Tool } from "@ai-router/client";
 
 export interface CreateAgentFormProps {
-  onSuccess?: (agent: Agent) => void;
+  onSuccess?: (agent: AgentInfo) => void;
   title?: string;
   description?: string;
   submitLabel?: string;
@@ -39,15 +38,17 @@ export function CreateAgentForm({
   const { setAgentId } = useActiveAgent();
   const [formValues, setFormValues] = useState(defaultAgentFormValues);
 
+  type ToolItem = { id?: string; name?: string };
   const { data: toolsData } = useQuery(listToolsOptions({}));
-  const toolsList = (toolsData as { data?: Tool[] } | undefined)?.data ?? [];
+  const toolsList: ToolItem[] =
+    (toolsData as { data?: ToolItem[] } | undefined)?.data ?? [];
 
   const createAgent = useMutation({
     ...createAgentMutation(),
     onSuccess: async (created) => {
-      if (created?.id) setAgentId(created.id);
+      if (created?.agent_id) setAgentId(created.agent_id);
       await queryClient.refetchQueries({ queryKey: listAgentsQueryKey({}) });
-      onSuccess?.(created as Agent);
+      onSuccess?.(created);
       navigate("/");
     },
   });
@@ -56,7 +57,7 @@ export function CreateAgentForm({
     e.preventDefault();
     const name = formValues.name.trim();
     if (!name) return;
-    const body = getAgentBodyFromValues(formValues);
+    const body = getAgentBodyFromValues(formValues, toolsList);
     createAgent.mutate({ body });
   }
 

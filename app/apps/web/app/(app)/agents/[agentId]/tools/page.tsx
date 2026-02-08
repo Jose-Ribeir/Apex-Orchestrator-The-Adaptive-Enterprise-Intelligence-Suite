@@ -1,4 +1,3 @@
-import type { Tool } from "@ai-router/client";
 import {
   addAgentToolMutation,
   listAgentToolsOptions,
@@ -36,6 +35,8 @@ import { Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useParams } from "react-router-dom";
 
+type ToolItem = { id?: string; name?: string; createdAt?: string };
+
 export default function AgentToolsPage() {
   const params = useParams();
   const agentId = params?.agentId as string;
@@ -44,18 +45,18 @@ export default function AgentToolsPage() {
   const [removeToolId, setRemoveToolId] = useState<string | null>(null);
 
   const { data: agentToolsResponse, isPending: loadingAgentTools } = useQuery({
-    ...listAgentToolsOptions({ path: { agentId } }),
+    ...listAgentToolsOptions({ path: { agent_id: agentId } }),
     enabled: Boolean(agentId),
   });
-  const agentTools: Tool[] =
-    (agentToolsResponse as { data?: Tool[] } | undefined)?.data ?? [];
+  const agentTools: ToolItem[] =
+    (agentToolsResponse as { data?: ToolItem[] } | undefined)?.data ?? [];
 
   const { data: catalogResponse } = useQuery({
     ...listToolsOptions({}),
     enabled: Boolean(agentId),
   });
-  const catalogTools: Tool[] =
-    (catalogResponse as { data?: Tool[] } | undefined)?.data ?? [];
+  const catalogTools: ToolItem[] =
+    (catalogResponse as { data?: ToolItem[] } | undefined)?.data ?? [];
 
   const assignedIds = new Set(agentTools.map((t) => t.id).filter(Boolean));
   const availableToAdd = catalogTools.filter(
@@ -66,7 +67,7 @@ export default function AgentToolsPage() {
     ...addAgentToolMutation(),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: listAgentToolsQueryKey({ path: { agentId } }),
+        queryKey: listAgentToolsQueryKey({ path: { agent_id: agentId } }),
       });
       setAddOpen(false);
     },
@@ -76,7 +77,7 @@ export default function AgentToolsPage() {
     ...removeAgentToolMutation(),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: listAgentToolsQueryKey({ path: { agentId } }),
+        queryKey: listAgentToolsQueryKey({ path: { agent_id: agentId } }),
       });
       setRemoveToolId(null);
     },
@@ -165,8 +166,8 @@ export default function AgentToolsPage() {
                       onClick={() =>
                         tool.id &&
                         addTool.mutate({
-                          path: { agentId },
-                          body: { toolId: tool.id },
+                          path: { agent_id: agentId },
+                          body: { name: tool.name ?? "" },
                         })
                       }
                       disabled={addTool.isPending}
@@ -208,7 +209,9 @@ export default function AgentToolsPage() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() =>
                 removeToolId &&
-                removeTool.mutate({ path: { agentId, toolId: removeToolId } })
+                removeTool.mutate({
+                  path: { agent_id: agentId, tool_id: removeToolId },
+                })
               }
               disabled={removeTool.isPending}
             >

@@ -1,5 +1,4 @@
-import type { DailyStat } from "@ai-router/client";
-import { listAgentStatsOptions } from "@ai-router/client/react-query";
+import { formatDate } from "@/lib/format";
 import {
   Table,
   TableBody,
@@ -8,23 +7,22 @@ import {
   TableHeader,
   TableRow,
 } from "@ai-router/ui/table";
-import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
-import { formatDate } from "@/lib/format";
+
+type DailyStat = {
+  id: string;
+  date: string;
+  totalQueries?: number;
+  totalTokens?: number;
+  avgEfficiency?: number;
+  avgQuality?: number;
+};
 
 export default function AgentStatsPage() {
   const params = useParams();
   const agentId = params?.agentId as string;
-
-  const { data: response, isPending } = useQuery({
-    ...listAgentStatsOptions({
-      path: { agentId },
-      query: { page: 1, limit: 50 },
-    }),
-    enabled: Boolean(agentId),
-  });
-  const stats: DailyStat[] =
-    (response as { data?: DailyStat[] } | undefined)?.data ?? [];
+  const stats: DailyStat[] = [];
+  const isPending = false;
 
   return (
     <div className="flex flex-col gap-6">
@@ -40,7 +38,9 @@ export default function AgentStatsPage() {
       ) : isPending ? (
         <p className="text-muted-foreground text-sm">Loading…</p>
       ) : stats.length === 0 ? (
-        <p className="text-muted-foreground text-sm">No stats yet.</p>
+        <p className="text-muted-foreground text-sm">
+          Daily stats are not available from the API yet.
+        </p>
       ) : (
         <Table>
           <TableHeader>

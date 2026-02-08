@@ -170,6 +170,27 @@ def optimize_agent_prompt(config: AgentConfig) -> tuple[str, dict[str, Any]]:
     return prompt, analysis
 
 
+def build_system_prompt_from_agent(
+    name: str,
+    mode: str,
+    instructions: list[str],
+    tools: list[str],
+    prompt_override: str | None = None,
+) -> str:
+    """Build system prompt string from agent fields (for chat when agent_id is provided)."""
+    instructions_blob = "\n".join(f"- {i}" for i in instructions) if instructions else "(none)"
+    tools_str = ", ".join(tools) if tools else "None"
+    base = f"""You are **{name}** ({mode}).
+
+INSTRUCTIONS:
+{instructions_blob}
+
+TOOLS: {tools_str}"""
+    if prompt_override and prompt_override.strip():
+        return base + "\n\n" + prompt_override.strip()
+    return base
+
+
 def build_optimized_prompt(config: AgentConfig, analysis: dict[str, Any]) -> str:
     """Build final optimized system prompt from config and analysis."""
     instructions_blob = "\n".join(f"- {i}" for i in config.instructions)

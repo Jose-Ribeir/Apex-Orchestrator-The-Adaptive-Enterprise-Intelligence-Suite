@@ -3,7 +3,7 @@
 import { LoadingScreen } from "@/components/loading-screen";
 import { useSession } from "@/providers/session";
 import { UserProvider } from "@/providers/user";
-import type { Agent } from "@ai-router/client";
+import { AgentInfo } from "@ai-router/client";
 import { listAgentsOptions } from "@ai-router/client/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
@@ -14,7 +14,7 @@ const LIST_AGENTS_STALE_MS = 30_000;
 function useAgentsGate(pathname: string) {
   const navigate = useNavigate();
   const { data } = useSession();
-  const userId = data?.user?.id ?? data?.session?.userId ?? "";
+  const userId = data?.user?.id ?? "";
   const isOnboarding = pathname === "/onboarding";
 
   const {
@@ -28,15 +28,18 @@ function useAgentsGate(pathname: string) {
     enabled: Boolean(userId) && !isOnboarding,
   });
 
-  const agents = (agentsData as { data?: Agent[] } | undefined)?.data ?? [];
+  const agents =
+    (agentsData as { agents?: AgentInfo[] } | undefined)?.agents ?? [];
   const hasAgents = agents.length > 0;
   const sessionReady = Boolean(userId);
   const agentsResolved = !isPending && !isError;
+  const shouldRedirectToOnboarding =
+    !isOnboarding && sessionReady && agentsResolved && !hasAgents;
 
   useEffect(() => {
-    if (isOnboarding || !sessionReady || !agentsResolved || hasAgents) return;
+    if (!shouldRedirectToOnboarding) return;
     navigate("/onboarding", { replace: true });
-  }, [isOnboarding, sessionReady, agentsResolved, hasAgents, navigate]);
+  }, [shouldRedirectToOnboarding, navigate]);
 
   return {
     isOnboarding,

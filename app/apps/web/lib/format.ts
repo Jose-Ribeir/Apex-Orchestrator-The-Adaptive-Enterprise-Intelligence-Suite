@@ -1,3 +1,5 @@
+import { AgentMode } from "@ai-router/client";
+
 /**
  * Format a date for display.
  */
@@ -16,7 +18,7 @@ export function formatDateTime(d: Date | string | null | undefined): string {
   return date.toLocaleString();
 }
 
-const AGENT_MODE_LABELS: Record<string, string> = {
+const AGENT_MODE_LABELS: Record<AgentMode, string> = {
   PERFORMANCE: "Performance",
   EFFICIENCY: "Efficiency",
   BALANCED: "Balanced",
@@ -25,7 +27,7 @@ const AGENT_MODE_LABELS: Record<string, string> = {
 /**
  * Human-readable label for agent mode.
  */
-export function agentModeLabel(mode: string | undefined): string {
+export function agentModeLabel(mode: AgentMode | undefined): string {
   if (!mode) return "—";
   return AGENT_MODE_LABELS[mode] ?? mode;
 }

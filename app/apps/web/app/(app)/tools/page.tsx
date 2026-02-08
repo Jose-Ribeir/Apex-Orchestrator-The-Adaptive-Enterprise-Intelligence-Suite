@@ -1,32 +1,13 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { formatDateTime } from "@/lib/format";
 import {
+  createToolMutation,
+  deleteToolMutation,
   listToolsOptions,
   listToolsQueryKey,
-  createToolMutation,
   updateToolMutation,
-  deleteToolMutation,
 } from "@ai-router/client/react-query";
-import type { Tool } from "@ai-router/client";
-import { Button } from "@ai-router/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@ai-router/ui/table";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@ai-router/ui/sheet";
-import { Field, FieldGroup, FieldLabel } from "@ai-router/ui/field";
-import { Input } from "@ai-router/ui/input";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,18 +18,38 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@ai-router/ui/alert-dialog";
+import { Button } from "@ai-router/ui/button";
+import { Field, FieldGroup, FieldLabel } from "@ai-router/ui/field";
+import { Input } from "@ai-router/ui/input";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@ai-router/ui/sheet";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@ai-router/ui/table";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import { formatDateTime } from "@/lib/format";
+import { useState } from "react";
+type ToolItem = { id?: string; name?: string; created_at?: string };
 
 export default function ToolsPage() {
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
-  const [editing, setEditing] = useState<Tool | null>(null);
+  const [editing, setEditing] = useState<ToolItem | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [name, setName] = useState("");
 
   const { data: response, isPending } = useQuery(listToolsOptions({}));
-  const tools: Tool[] = (response as { data?: Tool[] } | undefined)?.data ?? [];
+  const tools: ToolItem[] =
+    (response as { data?: ToolItem[] } | undefined)?.data ?? [];
 
   const createTool = useMutation({
     ...createToolMutation(),
@@ -86,7 +87,7 @@ export default function ToolsPage() {
     e.preventDefault();
     if (!editing?.id || !name.trim()) return;
     updateTool.mutate({
-      path: { id: editing.id },
+      path: { tool_id: editing.id! },
       body: { name: name.trim() },
     });
   }
@@ -134,7 +135,7 @@ export default function ToolsPage() {
                 <TableCell className="font-medium">
                   {tool.name ?? tool.id ?? "—"}
                 </TableCell>
-                <TableCell>{formatDateTime(tool.createdAt)}</TableCell>
+                <TableCell>{formatDateTime(tool.created_at)}</TableCell>
                 <TableCell>
                   <div className="flex gap-1">
                     <Button
@@ -270,7 +271,7 @@ export default function ToolsPage() {
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() =>
-                deleteId && deleteTool.mutate({ path: { id: deleteId } })
+                deleteId && deleteTool.mutate({ path: { tool_id: deleteId } })
               }
               disabled={deleteTool.isPending}
             >

@@ -8,15 +8,15 @@ import { useNavigate } from "react-router-dom";
 
 export default function OnboardingPage() {
   const navigate = useNavigate();
-  const { data: agents, isPending } = useQuery(listAgentsOptions({}));
+  const { data, isPending } = useQuery(listAgentsOptions({}));
 
   useEffect(() => {
-    if (!isPending && agents?.data?.length && agents.data.length > 0) {
+    if (!isPending && data?.agents?.length && data.agents.length > 0) {
       navigate("/", { replace: true });
     }
-  }, [isPending, agents?.data?.length, navigate]);
+  }, [isPending, data?.agents?.length, navigate]);
 
-  if (!isPending && agents?.data?.length && agents.data.length > 0) {
+  if (!isPending && data?.agents?.length && data.agents.length > 0) {
     return <LoadingScreen />;
   }
 

@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "generate": "openapi-ts",
-    "update": "curl -s http://localhost:${PORT:-4000}/openapi.json > openapi.json",
+    "update": "curl -s http://localhost:${PORT:-8000}/openapi.json > openapi.json",
     "upgrade": "pnpm update && pnpm generate",
     "build": "tsup"
   },

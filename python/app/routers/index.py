@@ -24,7 +24,7 @@ _CONTENT_TYPES = {
     ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 }
 
-router = APIRouter(tags=["RAG Index"])
+router = APIRouter(tags=["Index"])
 
 
 def _update_agent_index_sync(
@@ -54,9 +54,8 @@ def _update_agent_index_sync(
 @router.post(
     "/update_agent_index",
     response_model=UpdateAgentIndexResponse,
-    summary="Update agent RAG index",
-    description="Add, update, or delete a document in the agent's LanceDB index. "
-    "Actions: 'add' | 'update' (require content JSON with id, content, optional metadata), 'delete' (require doc_id).",
+    summary="Update RAG index",
+    description="Add, update, or delete a document in the agent's index. Actions: add, update (need content JSON), delete (need doc_id).",
     operation_id="updateAgentIndex",
 )
 async def update_agent_index(
@@ -93,7 +92,7 @@ def _upload_and_index_sync(agent_key: str, content: bytes) -> UploadAndIndexResp
     "/upload_and_index",
     response_model=UploadAndIndexResponse,
     summary="Upload JSONL and index",
-    description="Upload a JSONL file (one JSON object per line with id, content, optional metadata) and index into the agent's RAG.",
+    description="Upload JSONL (one JSON per line: id, content, optional metadata) and index into the agent's RAG.",
     operation_id="uploadAndIndex",
 )
 async def upload_and_index(
@@ -166,8 +165,7 @@ def _ingest_document_sync(agent_key: str, content: bytes, filename: str) -> Uplo
     "/ingest_document",
     response_model=UploadAndIndexResponse,
     summary="Ingest document (PDF, TXT, DOCX)",
-    description="Upload a PDF, TXT, or DOCX file. Content is extracted to text, chunked, "
-    "embedded automatically, and added to the agent's RAG index.",
+    description="Upload PDF, TXT, or DOCX; content is extracted, chunked, embedded, and added to the agent's RAG.",
     operation_id="ingestDocument",
 )
 async def ingest_document(

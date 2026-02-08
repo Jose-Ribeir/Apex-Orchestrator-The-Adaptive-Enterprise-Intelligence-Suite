@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/**"
-      - "app/apps/api/**"
+      - "python/**"
       - "app/apps/web/**"
       - "app/packages/client/**"
       - "app/packages/ui/**"
@@ -20,7 +20,7 @@ on:
     types: [opened, synchronize, reopened]
     paths:
       - ".github/workflows/**"
-      - "app/apps/api/**"
+      - "python/**"
       - "app/apps/web/**"
       - "app/packages/client/**"
       - "app/packages/ui/**"
@@ -65,7 +65,7 @@ jobs:
           filters: |
             backend:
               - '.github/workflows/**'
-              - 'app/apps/api/**'
+              - 'python/**'
               - 'app/package.json'
               - 'app/pnpm-lock.yaml'
               - 'app/turbo.json'
@@ -93,7 +93,7 @@ jobs:
             echo "frontend=${{ steps.filter.outputs.frontend }}" >> $GITHUB_OUTPUT
           fi
 
-  lint-api:
+  lint-python:
     runs-on: ubuntu-latest
     needs: detect-changes
     if: needs.detect-changes.outputs.backend == 'true'
@@ -101,53 +101,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          version: ${{ env.PNPM_VERSION }}
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "pnpm"
-          cache-dependency-path: app/pnpm-lock.yaml
+          python-version: "3.10"
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pip install -r requirements.txt
+        working-directory: python
 
-      - name: Lint, typecheck, build (API)
-        run: pnpm exec turbo run lint check-types build --filter=@ai-router/api
-
-  lint-web:
-    runs-on: ubuntu-latest
-    needs: detect-changes
-    if: needs.detect-changes.outputs.frontend == 'true'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: ${{ env.PNPM_VERSION }}
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: "pnpm"
-          cache-dependency-path: app/pnpm-lock.yaml
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Lint, typecheck, build (Web)
-        run: pnpm exec turbo run lint check-types build --filter=web
+      - name: Lint (ruff)
+        run: ruff check . --output-format=concise
+        working-directory: python
 
   build-api:
     runs-on: ubuntu-latest
-    needs: [detect-changes, lint-api]
+    needs: [detect-changes, lint-python]
     if: needs.detect-changes.outputs.backend == 'true'
     permissions:
       contents: read
@@ -178,11 +147,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push API image
+      - name: Build and push API image (Python)
         uses: docker/build-push-action@v6
         with:
-          context: app
-          file: app/apps/api/Dockerfile
+          context: python
+          file: python/Dockerfile
           push: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
           load: ${{ github.event_name != 'push' && github.event_name != 'workflow_dispatch' }}
           tags: |
@@ -193,6 +162,32 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+  lint-web:
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.frontend == 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+          cache-dependency-path: app/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint, typecheck, build (Web)
+        run: pnpm exec turbo run lint check-types build --filter=web
+
   build-web:
     runs-on: ubuntu-latest
     needs: [detect-changes, lint-web]
@@ -201,7 +196,7 @@ jobs:
       contents: read
       packages: write
     env:
-      VITE_API_URL: ${{ secrets.VITE_API_URL || secrets.API_URL || 'http://localhost:4000' }}
+      VITE_API_URL: ${{ secrets.VITE_API_URL || secrets.API_URL || 'http://localhost:8000' }}
       VITE_APP_URL: ${{ secrets.VITE_APP_URL || secrets.APP_URL || 'http://localhost:3000' }}
     steps:
       - name: Checkout

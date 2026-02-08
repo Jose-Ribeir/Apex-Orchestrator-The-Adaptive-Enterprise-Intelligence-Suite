@@ -7,6 +7,13 @@ from sqlalchemy.orm import joinedload
 
 from app.db import session_scope
 from app.models import Agent, AgentInstruction, AgentTool, Tool
+from app.schemas.responses import (
+    AgentDetailResponse,
+    AgentMetadata,
+    AgentMode,
+    AgentStatusIndexing,
+    AgentToolRef,
+)
 from app.services.rag import get_or_create_retriever
 
 
@@ -17,14 +24,28 @@ def _rag_doc_count(agent_id: str) -> int:
         return 0
 
 
-def _get_or_create_tool_by_name(session, name: str) -> Tool:
-    name = (name or "").strip()
-    if not name:
-        raise ValueError("Tool name must be non-empty")
-    tool = session.query(Tool).filter(Tool.name == name, Tool.is_deleted == False).first()
+def _parse_uuid(s: str) -> uuid.UUID | None:
+    try:
+        return uuid.UUID(str(s).strip())
+    except (ValueError, TypeError):
+        return None
+
+
+def _get_or_create_tool_by_name(session, name_or_id: str) -> Tool:
+    name_or_id = (name_or_id or "").strip()
+    if not name_or_id:
+        raise ValueError("Tool name or id must be non-empty")
+    # If value looks like a UUID, resolve by ID first (e.g. frontend may send tool IDs)
+    tool_id = _parse_uuid(name_or_id)
+    if tool_id is not None:
+        tool = session.query(Tool).filter(Tool.id == tool_id, Tool.is_deleted == False).first()
+        if tool:
+            return tool
+    # Resolve or create by name
+    tool = session.query(Tool).filter(Tool.name == name_or_id, Tool.is_deleted == False).first()
     if tool:
         return tool
-    tool = Tool(name=name)
+    tool = Tool(name=name_or_id)
     session.add(tool)
     session.flush()
     return tool
@@ -38,16 +59,13 @@ def create_agent(
     prompt: str | None = None,
     instructions: list[str] | None = None,
     tools: list[str] | None = None,
-    agent_id: uuid.UUID | str | None = None,
 ) -> Agent:
-    """Create agent in DB and initialize RAG for agent_id. Returns the created Agent."""
-    if agent_id is not None:
-        aid = uuid.UUID(str(agent_id)) if isinstance(agent_id, str) else agent_id
-    else:
-        aid = uuid.uuid4()
+    """Create agent in DB and initialize RAG. Agent ID is always server-generated. Returns the created Agent."""
+    aid = uuid.uuid4()
     instructions = instructions or []
     tools = tools or []
 
+    default_metadata = {"status": {"indexing": "completed", "enrich": "pending"}}
     with session_scope() as session:
         agent = Agent(
             id=aid,
@@ -55,6 +73,7 @@ def create_agent(
             name=name.strip(),
             mode=(mode or "EFFICIENCY").strip().upper() or "EFFICIENCY",
             prompt=prompt.strip() if prompt else None,
+            metadata_=default_metadata,
         )
         session.add(agent)
         session.flush()
@@ -77,18 +96,83 @@ def create_agent(
     return agent
 
 
-def list_agents_from_db(user_id: str | None = None) -> list[tuple[Agent, int]]:
-    """List agents from DB (optionally by user_id), with RAG doc count. Returns [(Agent, doc_count), ...]."""
+def set_agent_indexing_status(
+    agent_id: uuid.UUID | str,
+    status: str,
+    error_message: str | None = None,
+) -> bool:
+    """Set metadata.status.indexing to pending | completed | error. Merges into existing metadata. Returns True if updated."""
+    if status not in ("pending", "completed", "error"):
+        raise ValueError("status must be one of: pending, completed, error")
+    aid = uuid.UUID(str(agent_id)) if isinstance(agent_id, str) else agent_id
     with session_scope() as session:
-        q = session.query(Agent).filter(Agent.is_deleted == False)
+        agent = session.query(Agent).filter(Agent.id == aid, Agent.is_deleted == False).first()
+        if agent is None:
+            return False
+        current = agent.metadata_ or {}
+        if not isinstance(current, dict):
+            current = {}
+        status_obj = (current.get("status") or {}) if isinstance(current.get("status"), dict) else {}
+        status_obj["indexing"] = status
+        if error_message is not None:
+            status_obj["indexing_error"] = error_message
+        current["status"] = status_obj
+        agent.metadata_ = current
+        session.flush()
+    return True
+
+
+def set_agent_enrich_status(
+    agent_id: uuid.UUID | str,
+    status: str,
+    error_message: str | None = None,
+) -> bool:
+    """Set metadata.status.enrich to pending | completed | error. Merges into existing metadata. Returns True if updated."""
+    if status not in ("pending", "completed", "error"):
+        raise ValueError("status must be one of: pending, completed, error")
+    aid = uuid.UUID(str(agent_id)) if isinstance(agent_id, str) else agent_id
+    with session_scope() as session:
+        agent = session.query(Agent).filter(Agent.id == aid, Agent.is_deleted == False).first()
+        if agent is None:
+            return False
+        current = agent.metadata_ or {}
+        if not isinstance(current, dict):
+            current = {}
+        status_obj = (current.get("status") or {}) if isinstance(current.get("status"), dict) else {}
+        status_obj["enrich"] = status
+        if error_message is not None:
+            status_obj["enrich_error"] = error_message
+        current["status"] = status_obj
+        agent.metadata_ = current
+        session.flush()
+    return True
+
+
+def list_agents_from_db(
+    user_id: str | None = None,
+    page: int = 1,
+    limit: int = 20,
+) -> tuple[list[tuple[Agent, int]], int]:
+    """List agents from DB (optionally by user_id), with RAG doc count. Returns ([(Agent, doc_count), ...], total)."""
+    offset = (page - 1) * limit
+    with session_scope() as session:
+        q = (
+            session.query(Agent)
+            .filter(Agent.is_deleted == False)
+            .options(
+                joinedload(Agent.instructions),
+                joinedload(Agent.agent_tools).joinedload(AgentTool.tool),
+            )
+        )
         if user_id is not None:
             q = q.filter(Agent.user_id == user_id)
-        agents = q.order_by(Agent.updated_at.desc()).all()
+        total = q.count()
+        agents = q.order_by(Agent.updated_at.desc()).offset(offset).limit(limit).all()
         out = []
         for agent in agents:
             doc_count = _rag_doc_count(str(agent.id))
             out.append((agent, doc_count))
-        return out
+        return out, total
 
 
 @overload
@@ -121,6 +205,54 @@ def get_agent(
         if agent is not None:
             session.refresh(agent)
         return agent
+
+
+def _metadata_from_agent(agent: Agent) -> AgentMetadata:
+    """Build AgentMetadata from attached agent (must be called inside session)."""
+    status_obj = (
+        (agent.resolved_metadata.get("status") or {}) if isinstance(agent.resolved_metadata.get("status"), dict) else {}
+    )
+    indexing = status_obj.get("indexing", "completed")
+    enrich = status_obj.get("enrich", "pending")
+    return AgentMetadata(status=AgentStatusIndexing(indexing=indexing, enrich=enrich))
+
+
+def get_agent_detail_response(
+    agent_id: str | uuid.UUID,
+    user_id: str | None = None,
+) -> AgentDetailResponse | None:
+    """Load agent with relations and build detail response inside session. Returns None if not found."""
+    aid = uuid.UUID(str(agent_id)) if isinstance(agent_id, str) else agent_id
+    with session_scope() as session:
+        q = (
+            session.query(Agent)
+            .filter(Agent.id == aid, Agent.is_deleted == False)
+            .options(
+                joinedload(Agent.instructions),
+                joinedload(Agent.agent_tools).joinedload(AgentTool.tool),
+            )
+        )
+        if user_id is not None:
+            q = q.filter(Agent.user_id == user_id)
+        agent = q.first()
+        if agent is None:
+            return None
+        doc_count = _rag_doc_count(str(agent.id))
+        instructions = [i.content for i in sorted(agent.instructions, key=lambda x: x.order)]
+        tools = [AgentToolRef(id=str(at.tool.id), name=at.tool.name) for at in agent.agent_tools]
+        return AgentDetailResponse(
+            agent_id=str(agent.id),
+            user_id=agent.user_id,
+            name=agent.name,
+            mode=AgentMode(agent.mode),
+            prompt=agent.prompt,
+            instructions=instructions,
+            tools=tools,
+            doc_count=doc_count,
+            created_at=agent.created_at,
+            updated_at=agent.updated_at,
+            metadata=_metadata_from_agent(agent),
+        )
 
 
 def update_agent(

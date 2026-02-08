@@ -1,5 +1,5 @@
 import { useUser } from "@/providers/user";
-import type { Agent } from "@ai-router/client";
+import type { AgentInfo } from "@ai-router/client";
 import { listAgentsOptions } from "@ai-router/client/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
@@ -20,8 +20,9 @@ export default function AgentIdLayout({
     enabled: Boolean(user?.id),
   });
 
-  const agents = (agentsData as { data?: Agent[] } | undefined)?.data ?? [];
-  const agentInList = agents.some((a) => a.id === agentId);
+  const agents =
+    (agentsData as { agents?: AgentInfo[] } | undefined)?.agents ?? [];
+  const agentInList = agents.some((a) => a.agent_id === agentId);
 
   useEffect(() => {
     if (isPending || !agentId) return;

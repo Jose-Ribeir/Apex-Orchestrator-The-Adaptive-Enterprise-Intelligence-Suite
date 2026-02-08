@@ -1,13 +1,19 @@
 "use client";
 
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { formatDateTime } from "@/lib/format";
+import type { HumanTaskResponse } from "@ai-router/client";
 import {
   listHumanTasksOptions,
   resolveHumanTaskMutation,
 } from "@ai-router/client/react-query";
-import type { HumanTask } from "@ai-router/client";
+import { Badge } from "@ai-router/ui/badge";
 import { Button } from "@ai-router/ui/button";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@ai-router/ui/sheet";
 import {
   Table,
   TableBody,
@@ -16,19 +22,13 @@ import {
   TableHeader,
   TableRow,
 } from "@ai-router/ui/table";
-import { Badge } from "@ai-router/ui/badge";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@ai-router/ui/sheet";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Pencil } from "lucide-react";
-import { formatDateTime } from "@/lib/format";
+import { useState } from "react";
 
 export default function HumanTasksPage() {
   const queryClient = useQueryClient();
-  const [detailTask, setDetailTask] = useState<HumanTask | null>(null);
+  const [detailTask, setDetailTask] = useState<HumanTaskResponse | null>(null);
   const [statusFilter, setStatusFilter] = useState<boolean | undefined>(
     undefined,
   );
@@ -42,8 +42,7 @@ export default function HumanTasksPage() {
       },
     }),
   });
-  const tasks: HumanTask[] =
-    (response as { data?: HumanTask[] } | undefined)?.data ?? [];
+  const tasks: HumanTaskResponse[] = response?.data ?? [];
 
   const resolveTask = useMutation({
     ...resolveHumanTaskMutation(),
@@ -138,8 +137,9 @@ export default function HumanTasksPage() {
                         variant="ghost"
                         size="icon"
                         onClick={() =>
-                          task.id &&
-                          resolveTask.mutate({ path: { id: task.id } })
+                          resolveTask.mutate({
+                            path: { task_id: task.id },
+                          })
                         }
                         disabled={resolveTask.isPending}
                         aria-label="Resolve"
@@ -198,8 +198,9 @@ export default function HumanTasksPage() {
               {detailTask.status === "PENDING" && (
                 <Button
                   onClick={() =>
-                    detailTask.id &&
-                    resolveTask.mutate({ path: { id: detailTask.id } })
+                    resolveTask.mutate({
+                      path: { task_id: detailTask.id },
+                    })
                   }
                   disabled={resolveTask.isPending}
                 >

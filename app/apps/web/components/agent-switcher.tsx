@@ -3,7 +3,7 @@
 import { CreateAgentForm } from "@/components/create-agent-form";
 import { useActiveAgent } from "@/providers/active-agent";
 import { useUser } from "@/providers/user";
-import type { Agent } from "@ai-router/client";
+import type { AgentInfo } from "@ai-router/client";
 import { listAgentsOptions } from "@ai-router/client/react-query";
 import {
   DropdownMenu,
@@ -60,19 +60,19 @@ export function AgentSwitcher() {
     enabled: Boolean(user?.id),
   });
   const agents = React.useMemo(
-    () => (agentsData as { data?: Agent[] } | undefined)?.data ?? [],
+    () => (agentsData as { agents?: AgentInfo[] } | undefined)?.agents ?? [],
     [agentsData],
   );
   const activeAgent = agentId
-    ? agents.find((a) => a.id === agentId)
+    ? agents.find((a) => a.agent_id === agentId)
     : (agents[0] ?? null);
 
   // Sync active agent with list: set to first agent when none selected, or clear when current id is not in list
   React.useEffect(() => {
     if (agents.length === 0) return;
-    const firstId = agents[0]?.id ?? null;
+    const firstId = agents[0]?.agent_id ?? null;
     const currentInList = agentId
-      ? agents.some((a) => a.id === agentId)
+      ? agents.some((a) => a.agent_id === agentId)
       : false;
     if (!agentId || !activeAgent) {
       setAgentId(firstId);
@@ -131,11 +131,11 @@ export function AgentSwitcher() {
               Agents
             </DropdownMenuLabel>
             {agents
-              .filter((agent) => agent.id !== agentId)
+              .filter((agent) => agent.agent_id !== agentId)
               .map((agent) => (
                 <DropdownMenuItem
-                  key={agent.id}
-                  onClick={() => handleSwitchAgent(agent.id ?? null)}
+                  key={agent.agent_id}
+                  onClick={() => handleSwitchAgent(agent.agent_id ?? null)}
                   className="gap-2 p-2"
                 >
                   <div className="flex size-6 items-center justify-center rounded-sm border">
