@@ -37,6 +37,28 @@ async def get_current_user(
     return user
 
 
+async def get_current_user_optional(
+    request: Request,
+    authorization: str | None = Header(None, include_in_schema=False),
+) -> dict | None:
+    """Load current user from session cookie or Bearer token if present. Returns None if not authenticated."""
+    user_id = None
+    cookie = request.cookies.get(get_settings().cookie_name)
+    if cookie and cookie.strip():
+        user_id = get_session_user_id(cookie.strip())
+    if user_id is None and authorization and authorization.strip().lower().startswith("bearer "):
+        token = authorization[7:].strip()
+        if token:
+            token_hash = hash_api_token(token)
+            user_id = get_user_id_by_api_token(token_hash)
+
+    if user_id is None:
+        return None
+
+    user = get_user_by_id(user_id)
+    return user
+
+
 def get_current_user_id(current_user: dict) -> str:
     """Convenience: return current user id from dependency result."""
     return current_user["id"]
