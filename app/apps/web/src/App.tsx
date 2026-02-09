@@ -4,6 +4,7 @@ import AgentIdLayout from "@/app/(app)/agents/[agentId]/layout";
 import AgentQueriesPage from "@/app/(app)/agents/[agentId]/queries/page";
 import AgentStatsPage from "@/app/(app)/agents/[agentId]/stats/page";
 import AgentToolsPage from "@/app/(app)/agents/[agentId]/tools/page";
+import ConnectionsPage from "@/app/(app)/connections/page";
 import HumanTasksPage from "@/app/(app)/human-tasks/page";
 import NotificationsPage from "@/app/(app)/notifications/page";
 import DashboardPage from "@/app/(app)/page";
@@ -39,6 +40,7 @@ export default function App() {
       <Route element={<AppLayout />} path="/">
         <Route index element={<DashboardPage />} />
         <Route element={<HumanTasksPage />} path="human-tasks" />
+        <Route element={<ConnectionsPage />} path="connections" />
         <Route element={<NotificationsPage />} path="notifications" />
         <Route element={<ToolsPage />} path="tools" />
         <Route

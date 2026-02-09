@@ -1478,3 +1478,56 @@ export const ListAgentStatsResponseSchema = {
   title: "ListAgentStatsResponse",
   description: "Response for GET /api/agents/{agent_id}/stats",
 } as const;
+
+export const ConnectionItemSchema = {
+  type: "object",
+  required: ["id", "name", "providerKey", "connected"],
+  properties: {
+    id: {
+      type: "string",
+      format: "uuid",
+      title: "Id",
+      description: "Connection type ID",
+    },
+    name: {
+      type: "string",
+      title: "Name",
+      description: "Display name (e.g. Google)",
+    },
+    providerKey: {
+      type: "string",
+      title: "Provider Key",
+      description: "Provider key (e.g. google)",
+    },
+    connected: {
+      type: "boolean",
+      title: "Connected",
+      description: "Whether the current user has connected this provider",
+    },
+    userConnectionId: {
+      type: "string",
+      format: "uuid",
+      nullable: true,
+      title: "User Connection Id",
+      description: "User connection ID when connected, for disconnect",
+    },
+  },
+  title: "ConnectionItem",
+  description: "Single connection type with status for current user",
+} as const;
+
+export const ListConnectionsResponseSchema = {
+  type: "object",
+  required: ["data"],
+  properties: {
+    data: {
+      type: "array",
+      items: {
+        $ref: "#/components/schemas/ConnectionItem",
+      },
+      description: "Connection types with status",
+    },
+  },
+  title: "ListConnectionsResponse",
+  description: "Response for GET /api/connections",
+} as const;

@@ -48,9 +48,9 @@ from fastapi.responses import RedirectResponse
 
 from app import __version__
 from app.auth.routes import router as auth_router
-from app.routers import chat, health, index
+from app.routers import chat, connections, health, index
 from app.routers.api_router import api_router
-from app.seed import seed_tools
+from app.seed import seed_connection_types, seed_tools
 
 
 @asynccontextmanager
@@ -58,6 +58,7 @@ async def lifespan(app: FastAPI):
     """Startup/shutdown lifecycle."""
     try:
         seed_tools()
+        seed_connection_types()
     except Exception as e:
         logger.warning("Startup seed skipped: %s", e)
     yield
@@ -76,6 +77,7 @@ OPENAPI_TAGS = [
     {"name": "Human Tasks", "description": "Human-in-the-loop tasks for model queries."},
     {"name": "Chat", "description": "Streaming chat with router + generator pipeline."},
     {"name": "Index", "description": "RAG index: add, update, delete, and ingest documents."},
+    {"name": "Connections", "description": "OAuth connections (e.g. Google Gmail); list, connect, disconnect."},
 ]
 
 app = FastAPI(
@@ -109,6 +111,9 @@ app.include_router(auth_router)
 
 # Protected API (cookie or Bearer required)
 app.include_router(api_router)
+
+# Connections (auth on list/start/disconnect; callback is public)
+app.include_router(connections.router, prefix="/api")
 
 # Other routers at root (e.g. /health, /generate_stream)
 app.include_router(chat.router)

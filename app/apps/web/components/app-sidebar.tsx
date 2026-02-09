@@ -6,6 +6,7 @@ import {
   Bot,
   FileStack,
   FileText,
+  Link2,
   MessageSquare,
   Sliders,
   Wrench,
@@ -43,6 +44,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     { title: "Queries", url: `${agentBase}/queries`, icon: BarChart3 },
     { title: "Stats", url: `${agentBase}/stats`, icon: Activity },
     { title: "Human tasks", url: "/human-tasks", icon: Sliders },
+    { title: "Connections", url: "/connections", icon: Link2 },
   ];
 
   const settingsNav = [

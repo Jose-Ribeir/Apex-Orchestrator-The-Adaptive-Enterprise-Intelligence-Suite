@@ -96,6 +96,12 @@ import type {
   RevokeApiTokenData,
   RevokeApiTokenResponses,
   RevokeApiTokenErrors,
+  ListConnectionsData,
+  ListConnectionsResponses,
+  ListConnectionsErrors,
+  DisconnectUserConnectionData,
+  DisconnectUserConnectionResponses,
+  DisconnectUserConnectionErrors,
   ListToolsData,
   ListToolsResponses,
   ListToolsErrors,
@@ -757,6 +763,41 @@ export const revokeApiToken = <ThrowOnError extends boolean = false>(
     ThrowOnError
   >({
     url: "/api/api-tokens/{token_id}",
+    ...options,
+  });
+};
+
+/**
+ * List connections
+ * List supported connection types with connected status for current user.
+ */
+export const listConnections = <ThrowOnError extends boolean = false>(
+  options?: Options<ListConnectionsData, ThrowOnError>,
+) => {
+  return (options?.client ?? _heyApiClient).get<
+    ListConnectionsResponses,
+    ListConnectionsErrors,
+    ThrowOnError
+  >({
+    responseType: "json",
+    url: "/api/connections",
+    ...options,
+  });
+};
+
+/**
+ * Disconnect
+ * Remove current user's connection.
+ */
+export const disconnectUserConnection = <ThrowOnError extends boolean = false>(
+  options: Options<DisconnectUserConnectionData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).delete<
+    DisconnectUserConnectionResponses,
+    DisconnectUserConnectionErrors,
+    ThrowOnError
+  >({
+    url: "/api/connections/user/{user_connection_id}",
     ...options,
   });
 };

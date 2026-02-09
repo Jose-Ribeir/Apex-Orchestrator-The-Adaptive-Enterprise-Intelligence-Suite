@@ -978,6 +978,49 @@ export type ListAgentStatsResponse = {
   data: Array<AgentStatRow>;
 };
 
+/**
+ * ConnectionItem
+ * Single connection type with status for current user
+ */
+export type ConnectionItem = {
+  /**
+   * Id
+   * Connection type ID
+   */
+  id: string;
+  /**
+   * Name
+   * Display name (e.g. Google)
+   */
+  name: string;
+  /**
+   * Provider Key
+   * Provider key (e.g. google)
+   */
+  providerKey: string;
+  /**
+   * Connected
+   * Whether the current user has connected this provider
+   */
+  connected: boolean;
+  /**
+   * User Connection Id
+   * User connection ID when connected, for disconnect
+   */
+  userConnectionId?: string;
+};
+
+/**
+ * ListConnectionsResponse
+ * Response for GET /api/connections
+ */
+export type ListConnectionsResponse = {
+  /**
+   * Connection types with status
+   */
+  data: Array<ConnectionItem>;
+};
+
 export type LoginData = {
   body: LoginBody;
   path?: never;
@@ -1941,6 +1984,69 @@ export type RevokeApiTokenResponses = {
 
 export type RevokeApiTokenResponse =
   RevokeApiTokenResponses[keyof RevokeApiTokenResponses];
+
+export type ListConnectionsData = {
+  body?: never;
+  path?: never;
+  query?: never;
+  url: "/api/connections";
+};
+
+export type ListConnectionsErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type ListConnectionsError =
+  ListConnectionsErrors[keyof ListConnectionsErrors];
+
+export type ListConnectionsResponses = {
+  /**
+   * Successful Response
+   */
+  200: ListConnectionsResponse;
+};
+
+export type ListConnectionsResponse2 =
+  ListConnectionsResponses[keyof ListConnectionsResponses];
+
+export type DisconnectUserConnectionData = {
+  body?: never;
+  path: {
+    /**
+     * User Connection Id
+     */
+    user_connection_id: string;
+  };
+  query?: never;
+  url: "/api/connections/user/{user_connection_id}";
+};
+
+export type DisconnectUserConnectionErrors = {
+  /**
+   * Connection not found
+   */
+  404: unknown;
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type DisconnectUserConnectionError =
+  DisconnectUserConnectionErrors[keyof DisconnectUserConnectionErrors];
+
+export type DisconnectUserConnectionResponses = {
+  /**
+   * Successful Response
+   */
+  204: void;
+};
+
+export type DisconnectUserConnectionResponse =
+  DisconnectUserConnectionResponses[keyof DisconnectUserConnectionResponses];
 
 export type ListToolsData = {
   body?: never;

@@ -32,6 +32,8 @@ import {
   listApiTokens,
   createApiToken,
   revokeApiToken,
+  listConnections,
+  disconnectUserConnection,
   listTools,
   createTool,
   deleteTool,
@@ -123,6 +125,10 @@ import type {
   RevokeApiTokenData,
   RevokeApiTokenError,
   RevokeApiTokenResponse,
+  ListConnectionsData,
+  DisconnectUserConnectionData,
+  DisconnectUserConnectionError,
+  DisconnectUserConnectionResponse,
   ListToolsData,
   ListToolsError,
   CreateToolData,
@@ -1556,6 +1562,59 @@ export const revokeApiTokenMutation = (
   > = {
     mutationFn: async (localOptions) => {
       const { data } = await revokeApiToken({
+        ...options,
+        ...localOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
+
+export const listConnectionsQueryKey = (
+  options?: Options<ListConnectionsData>,
+) => createQueryKey("listConnections", options);
+
+/**
+ * List connections
+ * List supported connection types with connected status for current user.
+ */
+export const listConnectionsOptions = (
+  options?: Options<ListConnectionsData>,
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await listConnections({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: listConnectionsQueryKey(options),
+  });
+};
+
+/**
+ * Disconnect
+ * Remove current user's connection.
+ */
+export const disconnectUserConnectionMutation = (
+  options?: Partial<Options<DisconnectUserConnectionData>>,
+): UseMutationOptions<
+  DisconnectUserConnectionResponse,
+  AxiosError<DisconnectUserConnectionError>,
+  Options<DisconnectUserConnectionData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    DisconnectUserConnectionResponse,
+    AxiosError<DisconnectUserConnectionError>,
+    Options<DisconnectUserConnectionData>
+  > = {
+    mutationFn: async (localOptions) => {
+      const { data } = await disconnectUserConnection({
         ...options,
         ...localOptions,
         throwOnError: true,
