@@ -5,6 +5,7 @@ import hashlib
 import hmac
 import logging
 import secrets
+from datetime import datetime, timedelta, timezone
 from typing import Any
 from uuid import UUID
 
@@ -78,6 +79,16 @@ def list_connection_types_with_status(user_id: str) -> list[dict[str, Any]]:
         }
         for ct in types_rows
     ]
+
+
+def list_connection_provider_keys() -> list[str]:
+    """Return provider_key for all connection types (e.g. ['google']). No user context. Returns [] if DB empty or error."""  # noqa: E501
+    try:
+        with session_scope() as session:
+            rows = session.query(ConnectionType.provider_key).order_by(ConnectionType.provider_key).all()
+            return [r[0] for r in rows]
+    except Exception:
+        return []
 
 
 def get_oauth_start_url(connection_provider_key: str, user_id: str, redirect_uri: str) -> str:
@@ -171,6 +182,101 @@ def exchange_code_and_store(
             )
 
     return f"{settings.app_frontend_url.rstrip('/')}/settings/connections?connected={connection_provider_key}"
+
+
+GMAIL_API_BASE = "https://www.googleapis.com/gmail/v1"
+
+
+def get_valid_access_token(user_id: str, connection_provider_key: str) -> str | None:
+    """Return valid access_token for user's connection (refresh if expired). Only google. None if not connected or refresh fails."""  # noqa: E501
+    if connection_provider_key != "google":
+        return None
+    settings = get_settings()
+    if not settings.google_oauth_client_id or not settings.google_oauth_client_secret:
+        return None
+    with session_scope() as session:
+        ct = session.query(ConnectionType).filter(ConnectionType.provider_key == connection_provider_key).first()
+        if not ct:
+            return None
+        uc = (
+            session.query(UserConnection)
+            .filter(UserConnection.user_id == user_id, UserConnection.connection_type_id == ct.id)
+            .first()
+        )
+        if not uc or not uc.access_token:
+            return None
+        now = datetime.now(timezone.utc)
+        if uc.expires_at and uc.expires_at <= now and uc.refresh_token:
+            resp = requests.post(
+                GOOGLE_TOKEN_URL,
+                data={
+                    "client_id": settings.google_oauth_client_id.strip(),
+                    "client_secret": settings.google_oauth_client_secret.strip(),
+                    "refresh_token": uc.refresh_token,
+                    "grant_type": "refresh_token",
+                },
+                headers={"Content-Type": "application/x-www-form-urlencoded"},
+                timeout=30,
+            )
+            if resp.status_code != 200:
+                logger.warning("Google token refresh failed: %s %s", resp.status_code, resp.text[:200])
+                return uc.access_token
+            data = resp.json()
+            new_token = data.get("access_token")
+            expires_in = data.get("expires_in")
+            if new_token:
+                uc.access_token = new_token
+                if expires_in is not None:
+                    uc.expires_at = now + timedelta(seconds=int(expires_in))
+                return new_token
+        return uc.access_token
+
+
+def fetch_gmail_recent_summary(access_token: str, max_messages: int = 10) -> str:
+    """Fetch recent Gmail message summaries for chat context. Returns plain text or 'No recent messages.'"""  # noqa: E501
+    headers = {"Authorization": f"Bearer {access_token}"}
+    list_url = f"{GMAIL_API_BASE}/users/me/messages?maxResults={max_messages}"
+    try:
+        r = requests.get(list_url, headers=headers, timeout=15)
+        if r.status_code != 200:
+            logger.warning("Gmail list messages failed: %s %s", r.status_code, r.text[:200])
+            return "[Gmail: unable to list messages.]"
+        data = r.json()
+        messages = data.get("messages") or []
+        if not messages:
+            return "No recent messages."
+        lines = []
+        for i, m in enumerate(messages[:max_messages], 1):
+            msg_id = m.get("id")
+            if not msg_id:
+                continue
+            get_url = (
+                f"{GMAIL_API_BASE}/users/me/messages/{msg_id}"
+                "?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date"
+            )
+            mr = requests.get(get_url, headers=headers, timeout=10)
+            if mr.status_code != 200:
+                lines.append(f"Message {i}: [could not load]")
+                continue
+            md = mr.json()
+            from_h = subj_h = date_h = ""
+            for h in md.get("payload", {}).get("headers") or []:
+                n = (h.get("name") or "").lower()
+                v = h.get("value") or ""
+                if n == "from":
+                    from_h = v
+                elif n == "subject":
+                    subj_h = v
+                elif n == "date":
+                    date_h = v
+            snippet = (md.get("snippet") or "").strip()[:200]
+            if snippet:
+                snippet = " " + snippet
+            lines.append(f"Message {i} (id={msg_id}): From: {from_h} | Subject: {subj_h} | Date: {date_h}{snippet}")
+        return "\n".join(lines) if lines else "No recent messages."
+    except Exception as e:
+        logger.warning("Gmail fetch failed: %s", e, exc_info=True)
+        return "[Gmail: error fetching messages.]"
 
 
 def disconnect_user_connection(user_id: str, user_connection_id: UUID) -> bool:
