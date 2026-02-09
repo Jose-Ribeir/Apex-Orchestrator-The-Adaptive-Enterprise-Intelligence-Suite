@@ -1,86 +1,80 @@
 services:
-  redis:
-    image: redis:7-alpine
-    restart: ${RESTART_POLICY:-unless-stopped}
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: ${HEALTHCHECK_INTERVAL:-5s}
-      timeout: ${HEALTHCHECK_TIMEOUT:-3s}
-      retries: ${HEALTHCHECK_RETRIES:-5}
-
   postgres:
-    # pgvector image includes vector extension (required for RAG_PROVIDER=pgvector)
-    image: pgvector/pgvector:${POSTGRES_IMAGE_TAG:-pg16}
-    restart: ${RESTART_POLICY:-unless-stopped}
+    image: 'pgvector/pgvector:pg16'
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-ai_router}
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      POSTGRES_USER: '${POSTGRES_USER}'
+      POSTGRES_PASSWORD: '${POSTGRES_PASSWORD}'
+      POSTGRES_DB: '${POSTGRES_DB}'
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - 'postgres_data:/var/lib/postgresql/data'
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-ai_router}"]
-      interval: ${HEALTHCHECK_INTERVAL:-5s}
-      timeout: ${HEALTHCHECK_TIMEOUT:-5s}
-      retries: ${HEALTHCHECK_RETRIES:-5}
-
-  minio:
-    image: minio/minio:latest
-    restart: ${RESTART_POLICY:-unless-stopped}
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
-    ports:
-      - "${MINIO_API_PORT:-9000}:9000"
-      - "${MINIO_CONSOLE_PORT:-9001}:9001"
-    volumes:
-      - minio_data:/data
-
+      test:
+        - CMD-SHELL
+        - 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}'
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
   api:
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
-    restart: ${RESTART_POLICY:-unless-stopped}
-    ports:
-      - "${API_PORT:-4000}:${API_PORT:-4000}"
-    env_file: .env
+    image: 'ghcr.io/jose-ribeir/geminimesh/api:latest'
+    restart: unless-stopped
     environment:
-      NODE_ENV: ${NODE_ENV:-production}
-      PORT: ${API_PORT:-4000}
-      DATABASE_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-ai_router}
-      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
-      PYTHON_API_URL: ${PYTHON_API_URL:-}
-      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-}
-      BETTER_AUTH_URL: ${BETTER_AUTH_URL:-http://localhost:4000}
-      APP_URL: ${APP_URL:-http://localhost:3000}
+      NODE_ENV: production
+      PORT: 4000
+      DATABASE_URL: 'postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}'
+      BETTER_AUTH_SECRET: '${BETTER_AUTH_SECRET}'
+      BETTER_AUTH_URL: '${BETTER_AUTH_URL}'
+      GOOGLE_CLIENT_ID: '${GOOGLE_CLIENT_ID}'
+      GOOGLE_CLIENT_SECRET: '${GOOGLE_CLIENT_SECRET}'
+      APP_URL: '${APP_URL}'
+      PYTHON_API_URL: '${PYTHON_API_URL}'
+      SQL_LOGGING: 'false'
     depends_on:
       postgres:
         condition: service_healthy
-
+    networks:
+      - backend
   web:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
-      args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:4000}
-        VITE_APP_URL: ${VITE_APP_URL:-http://localhost:3000}
-    restart: ${RESTART_POLICY:-unless-stopped}
-    ports:
-      - "${WEB_PORT:-3000}:${WEB_PORT:-3000}"
-    env_file: .env
+    image: 'ghcr.io/jose-ribeir/geminimesh/web:latest'
+    restart: unless-stopped
     environment:
-      NODE_ENV: ${NODE_ENV:-production}
+      NODE_ENV: production
+      PORT: 3000
+      VITE_API_URL: '${VITE_API_URL}'
+      VITE_APP_URL: '${VITE_APP_URL}'
     depends_on:
       - api
-
+    networks:
+      - backend
+  minio:
+    image: 'minio/minio:latest'
+    restart: unless-stopped
+    command: 'server /data'
+    environment:
+      MINIO_ROOT_USER: '${MINIO_ROOT_USER}'
+      MINIO_ROOT_PASSWORD: '${MINIO_ROOT_PASSWORD}'
+    volumes:
+      - 'minio_data:/data'
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    healthcheck:
+      test:
+        - CMD
+        - mc
+        - ready
+        - local
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - backend
+networks:
+  backend:
+    driver: bridge
 volumes:
-  postgres_data:
-  redis_data:
-  minio_data:
+  postgres_data: null
+  minio_data: null
