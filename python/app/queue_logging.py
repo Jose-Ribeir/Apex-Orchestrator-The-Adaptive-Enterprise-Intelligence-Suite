@@ -37,6 +37,17 @@ def _extra(
     return out
 
 
+def log_worker_started(queue_name: str, worker_type: str = "indexing") -> None:
+    """Log when a worker process has started and is listening for jobs."""
+    extra_dict: dict[str, Any] = {
+        "event": "worker_started",
+        "queue_name": queue_name,
+        "worker_type": worker_type,
+    }
+    msg = json.dumps(extra_dict)
+    logger.info(msg, extra=extra_dict)
+
+
 def log_queue_event(
     job_id: str,
     agent_id: str,
@@ -49,7 +60,10 @@ def log_queue_event(
     attempt: int | None = None,
     queue_name: str = "agent-indexing",
 ) -> None:
-    """Emit one structured log line for queue lifecycle. event: enqueued | started | completed | failed | retrying."""
+    """Emit one structured log line for queue lifecycle.
+    event: enqueued | received | processing | started | completed | failed | retrying | worker_started.
+    Use job_id=agent_id='' for worker_started.
+    """
     extra_dict = _extra(
         job_id=job_id,
         agent_id=agent_id,

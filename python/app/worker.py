@@ -2,9 +2,10 @@
 
 import asyncio
 import signal
+import time
 
 from app.config import get_settings
-from app.queue_logging import log_queue_event
+from app.queue_logging import log_queue_event, log_worker_started
 from app.services.indexing_queue import QUEUE_NAME, run_job_sync
 
 
@@ -15,12 +16,24 @@ async def process(job, job_token):
     agent_id = data.get("agent_id") or ""
     job_type = data.get("job_type") or ""
     attempt = getattr(job, "attemptsMade", 0) + 1
+    started_at = time.monotonic()
 
-    log_queue_event(job_id, agent_id, job_type, "started", attempt=attempt, queue_name=QUEUE_NAME)
+    log_queue_event(job_id, agent_id, job_type, "received", attempt=attempt, queue_name=QUEUE_NAME)
+    log_queue_event(job_id, agent_id, job_type, "processing", attempt=attempt, queue_name=QUEUE_NAME)
 
     try:
         payload = {**data, "_job_id": job_id}
         await asyncio.to_thread(run_job_sync, payload)
+        duration_ms = int((time.monotonic() - started_at) * 1000)
+        log_queue_event(
+            job_id,
+            agent_id,
+            job_type,
+            "completed",
+            attempt=attempt,
+            duration_ms=duration_ms,
+            queue_name=QUEUE_NAME,
+        )
     except Exception as e:
         log_queue_event(
             job_id,
@@ -54,6 +67,7 @@ async def main():
         process,
         {"connection": settings.redis_url.strip(), "decode_responses": True},
     )
+    log_worker_started(QUEUE_NAME, worker_type="indexing")
 
     await shutdown.wait()
     await worker.close()
