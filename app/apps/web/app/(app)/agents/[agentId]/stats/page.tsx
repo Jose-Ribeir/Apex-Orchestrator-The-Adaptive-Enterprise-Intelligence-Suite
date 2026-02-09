@@ -1,15 +1,31 @@
 import { formatDate } from "@/lib/format";
+import type { AgentStatRow } from "@ai-router/client";
 import { listAgentStatsOptions } from "@ai-router/client/react-query";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@ai-router/ui/table";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+
+const tooltipStyle = {
+  backgroundColor: "var(--card)",
+  color: "var(--card-foreground)",
+  border: "1px solid var(--border)",
+  borderRadius: "12px",
+  boxShadow: "0 4px 24px rgba(0,0,0,0.12)",
+  padding: "12px 16px",
+  fontSize: "13px",
+};
 
 export default function AgentStatsPage() {
   const params = useParams();
@@ -24,28 +40,21 @@ export default function AgentStatsPage() {
     enabled: Boolean(agentId),
   });
 
-  const stats =
-    (
-      response as
-        | {
-            data?: Array<{
-              id: string;
-              date: string;
-              totalQueries?: number;
-              totalTokens?: number | null;
-              avgEfficiency?: number | null;
-              avgQuality?: number | null;
-            }>;
-          }
-        | undefined
-    )?.data ?? [];
+  const stats: AgentStatRow[] = response?.data ?? [];
+
+  const chartData = [...stats].reverse();
+
+  const hasQueries = chartData.some((s) => (s.totalQueries ?? 0) > 0);
+  const hasTokens = chartData.some((s) => (s.totalTokens ?? 0) > 0);
+  const hasEfficiency = chartData.some((s) => s.avgEfficiency != null);
+  const hasQuality = chartData.some((s) => s.avgQuality != null);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold">Daily stats</h1>
-        <p className="text-muted-foreground">
-          Daily aggregates for this agent.
+        <h1 className="text-2xl font-bold tracking-tight">Daily stats</h1>
+        <p className="text-muted-foreground text-sm">
+          Usage and performance over the last {days} days.
         </p>
       </div>
 
@@ -55,35 +64,268 @@ export default function AgentStatsPage() {
         <p className="text-muted-foreground text-sm">Loading…</p>
       ) : stats.length === 0 ? (
         <p className="text-muted-foreground text-sm">
-          No stats for the last {days} days. Use the agent to generate queries.
+          No stats yet. Use the agent to generate queries.
         </p>
       ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Date</TableHead>
-              <TableHead>Queries</TableHead>
-              <TableHead>Tokens</TableHead>
-              <TableHead>Avg efficiency</TableHead>
-              <TableHead>Avg quality</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {stats.map((s) => (
-              <TableRow key={s.id}>
-                <TableCell>{formatDate(s.date)}</TableCell>
-                <TableCell>{s.totalQueries ?? "—"}</TableCell>
-                <TableCell>{s.totalTokens ?? "—"}</TableCell>
-                <TableCell>
-                  {s.avgEfficiency != null ? s.avgEfficiency.toFixed(2) : "—"}
-                </TableCell>
-                <TableCell>
-                  {s.avgQuality != null ? s.avgQuality.toFixed(2) : "—"}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+        <div className="grid gap-6 sm:grid-cols-1 lg:grid-cols-2">
+          {hasQueries && (
+            <div className="rounded-xl border border-border/80 bg-card/50 p-5 shadow-sm backdrop-blur-sm">
+              <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                Queries per day
+              </h2>
+              <div className="h-[260px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={chartData}
+                    margin={{ top: 16, right: 16, left: 0, bottom: 0 }}
+                  >
+                    <defs>
+                      <linearGradient
+                        id="barQueries"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
+                        <stop
+                          offset="0%"
+                          stopColor="var(--chart-1)"
+                          stopOpacity={1}
+                        />
+                        <stop
+                          offset="100%"
+                          stopColor="var(--chart-1)"
+                          stopOpacity={0.7}
+                        />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="var(--border)"
+                      vertical={false}
+                    />
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={(d) => formatDate(d)}
+                      tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+                      allowDecimals={false}
+                      axisLine={false}
+                      tickLine={false}
+                      width={28}
+                    />
+                    <Tooltip
+                      contentStyle={tooltipStyle}
+                      labelFormatter={(d) => formatDate(d)}
+                      cursor={{ fill: "var(--muted)", opacity: 0.5, radius: 4 }}
+                    />
+                    <Bar
+                      dataKey="totalQueries"
+                      name="Queries"
+                      fill="url(#barQueries)"
+                      radius={[6, 6, 0, 0]}
+                      maxBarSize={48}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+
+          {hasTokens && (
+            <div className="rounded-xl border border-border/80 bg-card/50 p-5 shadow-sm backdrop-blur-sm">
+              <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                Tokens per day
+              </h2>
+              <div className="h-[260px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart
+                    data={chartData}
+                    margin={{ top: 16, right: 16, left: 0, bottom: 0 }}
+                  >
+                    <defs>
+                      <linearGradient
+                        id="areaTokens"
+                        x1="0"
+                        y1="0"
+                        x2="0"
+                        y2="1"
+                      >
+                        <stop
+                          offset="0%"
+                          stopColor="var(--chart-2)"
+                          stopOpacity={0.5}
+                        />
+                        <stop
+                          offset="100%"
+                          stopColor="var(--chart-2)"
+                          stopOpacity={0.05}
+                        />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="var(--border)"
+                      vertical={false}
+                    />
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={(d) => formatDate(d)}
+                      tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+                      tickFormatter={(v) =>
+                        v >= 1000 ? `${(v / 1000).toFixed(1)}k` : String(v)
+                      }
+                      axisLine={false}
+                      tickLine={false}
+                      width={36}
+                    />
+                    <Tooltip
+                      contentStyle={tooltipStyle}
+                      labelFormatter={(d) => formatDate(d)}
+                      formatter={(value: number) => [
+                        value.toLocaleString(),
+                        "Tokens",
+                      ]}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="totalTokens"
+                      name="Tokens"
+                      stroke="var(--chart-2)"
+                      strokeWidth={2.5}
+                      fill="url(#areaTokens)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+
+          {hasEfficiency && (
+            <div className="rounded-xl border border-border/80 bg-card/50 p-5 shadow-sm backdrop-blur-sm">
+              <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                Avg response time
+              </h2>
+              <div className="h-[260px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={chartData}
+                    margin={{ top: 16, right: 16, left: 0, bottom: 0 }}
+                  >
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="var(--border)"
+                      vertical={false}
+                    />
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={(d) => formatDate(d)}
+                      tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
+                      width={40}
+                      tickFormatter={(v) => `${v} ms`}
+                    />
+                    <Tooltip
+                      contentStyle={tooltipStyle}
+                      labelFormatter={(d) => formatDate(d)}
+                      formatter={(value: number) => [
+                        `${value.toFixed(0)} ms`,
+                        "Avg latency",
+                      ]}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="avgEfficiency"
+                      name="Avg latency"
+                      stroke="var(--chart-3)"
+                      strokeWidth={2.5}
+                      dot={{ fill: "var(--chart-3)", r: 4, strokeWidth: 0 }}
+                      activeDot={{
+                        r: 6,
+                        strokeWidth: 2,
+                        stroke: "var(--background)",
+                      }}
+                      connectNulls
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+
+          {hasQuality && (
+            <div className="rounded-xl border border-border/80 bg-card/50 p-5 shadow-sm backdrop-blur-sm">
+              <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                Avg quality score
+              </h2>
+              <div className="h-[260px] w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={chartData}
+                    margin={{ top: 16, right: 16, left: 0, bottom: 0 }}
+                  >
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      stroke="var(--border)"
+                      vertical={false}
+                    />
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={(d) => formatDate(d)}
+                      tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+                      axisLine={false}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      tick={{ fill: "var(--muted-foreground)", fontSize: 11 }}
+                      domain={[0, 5]}
+                      axisLine={false}
+                      tickLine={false}
+                      width={28}
+                    />
+                    <Tooltip
+                      contentStyle={tooltipStyle}
+                      labelFormatter={(d) => formatDate(d)}
+                      formatter={(value: number) => [
+                        value?.toFixed(2) ?? "—",
+                        "Avg quality",
+                      ]}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="avgQuality"
+                      name="Avg quality"
+                      stroke="var(--chart-4)"
+                      strokeWidth={2.5}
+                      dot={{ fill: "var(--chart-4)", r: 4, strokeWidth: 0 }}
+                      activeDot={{
+                        r: 6,
+                        strokeWidth: 2,
+                        stroke: "var(--background)",
+                      }}
+                      connectNulls
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
