@@ -36,7 +36,13 @@ async def enqueue_generate_prompt(agent_id: uuid.UUID) -> str | None:
     if q is None:
         return None
     agent_id_str = str(agent_id)
-    job = await q.add("generate_prompt", {"agent_id": agent_id_str})
+    # Retry failed jobs: 10 attempts with exponential backoff (1s, 2s, 4s, ...) so transient
+    # failures (e.g. LLM rate limits, network) are retried; permanent failures eventually stop.
+    job_opts = {
+        "attempts": 10,
+        "backoff": {"type": "exponential", "delay": 1000},
+    }
+    job = await q.add("generate_prompt", {"agent_id": agent_id_str}, job_opts)
     job_id = str(job.id) if job and getattr(job, "id", None) is not None else ""
     if job_id:
         log_queue_event(job_id, agent_id_str, "generate_prompt", "enqueued", queue_name=QUEUE_NAME)

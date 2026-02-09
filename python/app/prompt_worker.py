@@ -36,6 +36,8 @@ async def process(job, job_token):
     job_type = "generate_prompt"
     started_at = time.monotonic()
 
+    if attempt > 1:
+        log_queue_event(job_id, agent_id, job_type, "retrying", attempt=attempt, queue_name=QUEUE_NAME)
     log_queue_event(job_id, agent_id, job_type, "received", attempt=attempt, queue_name=QUEUE_NAME)
     log_queue_event(job_id, agent_id, job_type, "processing", attempt=attempt, queue_name=QUEUE_NAME)
 
