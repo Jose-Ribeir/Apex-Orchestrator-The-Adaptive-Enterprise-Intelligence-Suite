@@ -83,26 +83,6 @@ services:
     networks:
       - backend
 
-  worker-prompt:
-    image: 'ghcr.io/jose-ribeir/geminimesh/api:latest'
-    restart: unless-stopped
-    command: python -m app.prompt_worker
-    environment:
-      DATABASE_URL: 'postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}'
-      REDIS_URL: 'redis://redis:6379'
-      RAG_PROVIDER: pgvector
-      LLM_PROVIDER: groq
-      GROQ_API_KEY: '${GROQ_API_KEY}'
-      GEMINI_API_KEY: '${GEMINI_API_KEY}'
-      GEMINIMESH_REQUEST_TIMEOUT: '${GEMINIMESH_REQUEST_TIMEOUT}'
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    networks:
-      - backend
-
   web:
     image: 'ghcr.io/jose-ribeir/geminimesh/web:latest'
     restart: unless-stopped

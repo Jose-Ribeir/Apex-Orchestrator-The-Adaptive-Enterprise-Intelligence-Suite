@@ -1,4 +1,4 @@
-"""BullMQ worker for agent-indexing queue. Run with: python -m app.worker"""
+"""BullMQ worker for agent-indexing and agent-prompt-generation queues. Run with: python -m app.worker"""
 
 import asyncio
 import logging
@@ -8,9 +8,13 @@ import time
 
 from app.config import get_settings
 from app.queue_logging import log_queue_event, log_worker_started
-from app.services.indexing_queue import QUEUE_NAME, run_job_sync
+from app.services.indexing_queue import QUEUE_NAME as INDEXING_QUEUE, run_job_sync
+from app.services.prompt_queue import QUEUE_NAME as PROMPT_QUEUE, run_prompt_job_sync
 
 logger = logging.getLogger("app.worker")
+
+INDEXING_QUEUE_NAME = INDEXING_QUEUE
+PROMPT_QUEUE_NAME = PROMPT_QUEUE
 
 
 def _configure_logging() -> None:
@@ -23,12 +27,11 @@ def _configure_logging() -> None:
     root = logging.getLogger()
     root.setLevel(logging.INFO)
     root.addHandler(handler)
-    # Ensure app loggers emit
     logging.getLogger("app.worker").setLevel(logging.INFO)
     logging.getLogger("app.queue").setLevel(logging.INFO)
 
 
-async def process(job, job_token):
+async def process_indexing(job, job_token):
     """Process one indexing job. job.data has agent_id, job_type, and payload."""
     data = job.data or {}
     job_id = str(getattr(job, "id", "") or "")
@@ -38,7 +41,7 @@ async def process(job, job_token):
     started_at = time.monotonic()
 
     if attempt > 1:
-        log_queue_event(job_id, agent_id, job_type, "retrying", attempt=attempt, queue_name=QUEUE_NAME)
+        log_queue_event(job_id, agent_id, job_type, "retrying", attempt=attempt, queue_name=INDEXING_QUEUE_NAME)
     logger.info(
         "Task received: job_id=%s agent_id=%s job_type=%s attempt=%s",
         job_id,
@@ -46,8 +49,8 @@ async def process(job, job_token):
         job_type,
         attempt,
     )
-    log_queue_event(job_id, agent_id, job_type, "received", attempt=attempt, queue_name=QUEUE_NAME)
-    log_queue_event(job_id, agent_id, job_type, "processing", attempt=attempt, queue_name=QUEUE_NAME)
+    log_queue_event(job_id, agent_id, job_type, "received", attempt=attempt, queue_name=INDEXING_QUEUE_NAME)
+    log_queue_event(job_id, agent_id, job_type, "processing", attempt=attempt, queue_name=INDEXING_QUEUE_NAME)
 
     try:
         payload = {**data, "_job_id": job_id}
@@ -67,7 +70,7 @@ async def process(job, job_token):
             "completed",
             attempt=attempt,
             duration_ms=duration_ms,
-            queue_name=QUEUE_NAME,
+            queue_name=INDEXING_QUEUE_NAME,
         )
     except Exception as e:
         logger.exception("Job failed: job_id=%s job_type=%s error=%s", job_id, job_type, e)
@@ -78,7 +81,54 @@ async def process(job, job_token):
             "failed",
             error=str(e),
             attempt=attempt,
-            queue_name=QUEUE_NAME,
+            queue_name=INDEXING_QUEUE_NAME,
+        )
+        raise
+
+
+async def process_prompt(job, job_token):
+    """Process one prompt-generation job. job.data has agent_id."""
+    data = job.data or {}
+    job_id = str(getattr(job, "id", "") or "")
+    agent_id = data.get("agent_id") or ""
+    attempt = getattr(job, "attemptsMade", 0) + 1
+    job_type = "generate_prompt"
+    started_at = time.monotonic()
+
+    if attempt > 1:
+        log_queue_event(job_id, agent_id, job_type, "retrying", attempt=attempt, queue_name=PROMPT_QUEUE_NAME)
+    log_queue_event(job_id, agent_id, job_type, "received", attempt=attempt, queue_name=PROMPT_QUEUE_NAME)
+    log_queue_event(job_id, agent_id, job_type, "processing", attempt=attempt, queue_name=PROMPT_QUEUE_NAME)
+
+    try:
+        payload = {**data, "_job_id": job_id}
+        await asyncio.to_thread(run_prompt_job_sync, payload)
+        duration_ms = int((time.monotonic() - started_at) * 1000)
+        logger.info(
+            "Job completed: job_id=%s job_type=%s duration_ms=%s",
+            job_id,
+            job_type,
+            duration_ms,
+        )
+        log_queue_event(
+            job_id,
+            agent_id,
+            job_type,
+            "completed",
+            attempt=attempt,
+            duration_ms=duration_ms,
+            queue_name=PROMPT_QUEUE_NAME,
+        )
+    except Exception as e:
+        logger.exception("Job failed: job_id=%s job_type=%s error=%s", job_id, job_type, e)
+        log_queue_event(
+            job_id,
+            agent_id,
+            job_type,
+            "failed",
+            error=str(e),
+            attempt=attempt,
+            queue_name=PROMPT_QUEUE_NAME,
         )
         raise
 
@@ -100,20 +150,21 @@ async def main():
 
     from bullmq import Worker
 
-    logger.info("Starting worker for queue=%s", QUEUE_NAME)
-    worker = Worker(
-        QUEUE_NAME,
-        process,
-        {"connection": settings.redis_url.strip(), "decode_responses": True},
-    )
-    log_worker_started(QUEUE_NAME, worker_type="indexing")
+    connection = {"connection": settings.redis_url.strip(), "decode_responses": True}
+
+    logger.info("Starting worker for queues %s and %s", INDEXING_QUEUE_NAME, PROMPT_QUEUE_NAME)
+    worker_indexing = Worker(INDEXING_QUEUE_NAME, process_indexing, connection)
+    worker_prompt = Worker(PROMPT_QUEUE_NAME, process_prompt, connection)
+    log_worker_started(INDEXING_QUEUE_NAME, worker_type="indexing")
+    log_worker_started(PROMPT_QUEUE_NAME, worker_type="prompt")
 
     await shutdown.wait()
-    logger.info("Closing worker")
-    await worker.close()
+    logger.info("Closing workers")
+    await worker_indexing.close()
+    await worker_prompt.close()
 
 
 if __name__ == "__main__":
     _configure_logging()
-    logger.info("Worker process starting (queue=%s)", QUEUE_NAME)
+    logger.info("Worker process starting (queues: %s, %s)", INDEXING_QUEUE_NAME, PROMPT_QUEUE_NAME)
     asyncio.run(main())

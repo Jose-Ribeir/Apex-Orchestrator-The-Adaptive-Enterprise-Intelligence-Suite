@@ -1,7 +1,7 @@
 # Database migrations (Alembic). Run from python/ with DATABASE_URL set.
-# Workers: run with REDIS_URL set. Indexing = documents; prompt = agent prompt generation.
+# Worker: run with REDIS_URL set. Handles indexing (documents) and prompt generation queues.
 
-.PHONY: migrate migrate-up migrate-down migrate-redo seed worker worker-prompt
+.PHONY: migrate migrate-up migrate-down migrate-redo seed worker
 
 # Apply all pending migrations
 migrate: migrate-up
@@ -20,10 +20,6 @@ migrate-redo: migrate-down migrate-up
 seed:
 	python -c "from app.seed import seed_tools; seed_tools()"
 
-# Document indexing worker (ingest, add-document jobs)
+# Single worker for indexing (ingest, add-document) and prompt generation queues
 worker:
 	python -m app.worker
-
-# Agent prompt generation worker (generate-prompt on agent creation)
-worker-prompt:
-	python -m app.prompt_worker

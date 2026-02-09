@@ -1,4 +1,4 @@
-"""Prompt generation queue: enqueue generate-prompt jobs (BullMQ) and run them in prompt_worker."""
+"""Prompt generation queue: enqueue generate-prompt jobs (BullMQ) and run them in worker."""
 
 import time
 import uuid
@@ -51,7 +51,7 @@ async def enqueue_generate_prompt(agent_id: uuid.UUID) -> str | None:
 
 def run_prompt_job_sync(data: dict) -> None:
     """
-    Run one prompt-generation job. Called from prompt_worker.
+    Run one prompt-generation job. Called from worker.
     Loads agent, runs optimize_agent_prompt, updates agent.prompt in DB, sets metadata.status.enrich.
     Raises on failure so worker can log and retry.
     """
