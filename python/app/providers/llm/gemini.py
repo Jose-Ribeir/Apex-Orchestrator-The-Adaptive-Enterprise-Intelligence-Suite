@@ -4,10 +4,16 @@
 class GeminiLLMProvider:
     """LLM provider using Google Gemini (router + generator)."""
 
-    def run_cheap_router(self, agent_name: str, tools_list: str, query: str):
+    def run_cheap_router(
+        self,
+        agent_name: str,
+        tools_list: str,
+        query: str,
+        connections_list: list[str] | None = None,
+    ):
         from app.services import gemini_router
 
-        return gemini_router.run_cheap_router(agent_name, tools_list, query)
+        return gemini_router.run_cheap_router(agent_name, tools_list, query, connections_list=connections_list)
 
     def run_generator_stream(
         self,

@@ -32,21 +32,30 @@ def _get_client():
 
 ROUTER_TEMPLATE = """AGENT: {agent_name}
 TOOLS: {tools_list}
+CONNECTIONS: {connections_list}
 QUERY: "{query}"
 
 Reply with JSON only:
-{{"needs_rag": true/false, "tools_needed": ["RAG"] or [], "model_to_use": "llama-3.3-70b-versatile" or "llama-3.1-8b-instant", "reason": "one sentence"}}
+{{"needs_rag": true/false, "tools_needed": ["RAG"] or [], "connections_needed": ["google"] or [], "model_to_use": "llama-3.3-70b-versatile" or "llama-3.1-8b-instant", "reason": "one sentence"}}
 """  # noqa: E501
 
 
 class GroqLLMProvider:
     """LLM provider using Groq (fast inference, free tier)."""
 
-    def run_cheap_router(self, agent_name: str, tools_list: str, query: str) -> dict[str, Any]:
+    def run_cheap_router(
+        self,
+        agent_name: str,
+        tools_list: str,
+        query: str,
+        connections_list: list[str] | None = None,
+    ) -> dict[str, Any]:
         client = _get_client()
+        connections_json = json.dumps(connections_list or [])
         prompt = ROUTER_TEMPLATE.format(
             agent_name=agent_name,
             tools_list=tools_list,
+            connections_list=connections_json,
             query=query,
         )
         resp = client.chat.completions.create(
@@ -61,6 +70,7 @@ class GroqLLMProvider:
             return {
                 "needs_rag": True,
                 "tools_needed": ["RAG"],
+                "connections_needed": [],
                 "model_to_use": GENERATOR_MODEL_DEFAULT,
                 "reason": "parse fallback",
             }
@@ -117,6 +127,7 @@ class GroqLLMProvider:
                         "router_model": ROUTER_MODEL,
                         "generator_model": model,
                         "tools_used": tool_decision.get("tools_needed", []),
+                        "connections_used": tool_decision.get("connections_needed", []),
                         "docs_retrieved": docs_count,
                         "total_docs": total_docs,
                         "total_tokens": output_tokens,

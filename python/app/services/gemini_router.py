@@ -20,12 +20,14 @@ CHEAP ROUTER (gemini-2.5-flash-lite) - 50 tokens max:
 
 AGENT: {agent_name}
 TOOLS: {tools_list}
+CONNECTIONS: {connections_list}
 QUERY: "{query}"
 
 JSON ONLY:
 {{
   "needs_rag": true/false,
   "tools_needed": ["RAG"]|["RAG","Calculator"]|[],
+  "connections_needed": ["google"]|[],
   "model_to_use": "gemini-3-pro-preview"|"gemini-3-flash-preview"|"gemini-2.5-flash",
   "reason": "1-sentence"
 }}
@@ -42,12 +44,19 @@ def _get_client() -> genai.Client:
     return _client
 
 
-def run_cheap_router(agent_name: str, tools_list: str, query: str) -> dict[str, Any]:
-    """Call gemini-2.5-flash-lite to get needs_rag, tools_needed, model_to_use."""
+def run_cheap_router(
+    agent_name: str,
+    tools_list: str,
+    query: str,
+    connections_list: list[str] | None = None,
+) -> dict[str, Any]:
+    """Call gemini-2.5-flash-lite to get needs_rag, tools_needed, connections_needed, model_to_use."""
     client = _get_client()
+    connections_json = json.dumps(connections_list or [])
     prompt = CHEAP_ROUTER_TEMPLATE.format(
         agent_name=agent_name,
         tools_list=tools_list,
+        connections_list=connections_json,
         query=query,
     )
     resp = client.models.generate_content(
@@ -60,6 +69,7 @@ def run_cheap_router(agent_name: str, tools_list: str, query: str) -> dict[str, 
         return {
             "needs_rag": True,
             "tools_needed": ["RAG"],
+            "connections_needed": [],
             "model_to_use": "gemini-2.5-flash",
             "reason": "fallback",
         }
@@ -128,6 +138,7 @@ def run_generator_stream(
                     "router_model": "gemini-2.5-flash-lite",
                     "generator_model": model_name,
                     "tools_used": tool_decision.get("tools_needed", []),
+                    "connections_used": tool_decision.get("connections_needed", []),
                     "docs_retrieved": docs_count,
                     "total_docs": total_docs,
                     "total_tokens": output_tokens,

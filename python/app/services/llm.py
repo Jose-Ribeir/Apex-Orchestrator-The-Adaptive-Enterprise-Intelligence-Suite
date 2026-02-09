@@ -6,8 +6,13 @@ Google integration remains in gemini_router; alternative in providers.llm.openai
 from app.providers.llm import get_llm_provider
 
 
-def run_cheap_router(agent_name: str, tools_list: str, query: str):
-    return get_llm_provider().run_cheap_router(agent_name, tools_list, query)
+def run_cheap_router(
+    agent_name: str,
+    tools_list: str,
+    query: str,
+    connections_list: list[str] | None = None,
+):
+    return get_llm_provider().run_cheap_router(agent_name, tools_list, query, connections_list=connections_list)
 
 
 def run_generator_stream(

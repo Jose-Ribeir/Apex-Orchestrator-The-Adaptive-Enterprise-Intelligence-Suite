@@ -9,8 +9,14 @@ from app.schemas.requests import AgentConfig
 class LLMProvider(Protocol):
     """Single backend for router + generator + prompt building. Implementations: gemini, openai."""
 
-    def run_cheap_router(self, agent_name: str, tools_list: str, query: str) -> dict[str, Any]:
-        """Return {needs_rag, tools_needed, model_to_use, reason}. Used before RAG and generator."""
+    def run_cheap_router(
+        self,
+        agent_name: str,
+        tools_list: str,
+        query: str,
+        connections_list: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Return {needs_rag, tools_needed, connections_needed, model_to_use, reason}. Used before RAG and generator."""
         ...
 
     def run_generator_stream(
