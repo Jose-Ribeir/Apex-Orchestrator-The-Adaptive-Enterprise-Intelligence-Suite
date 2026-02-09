@@ -6,11 +6,13 @@ import logging
 import time
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 
+from app.auth.deps import get_current_user_optional
 from app.config import get_settings
 from app.schemas.requests import ChatRequest
+from app.services import connections_service, gmail_service
 from app.services.agent_service import get_agent
 from app.services.llm import build_system_prompt_from_agent, run_cheap_router, run_generator_stream
 from app.services.rag import get_or_create_retriever
@@ -80,9 +82,14 @@ def _resolve_agent_name_and_prompt(request: ChatRequest) -> tuple[str, str] | No
     return (agent_name, system_prompt)
 
 
-def _run_stream_pipeline(request: ChatRequest, model_query_payload: list[dict[str, Any]] | None = None):
+def _run_stream_pipeline(
+    request: ChatRequest,
+    model_query_payload: list[dict[str, Any]] | None = None,
+    user_id: str | None = None,
+):
     """Blocking: router + RAG + generator stream. Yields NDJSON lines.
-    If model_query_payload is provided and agent_id + DB are set, appends one dict for background ModelQuery insert."""
+    If model_query_payload and agent_id + DB are set, appends one dict for ModelQuery insert.
+    When user_id is set and router returns connections_needed including 'google', Gmail is searched and added to context."""  # noqa: E501
     # Log request (full flow will be logged after response)
     logger.info(
         "model_query_start agent_id=%s user_query_len=%s",
@@ -100,10 +107,15 @@ def _run_stream_pipeline(request: ChatRequest, model_query_payload: list[dict[st
         "TOOLS: []",
     )
     tools_list = tools_line.split("TOOLS: ")[1].split("\n")[0] if "TOOLS:" in tools_line else "[]"
+    try:
+        connections_list = connections_service.list_connection_provider_keys()
+    except Exception:
+        connections_list = []
     tool_decision = run_cheap_router(
         agent_name=agent_name,
         tools_list=tools_list,
         query=request.message,
+        connections_list=connections_list,
     )
     rag = get_or_create_retriever(_rag_key(request, resolved_agent_name=agent_name))
     context_str = ""
@@ -130,6 +142,25 @@ def _run_stream_pipeline(request: ChatRequest, model_query_payload: list[dict[st
             logger.warning("RAG search failed, continuing without context: %s", e, exc_info=True)
             context_str = ""
             docs_count = 0
+    # When user is authenticated and router asked for Gmail, search or list messages and add to context
+    gmail_context_for_actions = ""
+    if user_id and "google" in tool_decision.get("connections_needed", []):
+        token = connections_service.get_valid_access_token(user_id, "google")
+        if token:
+            try:
+                q = gmail_service.generate_gmail_query(request.message or "")
+                if q:
+                    gmail_text = gmail_service.search_gmail(token, q=q, max_results=15)
+                    context_str += f"\n\n[GMAIL - search: {q!r}]\n{gmail_text}"
+                else:
+                    gmail_text = connections_service.fetch_gmail_recent_summary(token, max_messages=10)
+                    context_str += "\n\n[GMAIL - recent messages]\n" + gmail_text
+                gmail_context_for_actions = gmail_text
+            except Exception as e:
+                logger.warning("Gmail context fetch failed: %s", e)
+                context_str += "\n\n[GMAIL: could not load messages.]"
+        else:
+            context_str += "\n\n[GMAIL: not connected. Connect Gmail in Connections to see emails here.]"
     generator_model_name = tool_decision.get("model_to_use", "gemini-2.5-flash")
     full_prompt = f"""
 [SYSTEM]{system_prompt}
@@ -147,6 +178,7 @@ def _run_stream_pipeline(request: ChatRequest, model_query_payload: list[dict[st
         "router_model": "gemini-2.5-flash-lite",
         "generator_model": generator_model_name,
         "tools_executed": tool_decision.get("tools_needed", []),
+        "connections_used": tool_decision.get("connections_needed", []),
         "docs_retrieved": docs_count,
         "total_docs": total_docs,
         "input_chars": input_chars,
@@ -182,6 +214,21 @@ def _run_stream_pipeline(request: ChatRequest, model_query_payload: list[dict[st
         except (json.JSONDecodeError, TypeError):
             pass
         yield line
+    response_text = "".join(accumulated_text)
+    # If we had Gmail context, check whether to send or reply and execute
+    if user_id and gmail_context_for_actions:
+        try:
+            action_result = gmail_service.extract_and_execute_email_actions(
+                user_id,
+                request.message or "",
+                response_text,
+                gmail_context_for_actions,
+                get_token=lambda uid: connections_service.get_valid_access_token(uid, "google"),
+            )
+            if action_result:
+                yield json.dumps({"email_action": action_result}) + "\n"
+        except Exception as e:
+            logger.warning("Email action step failed: %s", e)
     duration_ms = int((time.perf_counter() - start_time) * 1000)
     if (
         model_query_payload is not None
@@ -189,7 +236,6 @@ def _run_stream_pipeline(request: ChatRequest, model_query_payload: list[dict[st
         and str(request.agent_id).strip()
         and get_settings().database_configured
     ):
-        response_text = "".join(accumulated_text)
         if len(response_text) > _MODEL_RESPONSE_MAX_CHARS:
             response_text = response_text[:_MODEL_RESPONSE_MAX_CHARS] + "\n...[truncated]"
         flow_log_metrics: dict[str, Any] = {
@@ -240,12 +286,16 @@ def _run_stream_pipeline(request: ChatRequest, model_query_payload: list[dict[st
     "/generate_stream",
     summary="Stream chat (router + generator)",
     description=(
-        "Call #1: cheap router decides needs_rag, tools_needed, model_to_use. "
+        "Call #1: cheap router decides needs_rag, tools_needed, connections_needed, model_to_use. "
         "Call #2: dynamic generator streams. Returns NDJSON: router_decision, text chunks, final metrics."
     ),
     operation_id="generateStream",
 )
-async def generate_stream(request: ChatRequest):
+async def generate_stream(
+    request: ChatRequest,
+    current_user: dict | None = Depends(get_current_user_optional),
+):
+    user_id = current_user["id"] if current_user else None
     queue: asyncio.Queue[str | tuple[str, dict] | None] = asyncio.Queue()
     loop = asyncio.get_running_loop()
     payload_holder: list[dict[str, Any]] = []
@@ -255,7 +305,7 @@ async def generate_stream(request: ChatRequest):
 
     def worker() -> None:
         try:
-            for line in _run_stream_pipeline(request, model_query_payload=payload_holder):
+            for line in _run_stream_pipeline(request, model_query_payload=payload_holder, user_id=user_id):
                 put(line)
             if payload_holder:
                 put(("model_query", payload_holder[0]))
