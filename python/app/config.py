@@ -163,10 +163,13 @@ class Settings(BaseSettings):
         return bool(self.redis_url.strip())
 
     def get_database_url(self) -> str:
-        """PostgreSQL URL from DATABASE_URL."""
-        if not self.database_url.strip():
+        """PostgreSQL URL from DATABASE_URL. Normalizes postgres:// to postgresql:// for SQLAlchemy."""
+        url = self.database_url.strip()
+        if not url:
             raise ValueError("Database not configured. Set DATABASE_URL in .env")
-        return self.database_url.strip()
+        if url.startswith("postgres://"):
+            url = "postgresql://" + url[len("postgres://") :]
+        return url
 
 
 @lru_cache
