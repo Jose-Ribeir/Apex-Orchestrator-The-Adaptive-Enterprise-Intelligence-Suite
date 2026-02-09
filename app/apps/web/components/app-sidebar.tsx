@@ -39,7 +39,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const platformNav = [
     { title: "Chat", url: "/", icon: MessageSquare },
     { title: "Instructions", url: `${agentBase}/instructions`, icon: FileText },
-    { title: "Documents", url: `${agentBase}/documents`, icon: FileStack },
+    { title: "Knowledge Base", url: `${agentBase}/documents`, icon: FileStack },
     { title: "Tools", url: `${agentBase}/tools`, icon: Wrench },
     { title: "Queries", url: `${agentBase}/queries`, icon: BarChart3 },
     { title: "Stats", url: `${agentBase}/stats`, icon: Activity },

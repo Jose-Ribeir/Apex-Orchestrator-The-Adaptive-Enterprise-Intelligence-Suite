@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 class AgentDocument(Base):
     """
-    Metadata for an uploaded file.
+    Metadata for a RAG-indexed item: file upload, pasted text, or scraped URL.
     """
 
     __tablename__ = "agent_documents"
@@ -34,6 +34,8 @@ class AgentDocument(Base):
     name: Mapped[str] = mapped_column(String(512), nullable=False)
     source_filename: Mapped[str | None] = mapped_column(String(512), nullable=True)
     storage_path: Mapped[str | None] = mapped_column(Text(), nullable=True)  # gs:// URI for signed download URL
+    source_type: Mapped[str | None] = mapped_column(String(32), nullable=True)  # 'file' | 'text' | 'url'
+    source_url: Mapped[str | None] = mapped_column(Text(), nullable=True)  # original URL when source_type='url'
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
     agent: Mapped["Agent"] = relationship("Agent", back_populates="documents")  # noqa: F821

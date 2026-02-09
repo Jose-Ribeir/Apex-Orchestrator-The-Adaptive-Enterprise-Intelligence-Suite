@@ -255,12 +255,14 @@ class ListAgentToolsResponse(BaseModel):
 
 
 class AgentDocumentItem(BaseModel):
-    """Single document in list response."""
+    """Single knowledge base item in list response."""
 
     id: str = Field(..., description="Document ID (UUID)")
     name: str = Field(..., description="Document name")
     sourceFilename: str | None = Field(None, description="Original filename")
     downloadUrl: str | None = Field(None, description="Signed download URL when storage_path set")
+    sourceType: str | None = Field(None, description="Source type: file, text, or url")
+    sourceUrl: str | None = Field(None, description="Original URL when sourceType is url")
     createdAt: str = Field(..., description="Creation time (ISO)")
 
 

@@ -586,6 +586,18 @@ export const DocumentsIngestBodySchema = {
   title: "DocumentsIngestBody",
 } as const;
 
+export const DocumentsIngestUrlBodySchema = {
+  properties: {
+    url: {
+      type: "string",
+      title: "Url",
+      default: "",
+    },
+  },
+  type: "object",
+  title: "DocumentsIngestUrlBody",
+} as const;
+
 export const HTTPValidationErrorSchema = {
   properties: {
     detail: {

@@ -60,6 +60,9 @@ import type {
   IngestAgentDocumentData,
   IngestAgentDocumentResponses,
   IngestAgentDocumentErrors,
+  IngestAgentDocumentUrlData,
+  IngestAgentDocumentUrlResponses,
+  IngestAgentDocumentUrlErrors,
   ListAgentDocumentsData,
   ListAgentDocumentsResponses,
   ListAgentDocumentsErrors,
@@ -526,6 +529,28 @@ export const ingestAgentDocument = <ThrowOnError extends boolean = false>(
   >({
     responseType: "json",
     url: "/api/agents/{agent_id}/documents/ingest",
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+};
+
+/**
+ * Ingest URL for agent RAG
+ * Fetch URL, extract main content (ignore nav/ads), chunk and add to the agent's RAG index. When queue is configured, returns 202 with job_id.
+ */
+export const ingestAgentDocumentUrl = <ThrowOnError extends boolean = false>(
+  options: Options<IngestAgentDocumentUrlData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).post<
+    IngestAgentDocumentUrlResponses,
+    IngestAgentDocumentUrlErrors,
+    ThrowOnError
+  >({
+    responseType: "json",
+    url: "/api/agents/{agent_id}/documents/ingest-url",
     ...options,
     headers: {
       "Content-Type": "application/json",

@@ -8,6 +8,7 @@ from app.services.document_parser import file_to_docs
 from app.services.file_storage import generate_signed_url
 from app.services.file_storage import upload as gcs_upload
 from app.services.rag import get_or_create_retriever
+from app.services.url_scraper import url_to_docs as url_scraper_url_to_docs
 
 
 def list_documents(
@@ -25,7 +26,7 @@ def list_documents(
 
 
 def document_to_response(doc: AgentDocument, signed_url_expiry_seconds: int = 3600) -> dict:
-    """Build API response dict for one document. Includes authenticated downloadUrl when storage_path is set."""
+    """Build API response dict for one document. Includes downloadUrl when storage_path is set; sourceType/sourceUrl for list."""
     download_url = (
         generate_signed_url(doc.storage_path or "", expiration_seconds=signed_url_expiry_seconds)
         if doc.storage_path
@@ -36,6 +37,8 @@ def document_to_response(doc: AgentDocument, signed_url_expiry_seconds: int = 36
         "name": doc.name,
         "sourceFilename": doc.source_filename,
         "downloadUrl": download_url,
+        "sourceType": doc.source_type,
+        "sourceUrl": doc.source_url,
         "createdAt": doc.created_at.isoformat(),
     }
 
@@ -111,7 +114,37 @@ def ingest_one_file_sync(
         return 0
     rag = get_or_create_retriever(str(agent_id))
     rag.add_or_update_documents(docs)
-    record_documents(agent_id, docs, source_name=filename, storage_path=storage_path, document_id=doc_id)
+    record_documents(
+        agent_id,
+        docs,
+        source_name=filename,
+        storage_path=storage_path,
+        document_id=doc_id,
+        source_type="file",
+    )
+    return len(docs)
+
+
+def ingest_one_url_sync(agent_id: uuid.UUID, url: str) -> int:
+    """
+    Fetch URL, extract main content, chunk and add to RAG, record one row in DB.
+    Returns number of RAG chunks added.
+    """
+    docs, title = url_scraper_url_to_docs(url)
+    if not docs:
+        return 0
+    doc_id = uuid.uuid4()
+    rag = get_or_create_retriever(str(agent_id))
+    rag.add_or_update_documents(docs)
+    record_documents(
+        agent_id,
+        docs,
+        source_name=title,
+        storage_path=None,
+        document_id=doc_id,
+        source_type="url",
+        source_url=url,
+    )
     return len(docs)
 
 
@@ -121,10 +154,12 @@ def record_documents(
     source_name: str = "",
     storage_path: str | None = None,
     document_id: uuid.UUID | None = None,
+    source_type: str | None = None,
+    source_url: str | None = None,
 ) -> uuid.UUID | None:
     """
-    Insert one agent_documents row per file (after GCS upload and RAG add).
-    Returns the created row's id. document_id is our row id when we created it before upload.
+    Insert one agent_documents row (after RAG add). Used for file ingest, text add, or URL ingest.
+    Returns the created row's id.
     """
     if not docs:
         return None
@@ -139,8 +174,10 @@ def record_documents(
             document_id=doc_ids[0],
             rag_document_ids=doc_ids,
             name=name,
-            source_filename=source_name or None,
+            source_filename=source_name if source_type == "file" else None,
             storage_path=storage_path or None,
+            source_type=source_type,
+            source_url=source_url,
         )
         session.add(rec)
         return rec.id

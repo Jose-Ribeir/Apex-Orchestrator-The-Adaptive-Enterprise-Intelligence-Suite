@@ -1,7 +1,7 @@
 # Database migrations (Alembic). Run from python/ with DATABASE_URL set.
 # Worker: run with REDIS_URL set. Handles indexing (documents) and prompt generation queues.
 
-.PHONY: migrate migrate-up migrate-down migrate-redo seed worker
+.PHONY: migrate migrate-up migrate-down migrate-redo seed worker worker-reload
 
 # Apply all pending migrations
 migrate: migrate-up
@@ -23,3 +23,7 @@ seed:
 # Single worker for indexing (ingest, add-document) and prompt generation queues
 worker:
 	python -m app.worker
+
+# Worker with auto-reload on code changes (development)
+worker-reload:
+	WORKER_RELOAD=1 python -m app.worker

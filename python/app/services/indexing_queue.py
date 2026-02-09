@@ -10,11 +10,12 @@ from app.config import get_settings
 logger = logging.getLogger(__name__)
 from app.queue_logging import log_queue_event
 from app.services.agent_service import set_agent_indexing_status
-from app.services.documents_service import ingest_one_file_sync
+from app.services.documents_service import ingest_one_file_sync, ingest_one_url_sync
 from app.services.documents_service import record_documents as record_documents_svc
 from app.services.rag import get_or_create_retriever
 
 QUEUE_NAME = "agent-indexing"
+ALLOWED_JOB_TYPES = ("ingest", "add", "ingest_url")
 
 _queue = None
 
@@ -58,6 +59,25 @@ async def enqueue_ingest(agent_id: uuid.UUID, filename: str, content_base64: str
         raise
 
 
+async def enqueue_ingest_url(agent_id: uuid.UUID, url: str) -> str | None:
+    """Enqueue a URL ingest job. Returns job id or None if queue unavailable."""
+    q = _get_queue()
+    if q is None:
+        logger.warning("Queue unavailable (Redis not configured); cannot enqueue ingest-url for agent_id=%s", agent_id)
+        return None
+    agent_id_str = str(agent_id)
+    try:
+        job = await q.add("ingest_url", {"agent_id": agent_id_str, "job_type": "ingest_url", "url": url})
+        job_id = str(job.id) if job and getattr(job, "id", None) is not None else ""
+        if job_id:
+            log_queue_event(job_id, agent_id_str, "ingest_url", "enqueued", queue_name=QUEUE_NAME)
+            logger.info("Enqueued ingest_url job_id=%s agent_id=%s url=%s", job_id, agent_id_str, url[:80])
+        return job_id
+    except Exception as e:
+        logger.exception("Failed to enqueue ingest_url agent_id=%s: %s", agent_id_str, e)
+        raise
+
+
 async def enqueue_add_document(agent_id: uuid.UUID, document: dict) -> str | None:
     """Enqueue an add-document job. Returns job id or None if queue unavailable."""
     q = _get_queue()
@@ -92,10 +112,10 @@ def run_job_sync(data: dict) -> None:
 
     logger.info("run_job_sync started job_id=%s agent_id=%s job_type=%s", job_id, agent_id_str, job_type)
 
-    if not agent_id_str or job_type not in ("ingest", "add"):
+    if not agent_id_str or job_type not in ALLOWED_JOB_TYPES:
         logger.error("Invalid job data: job_id=%s agent_id=%s job_type=%s", job_id, agent_id_str, job_type)
         set_agent_indexing_status(agent_id_str, "error", error_message="Invalid job data")
-        raise ValueError("agent_id and job_type (ingest|add) required")
+        raise ValueError(f"agent_id and job_type ({'|'.join(ALLOWED_JOB_TYPES)}) required")
 
     try:
         if job_type == "ingest":
@@ -138,7 +158,7 @@ def run_job_sync(data: dict) -> None:
             rag = get_or_create_retriever(agent_id_str)
             rag.add_or_update_documents([doc_obj])
             if get_settings().database_configured:
-                record_documents_svc(uuid.UUID(agent_id_str), [doc_obj], source_name="")
+                record_documents_svc(uuid.UUID(agent_id_str), [doc_obj], source_name="", source_type="text")
             set_agent_indexing_status(agent_id_str, "completed")
             duration_ms = int((time.monotonic() - started) * 1000)
             logger.info(
@@ -151,6 +171,33 @@ def run_job_sync(data: dict) -> None:
                 "completed",
                 duration_ms=duration_ms,
                 documents_count=1,
+                queue_name=QUEUE_NAME,
+            )
+        elif job_type == "ingest_url":
+            url = (data.get("url") or "").strip()
+            if not url:
+                set_agent_indexing_status(agent_id_str, "error", error_message="url required")
+                raise ValueError("url required for ingest_url")
+            logger.info("Ingest URL job_id=%s agent_id=%s url=%s", job_id, agent_id_str, url[:80])
+            if not get_settings().database_configured:
+                set_agent_indexing_status(agent_id_str, "error", error_message="Database required for URL ingest")
+                raise ValueError("DATABASE_URL required in worker for URL ingest")
+            count = ingest_one_url_sync(uuid.UUID(agent_id_str), url)
+            set_agent_indexing_status(agent_id_str, "completed")
+            duration_ms = int((time.monotonic() - started) * 1000)
+            logger.info(
+                "Ingest URL completed job_id=%s agent_id=%s documents_count=%s",
+                job_id,
+                agent_id_str,
+                count,
+            )
+            log_queue_event(
+                job_id,
+                agent_id_str,
+                "ingest_url",
+                "completed",
+                duration_ms=duration_ms,
+                documents_count=count,
                 queue_name=QUEUE_NAME,
             )
     except Exception as e:

@@ -1,8 +1,10 @@
 "use client";
 
 import {
+  addAgentDocumentMutation,
   deleteAgentDocumentMutation,
   ingestAgentDocumentMutation,
+  ingestAgentDocumentUrlMutation,
   listAgentDocumentsOptions,
   listAgentDocumentsQueryKey,
 } from "@ai-router/client/react-query";
@@ -32,7 +34,15 @@ import {
   TableRow,
 } from "@ai-router/ui/table";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, Plus, Trash2, Upload, X } from "lucide-react";
+import {
+  Download,
+  FileText,
+  Link2,
+  Plus,
+  Trash2,
+  Upload,
+  X,
+} from "lucide-react";
 import { useCallback, useState } from "react";
 import { useParams } from "react-router-dom";
 
@@ -66,6 +76,8 @@ type DocItem = {
   name?: string;
   sourceFilename?: string | null;
   downloadUrl?: string | null;
+  sourceType?: string | null;
+  sourceUrl?: string | null;
   createdAt?: string;
 };
 
@@ -78,6 +90,10 @@ export default function AgentDocumentsPage() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [addMode, setAddMode] = useState<"files" | "text" | "url">("files");
+  const [pastedText, setPastedText] = useState("");
+  const [pastedTitle, setPastedTitle] = useState("");
+  const [urlInput, setUrlInput] = useState("");
 
   const { data: listResponse, isPending: loadingList } = useQuery({
     ...listAgentDocumentsOptions({
@@ -100,6 +116,29 @@ export default function AgentDocumentsPage() {
       queryClient.invalidateQueries({
         queryKey: listAgentDocumentsQueryKey({ path: { agent_id: agentId } }),
       });
+    },
+  });
+
+  const addTextMutation = useMutation({
+    ...addAgentDocumentMutation(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: listAgentDocumentsQueryKey({ path: { agent_id: agentId } }),
+      });
+      setPastedText("");
+      setPastedTitle("");
+      setAddOpen(false);
+    },
+  });
+
+  const ingestUrlMutation = useMutation({
+    ...ingestAgentDocumentUrlMutation(),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: listAgentDocumentsQueryKey({ path: { agent_id: agentId } }),
+      });
+      setUrlInput("");
+      setAddOpen(false);
     },
   });
 
@@ -156,15 +195,56 @@ export default function AgentDocumentsPage() {
     setAddOpen(false);
     setSelectedFiles([]);
     setUploadError(null);
+    setPastedText("");
+    setPastedTitle("");
+    setUrlInput("");
   }, []);
+
+  const addPastedText = useCallback(async () => {
+    if (!agentId || !pastedText.trim()) return;
+    setUploadError(null);
+    try {
+      await addTextMutation.mutateAsync({
+        path: { agent_id: agentId },
+        body: {
+          content: pastedText.trim(),
+          metadata: pastedTitle.trim()
+            ? { title: pastedTitle.trim() }
+            : undefined,
+        },
+      });
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : "Failed to add text");
+    }
+  }, [agentId, pastedText, pastedTitle, addTextMutation]);
+
+  const addUrl = useCallback(async () => {
+    if (!agentId || !urlInput.trim()) return;
+    setUploadError(null);
+    try {
+      await ingestUrlMutation.mutateAsync({
+        path: { agent_id: agentId },
+        body: { url: urlInput.trim() },
+      });
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : "Failed to add URL");
+    }
+  }, [agentId, urlInput, ingestUrlMutation]);
+
+  const typeLabel = (d: DocItem) => {
+    const t = (d.sourceType || "").toLowerCase();
+    if (t === "url") return "URL";
+    if (t === "text") return "Text";
+    return "File";
+  };
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h1 className="text-2xl font-bold">Documents</h1>
+        <h1 className="text-2xl font-bold">Knowledge Base</h1>
         <p className="text-muted-foreground">
-          PDF, TXT, or DOCX are converted to text and indexed for RAG. Add
-          documents via the button below.
+          Add text, files (PDF, TXT, DOCX), or URLs. Content is indexed for RAG.
+          Use the button below to add to the knowledge base.
         </p>
       </div>
 
@@ -172,7 +252,7 @@ export default function AgentDocumentsPage() {
         <div className="flex-1" />
         <Button onClick={() => setAddOpen(true)} disabled={!agentId}>
           <Plus className="size-4" />
-          Add documents
+          Add to knowledge base
         </Button>
       </div>
 
@@ -182,13 +262,15 @@ export default function AgentDocumentsPage() {
         <p className="text-muted-foreground text-sm">Loading…</p>
       ) : docs.length === 0 ? (
         <p className="text-muted-foreground text-sm">
-          No documents yet. Add documents to index them for RAG.
+          No knowledge base items yet. Add text, files, or URLs to index for
+          RAG.
         </p>
       ) : (
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead>Name</TableHead>
+              <TableHead className="w-[80px]">Type</TableHead>
               <TableHead className="hidden sm:table-cell">Source</TableHead>
               <TableHead className="text-right">Created</TableHead>
               <TableHead className="w-[100px]">Actions</TableHead>
@@ -200,8 +282,22 @@ export default function AgentDocumentsPage() {
                 <TableCell className="font-medium">
                   {d.name ?? d.sourceFilename ?? d.id ?? "—"}
                 </TableCell>
+                <TableCell className="text-muted-foreground text-sm">
+                  {typeLabel(d)}
+                </TableCell>
                 <TableCell className="hidden text-muted-foreground sm:table-cell">
-                  {d.sourceFilename ?? "—"}
+                  {d.sourceUrl ? (
+                    <a
+                      href={d.sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary hover:underline truncate block max-w-[200px]"
+                    >
+                      {d.sourceUrl}
+                    </a>
+                  ) : (
+                    (d.sourceFilename ?? "—")
+                  )}
                 </TableCell>
                 <TableCell className="text-right text-muted-foreground text-sm">
                   {d.createdAt
@@ -228,13 +324,29 @@ export default function AgentDocumentsPage() {
                         </a>
                       </Button>
                     )}
+                    {d.sourceUrl && !d.downloadUrl && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        asChild
+                        aria-label="Open URL"
+                      >
+                        <a
+                          href={d.sourceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <Link2 className="size-4" />
+                        </a>
+                      </Button>
+                    )}
                     <Button
                       variant="ghost"
                       size="icon"
                       className="text-destructive hover:text-destructive"
                       onClick={() => setDeleteDocId(d.id)}
                       disabled={deleteMutation.isPending}
-                      aria-label="Delete document"
+                      aria-label="Delete knowledge base item"
                     >
                       <Trash2 className="size-4" />
                     </Button>
@@ -248,93 +360,197 @@ export default function AgentDocumentsPage() {
 
       {totalDocs > 0 && (
         <p className="text-muted-foreground text-sm">
-          {totalDocs} document{totalDocs !== 1 ? "s" : ""} in index.
+          {totalDocs} item{totalDocs !== 1 ? "s" : ""} in knowledge base.
         </p>
       )}
 
-      {/* Add documents: right sidebar with multi-file upload */}
+      {/* Add to knowledge base: right sidebar with files / text / URL */}
       <Sheet open={addOpen} onOpenChange={(open) => !open && closeAddSheet()}>
         <SheetContent side="right" className="w-full max-w-md sm:max-w-md">
           <SheetHeader>
-            <SheetTitle>Add documents</SheetTitle>
+            <SheetTitle>Add to knowledge base</SheetTitle>
           </SheetHeader>
           <div className="mt-6 flex flex-1 flex-col gap-4">
-            <div
-              className={`flex min-h-[200px] flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
-                dragOver
-                  ? "border-primary bg-primary/5"
-                  : "border-muted-foreground/25 hover:border-muted-foreground/50"
-              }`}
-              onDragOver={(e) => {
-                e.preventDefault();
-                setDragOver(true);
-              }}
-              onDragLeave={() => setDragOver(false)}
-              onDrop={(e) => {
-                e.preventDefault();
-                setDragOver(false);
-                onFileSelect(e.dataTransfer.files);
-              }}
-            >
-              <input
-                type="file"
-                accept=".pdf,.txt,.docx"
-                multiple
-                className="hidden"
-                id="add-docs-file-input"
-                onChange={(e) => onFileSelect(e.target.files)}
-              />
-              <label
-                htmlFor="add-docs-file-input"
-                className="flex cursor-pointer flex-col items-center gap-2"
+            <div className="flex gap-1 rounded-lg border bg-muted/30 p-1">
+              <Button
+                type="button"
+                variant={addMode === "files" ? "secondary" : "ghost"}
+                size="sm"
+                className="flex-1"
+                onClick={() => setAddMode("files")}
               >
-                <Upload className="size-10 text-muted-foreground" />
-                <span className="text-muted-foreground text-sm font-medium">
-                  Drag files here or click to browse
-                </span>
-                <span className="text-muted-foreground text-xs">
-                  PDF, TXT, DOCX · max {MAX_FILE_SIZE_MB} MB per file
-                </span>
-              </label>
+                <Upload className="size-4 mr-1" />
+                Files
+              </Button>
+              <Button
+                type="button"
+                variant={addMode === "text" ? "secondary" : "ghost"}
+                size="sm"
+                className="flex-1"
+                onClick={() => setAddMode("text")}
+              >
+                <FileText className="size-4 mr-1" />
+                Text
+              </Button>
+              <Button
+                type="button"
+                variant={addMode === "url" ? "secondary" : "ghost"}
+                size="sm"
+                className="flex-1"
+                onClick={() => setAddMode("url")}
+              >
+                <Link2 className="size-4 mr-1" />
+                URL
+              </Button>
             </div>
 
-            {selectedFiles.length > 0 && (
-              <div className="flex flex-col gap-2">
-                <p className="text-muted-foreground text-sm font-medium">
-                  {selectedFiles.length} file(s) selected
-                </p>
-                <ul className="flex max-h-[240px] flex-col gap-1 overflow-y-auto rounded-lg border bg-muted/30 p-2">
-                  {selectedFiles.map((file, i) => (
-                    <li
-                      key={`${file.name}-${i}`}
-                      className="flex items-center justify-between gap-2 rounded px-2 py-1.5 text-sm"
-                    >
-                      <span className="truncate">{file.name}</span>
-                      <span className="text-muted-foreground shrink-0 text-xs">
-                        {(file.size / 1024).toFixed(1)} KB
-                      </span>
+            {addMode === "files" && (
+              <>
+                <div
+                  className={`flex min-h-[180px] flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
+                    dragOver
+                      ? "border-primary bg-primary/5"
+                      : "border-muted-foreground/25 hover:border-muted-foreground/50"
+                  }`}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDragOver(true);
+                  }}
+                  onDragLeave={() => setDragOver(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragOver(false);
+                    onFileSelect(e.dataTransfer.files);
+                  }}
+                >
+                  <input
+                    type="file"
+                    accept=".pdf,.txt,.docx"
+                    multiple
+                    className="hidden"
+                    id="add-docs-file-input"
+                    onChange={(e) => onFileSelect(e.target.files)}
+                  />
+                  <label
+                    htmlFor="add-docs-file-input"
+                    className="flex cursor-pointer flex-col items-center gap-2"
+                  >
+                    <Upload className="size-10 text-muted-foreground" />
+                    <span className="text-muted-foreground text-sm font-medium">
+                      Drag files here or click to browse
+                    </span>
+                    <span className="text-muted-foreground text-xs">
+                      PDF, TXT, DOCX · max {MAX_FILE_SIZE_MB} MB per file
+                    </span>
+                  </label>
+                </div>
+                {selectedFiles.length > 0 && (
+                  <div className="flex flex-col gap-2">
+                    <p className="text-muted-foreground text-sm font-medium">
+                      {selectedFiles.length} file(s) selected
+                    </p>
+                    <ul className="flex max-h-[180px] flex-col gap-1 overflow-y-auto rounded-lg border bg-muted/30 p-2">
+                      {selectedFiles.map((file, i) => (
+                        <li
+                          key={`${file.name}-${i}`}
+                          className="flex items-center justify-between gap-2 rounded px-2 py-1.5 text-sm"
+                        >
+                          <span className="truncate">{file.name}</span>
+                          <span className="text-muted-foreground shrink-0 text-xs">
+                            {(file.size / 1024).toFixed(1)} KB
+                          </span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="size-7 shrink-0"
+                            onClick={() => removeFile(i)}
+                            aria-label="Remove file"
+                          >
+                            <X className="size-4" />
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="flex gap-2">
                       <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="size-7 shrink-0"
-                        onClick={() => removeFile(i)}
-                        aria-label="Remove file"
+                        onClick={uploadFiles}
+                        disabled={ingestMutation.isPending}
+                        className="flex-1"
                       >
-                        <X className="size-4" />
+                        {ingestMutation.isPending
+                          ? "Uploading…"
+                          : `Upload ${selectedFiles.length} file(s)`}
                       </Button>
-                    </li>
-                  ))}
-                </ul>
+                      <Button variant="outline" onClick={closeAddSheet}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {addMode === "text" && (
+              <div className="flex flex-col gap-3">
+                <div>
+                  <label className="text-muted-foreground text-sm font-medium">
+                    Title (optional)
+                  </label>
+                  <input
+                    type="text"
+                    className="mt-1 w-full rounded-md border bg-background px-3 py-2 text-sm"
+                    placeholder="e.g. My notes"
+                    value={pastedTitle}
+                    onChange={(e) => setPastedTitle(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="text-muted-foreground text-sm font-medium">
+                    Text content
+                  </label>
+                  <textarea
+                    className="mt-1 min-h-[160px] w-full rounded-md border bg-background px-3 py-2 text-sm"
+                    placeholder="Paste or type text to index…"
+                    value={pastedText}
+                    onChange={(e) => setPastedText(e.target.value)}
+                  />
+                </div>
                 <div className="flex gap-2">
                   <Button
-                    onClick={uploadFiles}
-                    disabled={ingestMutation.isPending}
+                    onClick={addPastedText}
+                    disabled={!pastedText.trim() || addTextMutation.isPending}
                     className="flex-1"
                   >
-                    {ingestMutation.isPending
-                      ? "Uploading…"
-                      : `Upload ${selectedFiles.length} file(s)`}
+                    {addTextMutation.isPending ? "Adding…" : "Add text"}
+                  </Button>
+                  <Button variant="outline" onClick={closeAddSheet}>
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {addMode === "url" && (
+              <div className="flex flex-col gap-3">
+                <p className="text-muted-foreground text-sm">
+                  Enter a URL. The page will be fetched and main content
+                  extracted and indexed (navigation and ads are ignored).
+                </p>
+                <input
+                  type="url"
+                  className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                  placeholder="https://example.com/article"
+                  value={urlInput}
+                  onChange={(e) => setUrlInput(e.target.value)}
+                />
+                <div className="flex gap-2">
+                  <Button
+                    onClick={addUrl}
+                    disabled={!urlInput.trim() || ingestUrlMutation.isPending}
+                    className="flex-1"
+                  >
+                    {ingestUrlMutation.isPending ? "Fetching…" : "Add URL"}
                   </Button>
                   <Button variant="outline" onClick={closeAddSheet}>
                     Cancel
@@ -361,9 +577,9 @@ export default function AgentDocumentsPage() {
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Remove document?</AlertDialogTitle>
+            <AlertDialogTitle>Remove from knowledge base?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will remove the document from the agent&apos;s RAG index and
+              This will remove this item from the agent&apos;s RAG index and
               delete its record. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

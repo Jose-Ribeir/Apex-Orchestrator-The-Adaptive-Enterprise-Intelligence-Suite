@@ -20,6 +20,7 @@ import {
   getAgentQuery,
   updateAgentQuery,
   ingestAgentDocument,
+  ingestAgentDocumentUrl,
   listAgentDocuments,
   addAgentDocument,
   deleteAgentDocument,
@@ -97,6 +98,8 @@ import type {
   UpdateAgentQueryError,
   IngestAgentDocumentData,
   IngestAgentDocumentError,
+  IngestAgentDocumentUrlData,
+  IngestAgentDocumentUrlError,
   ListAgentDocumentsData,
   ListAgentDocumentsError,
   AddAgentDocumentData,
@@ -1025,6 +1028,59 @@ export const ingestAgentDocumentMutation = (
   > = {
     mutationFn: async (localOptions) => {
       const { data } = await ingestAgentDocument({
+        ...options,
+        ...localOptions,
+        throwOnError: true,
+      });
+      return data;
+    },
+  };
+  return mutationOptions;
+};
+
+export const ingestAgentDocumentUrlQueryKey = (
+  options: Options<IngestAgentDocumentUrlData>,
+) => createQueryKey("ingestAgentDocumentUrl", options);
+
+/**
+ * Ingest URL for agent RAG
+ * Fetch URL, extract main content (ignore nav/ads), chunk and add to the agent's RAG index. When queue is configured, returns 202 with job_id.
+ */
+export const ingestAgentDocumentUrlOptions = (
+  options: Options<IngestAgentDocumentUrlData>,
+) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await ingestAgentDocumentUrl({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: ingestAgentDocumentUrlQueryKey(options),
+  });
+};
+
+/**
+ * Ingest URL for agent RAG
+ * Fetch URL, extract main content (ignore nav/ads), chunk and add to the agent's RAG index. When queue is configured, returns 202 with job_id.
+ */
+export const ingestAgentDocumentUrlMutation = (
+  options?: Partial<Options<IngestAgentDocumentUrlData>>,
+): UseMutationOptions<
+  unknown,
+  AxiosError<IngestAgentDocumentUrlError>,
+  Options<IngestAgentDocumentUrlData>
+> => {
+  const mutationOptions: UseMutationOptions<
+    unknown,
+    AxiosError<IngestAgentDocumentUrlError>,
+    Options<IngestAgentDocumentUrlData>
+  > = {
+    mutationFn: async (localOptions) => {
+      const { data } = await ingestAgentDocumentUrl({
         ...options,
         ...localOptions,
         throwOnError: true,

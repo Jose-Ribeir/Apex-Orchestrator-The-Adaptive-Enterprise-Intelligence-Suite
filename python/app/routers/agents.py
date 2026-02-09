@@ -57,19 +57,22 @@ from app.services.documents_service import (
     ingest_one_file_sync as ingest_one_file_sync_svc,
 )
 from app.services.documents_service import (
+    ingest_one_url_sync as ingest_one_url_sync_svc,
+)
+from app.services.documents_service import (
     list_documents as list_documents_svc,
 )
 from app.services.documents_service import (
     record_documents as record_documents_svc,
 )
-from app.services.indexing_queue import enqueue_add_document, enqueue_ingest
+from app.services.indexing_queue import enqueue_add_document, enqueue_ingest, enqueue_ingest_url
 from app.services.prompt_queue import enqueue_generate_prompt
 from app.services.rag import get_or_create_retriever, list_agents_with_doc_counts
 
 router = APIRouter(tags=["Agents"])
 
 # Document routes under their own tag only (no "Agents" tag)
-documents_router = APIRouter(prefix="/agents", tags=["Agents -> Documents"])
+documents_router = APIRouter(prefix="/agents", tags=["Agents -> Knowledge Base"])
 
 
 def _metadata_from_agent(agent) -> AgentMetadata:
@@ -297,6 +300,62 @@ async def ingest_document(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+class DocumentsIngestUrlBody(BaseModel):
+    url: str = ""
+
+
+@documents_router.post(
+    "/{agent_id}/documents/ingest-url",
+    summary="Ingest URL for agent RAG",
+    description=(
+        "Fetch URL, extract main content (ignore nav/ads), chunk and add to the agent's RAG index. "
+        "When queue is configured, returns 202 with job_id."
+    ),
+    operation_id="ingestAgentDocumentUrl",
+)
+async def ingest_document_url(
+    agent_id: UUID,
+    body: DocumentsIngestUrlBody,
+    current_user: dict = Depends(get_current_user),
+):
+    agent = await asyncio.to_thread(get_agent, agent_id, user_id=current_user["id"], with_relations=False)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    raw_url = (body.url or "").strip()
+    if not raw_url:
+        raise HTTPException(status_code=400, detail="url is required")
+    try:
+        from app.services.url_scraper import _normalize_url, _validate_url
+
+        url = _normalize_url(raw_url)
+        _validate_url(url)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    settings = get_settings()
+    if settings.queue_configured:
+        job_id = await enqueue_ingest_url(agent_id, url)
+        if job_id:
+            await asyncio.to_thread(set_agent_indexing_status, agent_id, "pending")
+            return JSONResponse(status_code=202, content={"job_id": job_id, "message": "indexing queued"})
+
+    await asyncio.to_thread(set_agent_indexing_status, agent_id, "pending")
+    try:
+        if not settings.database_configured:
+            raise HTTPException(status_code=503, detail="Database required for URL ingest")
+        count = await asyncio.to_thread(ingest_one_url_sync_svc, agent_id, url)
+        await asyncio.to_thread(set_agent_indexing_status, agent_id, "completed")
+        return {"documents_added": count, "message": "ok"}
+    except ValueError as e:
+        await asyncio.to_thread(set_agent_indexing_status, agent_id, "error", str(e))
+        raise HTTPException(status_code=400, detail=str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        await asyncio.to_thread(set_agent_indexing_status, agent_id, "error", str(e))
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @documents_router.get(
     "/{agent_id}/documents",
     summary="List agent documents",
@@ -389,7 +448,7 @@ async def add_agent_document(
         rag = get_or_create_retriever(str(agent_id))
         await asyncio.to_thread(rag.add_or_update_documents, [doc])
         if settings.database_configured:
-            await asyncio.to_thread(record_documents_svc, agent_id, [doc], source_name="")
+            await asyncio.to_thread(record_documents_svc, agent_id, [doc], source_name="", source_type="text")
         await asyncio.to_thread(set_agent_indexing_status, agent_id, "completed")
         total_docs = await asyncio.to_thread(rag.count_documents)
         return {

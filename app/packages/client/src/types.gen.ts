@@ -384,6 +384,16 @@ export type DocumentsIngestBody = {
 };
 
 /**
+ * DocumentsIngestUrlBody
+ */
+export type DocumentsIngestUrlBody = {
+  /**
+   * Url
+   */
+  url?: string;
+};
+
+/**
  * HTTPValidationError
  */
 export type HttpValidationError = {
@@ -1574,6 +1584,35 @@ export type IngestAgentDocumentError =
   IngestAgentDocumentErrors[keyof IngestAgentDocumentErrors];
 
 export type IngestAgentDocumentResponses = {
+  /**
+   * Successful Response
+   */
+  200: unknown;
+};
+
+export type IngestAgentDocumentUrlData = {
+  body: DocumentsIngestUrlBody;
+  path: {
+    /**
+     * Agent Id
+     */
+    agent_id: string;
+  };
+  query?: never;
+  url: "/api/agents/{agent_id}/documents/ingest-url";
+};
+
+export type IngestAgentDocumentUrlErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type IngestAgentDocumentUrlError =
+  IngestAgentDocumentUrlErrors[keyof IngestAgentDocumentUrlErrors];
+
+export type IngestAgentDocumentUrlResponses = {
   /**
    * Successful Response
    */

@@ -1,15 +1,21 @@
-"""BullMQ worker for agent-indexing and agent-prompt-generation queues. Run with: python -m app.worker"""
+"""BullMQ worker for agent-indexing and agent-prompt-generation queues. Run with: python -m app.worker
+
+With WORKER_RELOAD=1 (or --reload), restarts the worker when Python files under app/ change.
+"""
 
 import asyncio
 import logging
+import os
 import signal
 import sys
 import time
 
 from app.config import get_settings
 from app.queue_logging import log_queue_event, log_worker_started
-from app.services.indexing_queue import QUEUE_NAME as INDEXING_QUEUE, run_job_sync
-from app.services.prompt_queue import QUEUE_NAME as PROMPT_QUEUE, run_prompt_job_sync
+from app.services.indexing_queue import QUEUE_NAME as INDEXING_QUEUE
+from app.services.indexing_queue import run_job_sync
+from app.services.prompt_queue import QUEUE_NAME as PROMPT_QUEUE
+from app.services.prompt_queue import run_prompt_job_sync
 
 logger = logging.getLogger("app.worker")
 
@@ -164,7 +170,26 @@ async def main():
     await worker_prompt.close()
 
 
+def _run_worker() -> None:
+    asyncio.run(main())
+
+
 if __name__ == "__main__":
     _configure_logging()
-    logger.info("Worker process starting (queues: %s, %s)", INDEXING_QUEUE_NAME, PROMPT_QUEUE_NAME)
-    asyncio.run(main())
+    reload = os.environ.get("WORKER_RELOAD", "").strip().lower() in ("1", "true", "yes")
+    if "--reload" in sys.argv:
+        reload = True
+        sys.argv = [a for a in sys.argv if a != "--reload"]
+
+    if reload:
+        try:
+            from watchfiles import run_process
+        except ImportError:
+            logger.error("WORKER_RELOAD requires watchfiles. pip install watchfiles")
+            raise SystemExit(1)
+        app_root = os.path.dirname(os.path.abspath(__file__))
+        logger.info("Worker starting with reload (watching %s)", app_root)
+        run_process(app_root, target=_run_worker)
+    else:
+        logger.info("Worker process starting (queues: %s, %s)", INDEXING_QUEUE_NAME, PROMPT_QUEUE_NAME)
+        asyncio.run(main())

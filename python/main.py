@@ -68,7 +68,7 @@ OPENAPI_TAGS = [
     {"name": "Health", "description": "Service health and configuration status."},
     {"name": "Auth", "description": "Login, register, logout, and current user (cookie-based)."},
     {"name": "Agents", "description": "Agent CRUD."},
-    {"name": "Agents -> Documents", "description": "List, add, get, and delete agent documents (RAG)."},
+    {"name": "Agents -> Knowledge Base", "description": "List, add, get, and delete agent knowledge base items (RAG)."},
     {"name": "Agents -> Instructions", "description": "Per-agent instructions (order and content)."},
     {"name": "Agents -> Tools", "description": "Link or unlink tools to/from an agent."},
     {"name": "Agents -> Queries", "description": "Model queries: user query, response, and method used."},
