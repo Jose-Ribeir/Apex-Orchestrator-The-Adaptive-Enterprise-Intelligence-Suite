@@ -18,6 +18,8 @@ RUN pip install --no-cache-dir --upgrade pip && \
 
 COPY main.py .
 COPY app/ ./app/
+COPY alembic.ini .
+COPY alembic/ ./alembic/
 
 RUN mkdir -p data && chmod -R 755 data
 
