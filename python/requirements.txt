@@ -29,6 +29,9 @@ alembic>=1.13.0
 # pgvector for RAG_PROVIDER=pgvector (vector similarity search)
 pgvector>=0.2.0
 
+# LanceDB for RAG_PROVIDER=lancedb (embedded vector DB, file-based)
+lancedb>=0.4.0
+
 # Auth (cookie + Bearer API token)
 passlib[bcrypt]>=1.7.4
 python-jose[cryptography]>=3.3.0

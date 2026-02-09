@@ -26,13 +26,16 @@ class Settings(BaseSettings):
     )
 
     # --- Provider selection (defaults keep current Google-only behaviour) ---
-    rag_provider: str = "vertex"  # vertex | memory | pgvector
+    rag_provider: str = "vertex"  # vertex | memory | pgvector | lancedb
     llm_provider: str = "gemini"  # gemini | openai | groq
     storage_provider: str = "gcs"  # gcs | local | minio
 
     # pgvector (required when rag_provider=pgvector): uses DATABASE_URL; table and dim are optional
     rag_pgvector_table: str = "rag_embeddings"
     rag_embedding_dim: int = 768  # must match embedding model (e.g. BAAI/bge-base-en-v1.5)
+
+    # lancedb (when rag_provider=lancedb): local path for embedded DB; no server required
+    rag_lancedb_path: str = "data/lancedb"
 
     # Gemini (required when llm_provider=gemini)
     gemini_api_key: str = ""
@@ -127,6 +130,10 @@ class Settings(BaseSettings):
         if rp == "pgvector":
             if not self.database_url or not self.database_url.strip():
                 raise ValueError("DATABASE_URL is required when RAG_PROVIDER=pgvector")
+
+        if rp == "lancedb":
+            if not (self.rag_lancedb_path and self.rag_lancedb_path.strip()):
+                raise ValueError("RAG_LANCEDB_PATH must be set when RAG_PROVIDER=lancedb")
 
         if sp == "gcs":
             for name, val in [
