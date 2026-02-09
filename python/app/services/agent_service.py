@@ -39,11 +39,11 @@ def _get_or_create_tool_by_name(session, name_or_id: str) -> Tool:
     # If value looks like a UUID, resolve by ID first (e.g. frontend may send tool IDs)
     tool_id = _parse_uuid(name_or_id)
     if tool_id is not None:
-        tool = session.query(Tool).filter(Tool.id == tool_id, not Tool.is_deleted).first()
+        tool = session.query(Tool).filter(Tool.id == tool_id, Tool.is_deleted.is_(False)).first()
         if tool:
             return tool
     # Resolve or create by name
-    tool = session.query(Tool).filter(Tool.name == name_or_id, not Tool.is_deleted).first()
+    tool = session.query(Tool).filter(Tool.name == name_or_id, Tool.is_deleted.is_(False)).first()
     if tool:
         return tool
     tool = Tool(name=name_or_id)
@@ -108,7 +108,7 @@ def set_agent_indexing_status(
         raise ValueError("status must be one of: pending, completed, error")
     aid = uuid.UUID(str(agent_id)) if isinstance(agent_id, str) else agent_id
     with session_scope() as session:
-        agent = session.query(Agent).filter(Agent.id == aid, not Agent.is_deleted).first()
+        agent = session.query(Agent).filter(Agent.id == aid, Agent.is_deleted.is_(False)).first()
         if agent is None:
             return False
         current = agent.metadata_ or {}
@@ -135,7 +135,7 @@ def set_agent_enrich_status(
         raise ValueError("status must be one of: pending, completed, error")
     aid = uuid.UUID(str(agent_id)) if isinstance(agent_id, str) else agent_id
     with session_scope() as session:
-        agent = session.query(Agent).filter(Agent.id == aid, not Agent.is_deleted).first()
+        agent = session.query(Agent).filter(Agent.id == aid, Agent.is_deleted.is_(False)).first()
         if agent is None:
             return False
         current = agent.metadata_ or {}
@@ -161,7 +161,7 @@ def list_agents_from_db(
     with session_scope() as session:
         q = (
             session.query(Agent)
-            .filter(not Agent.is_deleted)
+            .filter(Agent.is_deleted.is_(False))
             .options(
                 joinedload(Agent.instructions),
                 joinedload(Agent.agent_tools).joinedload(AgentTool.tool),
@@ -194,7 +194,7 @@ def get_agent(
     """Get agent by id; optionally filter by user_id. If with_relations, eager-load instructions and tools."""
     aid = uuid.UUID(str(agent_id)) if isinstance(agent_id, str) else agent_id
     with session_scope() as session:
-        q = session.query(Agent).filter(Agent.id == aid, not Agent.is_deleted)
+        q = session.query(Agent).filter(Agent.id == aid, Agent.is_deleted.is_(False))
         if user_id is not None:
             q = q.filter(Agent.user_id == user_id)
         if with_relations:
@@ -229,7 +229,7 @@ def get_agent_detail_response(
     with session_scope() as session:
         q = (
             session.query(Agent)
-            .filter(Agent.id == aid, not Agent.is_deleted)
+            .filter(Agent.id == aid, Agent.is_deleted.is_(False))
             .options(
                 joinedload(Agent.instructions),
                 joinedload(Agent.agent_tools).joinedload(AgentTool.tool),
@@ -275,7 +275,7 @@ def update_agent(
     aid = agent.id
 
     with session_scope() as session:
-        agent = session.query(Agent).filter(Agent.id == aid, not Agent.is_deleted).first()
+        agent = session.query(Agent).filter(Agent.id == aid, Agent.is_deleted.is_(False)).first()
         if agent is None:
             return None
         if name is not None:

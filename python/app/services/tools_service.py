@@ -9,14 +9,16 @@ from app.models import Tool
 def list_tools(page: int = 1, limit: int = 20) -> tuple[list[Tool], int]:
     offset = (page - 1) * limit
     with session_scope() as session:
-        total = session.query(Tool).filter(not Tool.is_deleted).count()
-        rows = session.query(Tool).filter(not Tool.is_deleted).order_by(Tool.name).offset(offset).limit(limit).all()
+        total = session.query(Tool).filter(Tool.is_deleted.is_(False)).count()
+        rows = (
+            session.query(Tool).filter(Tool.is_deleted.is_(False)).order_by(Tool.name).offset(offset).limit(limit).all()
+        )
         return list(rows), total
 
 
 def get_tool(tool_id: UUID) -> Tool | None:
     with session_scope() as session:
-        return session.query(Tool).filter(Tool.id == tool_id, not Tool.is_deleted).first()
+        return session.query(Tool).filter(Tool.id == tool_id, Tool.is_deleted.is_(False)).first()
 
 
 def create_tool(name: str) -> Tool:
@@ -36,7 +38,7 @@ def update_tool(tool_id: UUID, name: str) -> Tool | None:
     if not name:
         raise ValueError("name is required")
     with session_scope() as session:
-        tool = session.query(Tool).filter(Tool.id == tool_id, not Tool.is_deleted).first()
+        tool = session.query(Tool).filter(Tool.id == tool_id, Tool.is_deleted.is_(False)).first()
         if not tool:
             return None
         tool.name = name

@@ -53,7 +53,7 @@ async def list_instructions(
         with session_scope() as session:
             rows = (
                 session.query(AgentInstruction)
-                .filter(AgentInstruction.agent_id == agent_id, not AgentInstruction.is_deleted)
+                .filter(AgentInstruction.agent_id == agent_id, AgentInstruction.is_deleted.is_(False))
                 .order_by(AgentInstruction.order)
                 .offset((page - 1) * limit)
                 .limit(limit)
@@ -61,7 +61,7 @@ async def list_instructions(
             )
             total = (
                 session.query(AgentInstruction)
-                .filter(AgentInstruction.agent_id == agent_id, not AgentInstruction.is_deleted)
+                .filter(AgentInstruction.agent_id == agent_id, AgentInstruction.is_deleted.is_(False))
                 .count()
             )
             return [
@@ -110,7 +110,7 @@ async def get_instruction(
                 .filter(
                     AgentInstruction.id == id,
                     AgentInstruction.agent_id == agent_id,
-                    not AgentInstruction.is_deleted,
+                    AgentInstruction.is_deleted.is_(False),
                 )
                 .first()
             )
@@ -188,7 +188,7 @@ async def update_instruction(
                 .filter(
                     AgentInstruction.id == id,
                     AgentInstruction.agent_id == agent_id,
-                    not AgentInstruction.is_deleted,
+                    AgentInstruction.is_deleted.is_(False),
                 )
                 .first()
             )
@@ -269,7 +269,10 @@ async def list_agent_tools(
     def _list():
         with session_scope() as session:
             base = (
-                session.query(AgentTool).filter(AgentTool.agent_id == agent_id).join(Tool).filter(not Tool.is_deleted)
+                session.query(AgentTool)
+                .filter(AgentTool.agent_id == agent_id)
+                .join(Tool)
+                .filter(Tool.is_deleted.is_(False))
             )
             total = base.count()
             rows = base.offset((page - 1) * limit).limit(limit).all()
@@ -407,13 +410,17 @@ async def list_model_queries(
         with session_scope() as session:
             rows = (
                 session.query(ModelQuery)
-                .filter(ModelQuery.agent_id == agent_id, not ModelQuery.is_deleted)
+                .filter(ModelQuery.agent_id == agent_id, ModelQuery.is_deleted.is_(False))
                 .order_by(ModelQuery.created_at.desc())
                 .offset((page - 1) * limit)
                 .limit(limit)
                 .all()
             )
-            total = session.query(ModelQuery).filter(ModelQuery.agent_id == agent_id, not ModelQuery.is_deleted).count()
+            total = (
+                session.query(ModelQuery)
+                .filter(ModelQuery.agent_id == agent_id, ModelQuery.is_deleted.is_(False))
+                .count()
+            )
             return [
                 {
                     "id": str(r.id),
@@ -458,7 +465,7 @@ async def get_model_query(
         with session_scope() as session:
             return (
                 session.query(ModelQuery)
-                .filter(ModelQuery.id == id, ModelQuery.agent_id == agent_id, not ModelQuery.is_deleted)
+                .filter(ModelQuery.id == id, ModelQuery.agent_id == agent_id, ModelQuery.is_deleted.is_(False))
                 .first()
             )
 
@@ -537,7 +544,7 @@ async def update_model_query(
         with session_scope() as session:
             r = (
                 session.query(ModelQuery)
-                .filter(ModelQuery.id == id, ModelQuery.agent_id == agent_id, not ModelQuery.is_deleted)
+                .filter(ModelQuery.id == id, ModelQuery.agent_id == agent_id, ModelQuery.is_deleted.is_(False))
                 .first()
             )
             if not r:
@@ -620,7 +627,7 @@ async def list_agent_stats(
                 session.query(day_col.label("day"), func.count(ModelQuery.id).label("total_queries"))
                 .filter(
                     ModelQuery.agent_id == agent_id,
-                    not ModelQuery.is_deleted,
+                    ModelQuery.is_deleted.is_(False),
                     ModelQuery.created_at >= since,
                 )
                 .group_by(day_col)

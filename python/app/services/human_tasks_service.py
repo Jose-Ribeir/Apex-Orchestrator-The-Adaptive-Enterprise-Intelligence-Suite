@@ -11,7 +11,7 @@ from app.models import HumanTask, ModelQuery
 def list_tasks(pending_only: bool = False, page: int = 1, limit: int = 20) -> tuple[list, int]:
     offset = (page - 1) * limit
     with session_scope() as session:
-        q = session.query(HumanTask).filter(not HumanTask.is_deleted)
+        q = session.query(HumanTask).filter(HumanTask.is_deleted.is_(False))
         if pending_only:
             q = q.filter(HumanTask.status == "PENDING")
         total = q.count()
@@ -29,7 +29,7 @@ def get_task(task_id: UUID) -> HumanTask | None:
     with session_scope() as session:
         return (
             session.query(HumanTask)
-            .filter(HumanTask.id == task_id, not HumanTask.is_deleted)
+            .filter(HumanTask.id == task_id, HumanTask.is_deleted.is_(False))
             .options(joinedload(HumanTask.model_query))
             .first()
         )
@@ -39,7 +39,7 @@ def get_task_by_model_query_id(model_query_id: UUID) -> HumanTask | None:
     with session_scope() as session:
         return (
             session.query(HumanTask)
-            .filter(HumanTask.model_query_id == model_query_id, not HumanTask.is_deleted)
+            .filter(HumanTask.model_query_id == model_query_id, HumanTask.is_deleted.is_(False))
             .options(joinedload(HumanTask.model_query))
             .first()
         )
@@ -83,7 +83,7 @@ def update_task(
     status: str | None = None,
 ) -> HumanTask | None:
     with session_scope() as session:
-        task = session.query(HumanTask).filter(HumanTask.id == task_id, not HumanTask.is_deleted).first()
+        task = session.query(HumanTask).filter(HumanTask.id == task_id, HumanTask.is_deleted.is_(False)).first()
         if not task:
             return None
         if reason is not None:
