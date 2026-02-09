@@ -1,5 +1,7 @@
 """Tool model: global tools referenced by agents."""
 
+from __future__ import annotations
+
 import uuid
 
 from sqlalchemy import Boolean, DateTime, String
@@ -22,6 +24,6 @@ class Tool(Base):
     )
     deleted_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    agent_tools: Mapped[list["AgentTool"]] = relationship(
+    agent_tools: Mapped[list["AgentTool"]] = relationship(  # noqa: F821
         "AgentTool", back_populates="tool", cascade="all, delete-orphan"
     )

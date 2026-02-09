@@ -13,7 +13,8 @@ services:
       retries: ${HEALTHCHECK_RETRIES:-5}
 
   postgres:
-    image: postgres:${POSTGRES_IMAGE_TAG:-16-alpine}
+    # pgvector image includes vector extension (required for RAG_PROVIDER=pgvector)
+    image: pgvector/pgvector:${POSTGRES_IMAGE_TAG:-pg16}
     restart: ${RESTART_POLICY:-unless-stopped}
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -28,6 +29,19 @@ services:
       interval: ${HEALTHCHECK_INTERVAL:-5s}
       timeout: ${HEALTHCHECK_TIMEOUT:-5s}
       retries: ${HEALTHCHECK_RETRIES:-5}
+
+  minio:
+    image: minio/minio:latest
+    restart: ${RESTART_POLICY:-unless-stopped}
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+    ports:
+      - "${MINIO_API_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio_data:/data
 
   api:
     build:
@@ -69,3 +83,4 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  minio_data:

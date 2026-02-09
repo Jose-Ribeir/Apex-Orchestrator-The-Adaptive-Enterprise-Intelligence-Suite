@@ -1,6 +1,5 @@
 "use client";
 
-import { useUser } from "@/providers/user";
 import {
   deleteAgentDocumentMutation,
   ingestAgentDocumentMutation,
@@ -74,7 +73,6 @@ export default function AgentDocumentsPage() {
   const params = useParams();
   const agentId = params?.agentId as string;
   const queryClient = useQueryClient();
-  const user = useUser();
   const [addOpen, setAddOpen] = useState(false);
   const [deleteDocId, setDeleteDocId] = useState<string | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -130,7 +128,6 @@ export default function AgentDocumentsPage() {
   const uploadFiles = useCallback(async () => {
     if (!agentId || selectedFiles.length === 0) return;
     setUploadError(null);
-    let done = 0;
     for (const file of selectedFiles) {
       if (!isAllowedFile(file)) {
         setUploadError(
@@ -144,7 +141,6 @@ export default function AgentDocumentsPage() {
           path: { agent_id: agentId },
           body: { filename: file.name, contentBase64 },
         });
-        done++;
       } catch (e) {
         setUploadError(
           e instanceof Error ? e.message : `Failed to upload ${file.name}`,
@@ -210,8 +206,8 @@ export default function AgentDocumentsPage() {
                 <TableCell className="text-right text-muted-foreground text-sm">
                   {d.createdAt
                     ? new Date(d.createdAt).toLocaleDateString(undefined, {
-                        dateStyle: "short",
-                      })
+                      dateStyle: "short",
+                    })
                     : "—"}
                 </TableCell>
                 <TableCell>
@@ -264,11 +260,10 @@ export default function AgentDocumentsPage() {
           </SheetHeader>
           <div className="mt-6 flex flex-1 flex-col gap-4">
             <div
-              className={`flex min-h-[200px] flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
-                dragOver
-                  ? "border-primary bg-primary/5"
-                  : "border-muted-foreground/25 hover:border-muted-foreground/50"
-              }`}
+              className={`flex min-h-[200px] flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center transition-colors ${dragOver
+                ? "border-primary bg-primary/5"
+                : "border-muted-foreground/25 hover:border-muted-foreground/50"
+                }`}
               onDragOver={(e) => {
                 e.preventDefault();
                 setDragOver(true);

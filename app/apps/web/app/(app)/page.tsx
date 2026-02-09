@@ -7,7 +7,10 @@ import { Textarea } from "@ai-router/ui/textarea";
 import { Bot, Send } from "lucide-react";
 import * as React from "react";
 
-import { streamChat } from "@/lib/chat-stream";
+import {
+  streamChat,
+  type StreamLine,
+} from "./chat-stream";
 
 type Message = { role: "user" | "assistant"; content: string };
 
@@ -43,7 +46,7 @@ export default function Page() {
         await streamChat({
           agentId,
           message,
-          onLine(data) {
+          onLine(data: StreamLine) {
             // Backend sends NDJSON: first line = router_decision (no text), then text chunks, then is_final
             if ("text" in data && typeof data.text === "string") {
               setMessages((prev) => {

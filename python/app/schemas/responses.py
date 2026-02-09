@@ -46,7 +46,7 @@ class AgentMetadata(BaseModel):
 
 
 class AgentInfo(BaseModel):
-    """Single agent in list: agent_id, name, user ref; optional doc_count, metadata, timestamps, tools, instructions when from DB."""
+    """Single agent in list: agent_id, name, user ref; optional doc_count, metadata, timestamps, tools, instructions."""
 
     agent_id: str = Field(..., description="Agent ID (UUID)")
     name: str = Field(..., description="Display name")
@@ -113,7 +113,7 @@ class HealthResponse(BaseModel):
     status: str = Field(..., description="Always 'healthy' when endpoint succeeds")
     agents: list[str] = Field(..., description="List of agent names with loaded RAG")
     geminimesh_configured: bool = Field(..., description="Whether GeminiMesh API token is set")
-    embedding_model: str = Field(..., description="'loaded' or 'not_loaded'")
+    embedding_model: str = Field(..., description="RAG provider name (e.g. vertex, memory)")
     database_configured: bool = Field(..., description="Whether DATABASE_URL is set")
     database_connected: bool = Field(..., description="Whether DB connection succeeds")
 

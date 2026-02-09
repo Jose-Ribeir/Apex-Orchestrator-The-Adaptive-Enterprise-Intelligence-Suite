@@ -1,12 +1,12 @@
 """
 Application configuration loaded from environment variables.
 Use .env file or export variables; see .env.dist for required keys.
-All Google backends (GCS, Vertex RAG) are required; no local fallback.
+Provider backends (RAG, LLM, storage) are selectable; Google is optional when using alternatives.
 """
 
 from functools import lru_cache
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -25,10 +25,19 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    # Required: Gemini (chat/router)
-    gemini_api_key: str
+    # --- Provider selection (defaults keep current Google-only behaviour) ---
+    rag_provider: str = "vertex"  # vertex | memory | pgvector
+    llm_provider: str = "gemini"  # gemini | openai | groq
+    storage_provider: str = "gcs"  # gcs | local | minio
 
-    # Required: Google Cloud (no local fallback)
+    # pgvector (required when rag_provider=pgvector): uses DATABASE_URL; table and dim are optional
+    rag_pgvector_table: str = "rag_embeddings"
+    rag_embedding_dim: int = 768  # must match embedding model (e.g. BAAI/bge-base-en-v1.5)
+
+    # Gemini (required when llm_provider=gemini)
+    gemini_api_key: str = ""
+
+    # Google Cloud (required when rag_provider=vertex or storage_provider=gcs)
     gcp_project_id: str = ""
     gcs_bucket_name: str = ""
     gcs_documents_prefix: str = "agents"
@@ -36,6 +45,23 @@ class Settings(BaseSettings):
     vertex_rag_index_endpoint_id: str = ""
     vertex_rag_index_id: str = ""
     vertex_rag_deployed_index_id: str = ""
+
+    # OpenAI (required when llm_provider=openai)
+    openai_api_key: str = ""
+
+    # Groq (required when llm_provider=groq; free tier at console.groq.com)
+    groq_api_key: str = ""
+
+    # Local storage (optional; used when storage_provider=local)
+    local_storage_path: str = "data/storage"
+
+    # MinIO (required when storage_provider=minio)
+    minio_endpoint: str = ""  # e.g. localhost:9000
+    minio_access_key: str = ""
+    minio_secret_key: str = ""
+    minio_bucket: str = ""
+    minio_secure: bool = False  # True for HTTPS
+    minio_prefix: str = "agents"  # object key prefix
 
     # Database: single URL for dev (local Postgres) and prod (Cloud SQL)
     database_url: str = ""
@@ -58,38 +84,69 @@ class Settings(BaseSettings):
 
     @field_validator("gemini_api_key")
     @classmethod
-    def gemini_key_non_empty(cls, v: str) -> str:
-        return _non_empty(v, "GEMINI_API_KEY")
+    def gemini_key_optional(cls, v: str) -> str:
+        return (v or "").strip()
 
-    @field_validator("gcp_project_id")
+    @field_validator("gcp_project_id", "gcs_bucket_name", "vertex_region")
     @classmethod
-    def gcp_project_non_empty(cls, v: str) -> str:
-        return _non_empty(v, "GCP_PROJECT_ID")
+    def gcp_optional(cls, v: str) -> str:
+        return (v or "").strip()
 
-    @field_validator("gcs_bucket_name")
+    @field_validator("vertex_rag_index_endpoint_id", "vertex_rag_index_id", "vertex_rag_deployed_index_id")
     @classmethod
-    def gcs_bucket_non_empty(cls, v: str) -> str:
-        return _non_empty(v, "GCS_BUCKET_NAME")
+    def vertex_optional(cls, v: str) -> str:
+        return (v or "").strip()
 
-    @field_validator("vertex_region")
-    @classmethod
-    def vertex_region_non_empty(cls, v: str) -> str:
-        return _non_empty(v, "VERTEX_REGION")
+    @model_validator(mode="after")
+    def require_provider_specific_settings(self) -> "Settings":
+        rp = (self.rag_provider or "vertex").strip().lower()
+        lp = (self.llm_provider or "gemini").strip().lower()
+        sp = (self.storage_provider or "gcs").strip().lower()
 
-    @field_validator("vertex_rag_index_endpoint_id")
-    @classmethod
-    def vertex_rag_index_endpoint_non_empty(cls, v: str) -> str:
-        return _non_empty(v, "VERTEX_RAG_INDEX_ENDPOINT_ID")
+        if lp == "gemini" and not (self.gemini_api_key and self.gemini_api_key.strip()):
+            raise ValueError("GEMINI_API_KEY is required when LLM_PROVIDER=gemini")
 
-    @field_validator("vertex_rag_index_id")
-    @classmethod
-    def vertex_rag_index_id_non_empty(cls, v: str) -> str:
-        return _non_empty(v, "VERTEX_RAG_INDEX_ID")
+        if lp == "openai" and not (self.openai_api_key and self.openai_api_key.strip()):
+            raise ValueError("OPENAI_API_KEY is required when LLM_PROVIDER=openai")
 
-    @field_validator("vertex_rag_deployed_index_id")
-    @classmethod
-    def vertex_rag_deployed_index_id_non_empty(cls, v: str) -> str:
-        return _non_empty(v, "VERTEX_RAG_DEPLOYED_INDEX_ID")
+        if lp == "groq" and not (self.groq_api_key and self.groq_api_key.strip()):
+            raise ValueError("GROQ_API_KEY is required when LLM_PROVIDER=groq")
+
+        if rp == "vertex":
+            for name, val in [
+                ("GCP_PROJECT_ID", self.gcp_project_id),
+                ("GCS_BUCKET_NAME", self.gcs_bucket_name),
+                ("VERTEX_REGION", self.vertex_region),
+                ("VERTEX_RAG_INDEX_ENDPOINT_ID", self.vertex_rag_index_endpoint_id),
+                ("VERTEX_RAG_INDEX_ID", self.vertex_rag_index_id),
+                ("VERTEX_RAG_DEPLOYED_INDEX_ID", self.vertex_rag_deployed_index_id),
+            ]:
+                if not (val and str(val).strip()):
+                    raise ValueError(f"{name} is required when RAG_PROVIDER=vertex")
+
+        if rp == "pgvector":
+            if not self.database_url or not self.database_url.strip():
+                raise ValueError("DATABASE_URL is required when RAG_PROVIDER=pgvector")
+
+        if sp == "gcs":
+            for name, val in [
+                ("GCP_PROJECT_ID", self.gcp_project_id),
+                ("GCS_BUCKET_NAME", self.gcs_bucket_name),
+            ]:
+                if not (val and str(val).strip()):
+                    raise ValueError(f"{name} is required when STORAGE_PROVIDER=gcs")
+
+        if sp == "minio":
+            for name, val in [
+                ("MINIO_ENDPOINT", self.minio_endpoint),
+                ("MINIO_ACCESS_KEY", self.minio_access_key),
+                ("MINIO_SECRET_KEY", self.minio_secret_key),
+                ("MINIO_BUCKET", self.minio_bucket),
+            ]:
+                if not (val and str(val).strip()):
+                    raise ValueError(f"{name} is required when STORAGE_PROVIDER=minio")
+
+        return self
 
     @property
     def geminimesh_configured(self) -> bool:

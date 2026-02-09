@@ -1,7 +1,11 @@
 """Agent model: user-owned agents with instructions and tools."""
 
+from __future__ import annotations
+
 import uuid
 
+from python.app.models.agent_document import AgentDocument
+from python.app.models.agent_tool import AgentTool
 from sqlalchemy import Boolean, DateTime, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -33,12 +37,12 @@ class Agent(Base):
             return self.metadata_
         return {"status": {"indexing": "completed", "enrich": "pending"}}
 
-    instructions: Mapped[list["AgentInstruction"]] = relationship(
+    instructions: Mapped[list["AgentInstruction"]] = relationship(  # noqa: F821
         "AgentInstruction", back_populates="agent", cascade="all, delete-orphan", order_by="AgentInstruction.order"
     )
-    agent_tools: Mapped[list["AgentTool"]] = relationship(
+    agent_tools: Mapped[list["AgentTool"]] = relationship(  # noqa: F821
         "AgentTool", back_populates="agent", cascade="all, delete-orphan"
     )
-    documents: Mapped[list["AgentDocument"]] = relationship(
+    documents: Mapped[list["AgentDocument"]] = relationship(  # noqa: F821
         "AgentDocument", back_populates="agent", cascade="all, delete-orphan"
     )

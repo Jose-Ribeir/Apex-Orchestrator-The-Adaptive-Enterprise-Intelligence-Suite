@@ -27,7 +27,9 @@ def upgrade() -> None:
                 WHERE table_schema = 'public' AND table_name = 'agent_documents' AND column_name = 'rag_document_ids'
             ) THEN
                 ALTER TABLE agent_documents ADD COLUMN rag_document_ids JSONB DEFAULT '[]';
-                UPDATE agent_documents SET rag_document_ids = jsonb_build_array(document_id) WHERE rag_document_ids = '[]' OR rag_document_ids IS NULL;
+                UPDATE agent_documents
+                SET rag_document_ids = jsonb_build_array(document_id)
+                WHERE rag_document_ids = '[]' OR rag_document_ids IS NULL;
             END IF;
         END $$
     """)

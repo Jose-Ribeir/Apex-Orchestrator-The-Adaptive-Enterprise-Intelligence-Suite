@@ -146,6 +146,9 @@ import type {
   IngestDocumentErrors,
   GetHealthData,
   GetHealthResponses,
+  ListAgentStatsData,
+  ListAgentStatsResponses,
+  ListAgentStatsErrors,
 } from "./types.gen";
 import { client as _heyApiClient } from "./client.gen";
 import {
@@ -1092,6 +1095,24 @@ export const getHealth = <ThrowOnError extends boolean = false>(
   >({
     responseType: "json",
     url: "/health",
+    ...options,
+  });
+};
+
+/**
+ * List agent daily stats
+ * Daily aggregates of model queries for this agent (totalQueries per day). Optional days=30.
+ */
+export const listAgentStats = <ThrowOnError extends boolean = false>(
+  options: Options<ListAgentStatsData, ThrowOnError>,
+) => {
+  return (options.client ?? _heyApiClient).get<
+    ListAgentStatsResponses,
+    ListAgentStatsErrors,
+    ThrowOnError
+  >({
+    responseType: "json",
+    url: "/api/agents/{agent_id}/stats",
     ...options,
   });
 };

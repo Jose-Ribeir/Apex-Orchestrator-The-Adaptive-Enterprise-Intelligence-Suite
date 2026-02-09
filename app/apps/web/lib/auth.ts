@@ -52,6 +52,7 @@ export const authClient = {
         return { error: { message }, data: null };
       }
     },
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- signature required by better-auth
     social: async (args: { provider: string; callbackURL?: string }) => {
       return {
         error: { message: "Social login not implemented for Python API" },

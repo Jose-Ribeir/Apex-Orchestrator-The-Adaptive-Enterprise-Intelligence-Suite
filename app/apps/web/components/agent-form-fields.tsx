@@ -13,6 +13,9 @@ import {
 } from "@ai-router/ui/select";
 import { Textarea } from "@ai-router/ui/textarea";
 
+/** Mode is a subset of AgentFormValues; use it for the select. */
+type AgentModeValue = NonNullable<AgentFormValues["mode"]>;
+
 export interface AgentFormFieldsProps {
   value: AgentFormValues;
   onChange: (next: Partial<AgentFormValues>) => void;
@@ -68,7 +71,7 @@ export function AgentFormFields({
         <Select
           value={value.mode}
           onValueChange={(v) =>
-            onChange({ mode: v as NonNullable<Agent["mode"]> })
+            onChange({ mode: v as AgentModeValue })
           }
           disabled={disabled}
         >

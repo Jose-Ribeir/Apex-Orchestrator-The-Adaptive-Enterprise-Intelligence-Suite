@@ -20,7 +20,7 @@ def seed_tools() -> None:
     """Ensure default tools exist. Skips any that already exist (by name)."""
     try:
         with session_scope() as session:
-            existing = {r.name for r in session.query(Tool.name).filter(Tool.is_deleted == False).all()}
+            existing = {r.name for r in session.query(Tool.name).filter(not Tool.is_deleted).all()}
             to_add = [n for n in DEFAULT_TOOL_NAMES if n not in existing]
             for name in to_add:
                 session.add(Tool(name=name))

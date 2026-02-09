@@ -1,10 +1,13 @@
 """Indexing queue: enqueue ingest/add-document jobs (BullMQ) and run them in worker."""
 
 import base64
+import logging
 import time
 import uuid
 
 from app.config import get_settings
+
+logger = logging.getLogger(__name__)
 from app.queue_logging import log_queue_event
 from app.services.agent_service import set_agent_indexing_status
 from app.services.documents_service import ingest_one_file_sync
@@ -88,6 +91,10 @@ def run_job_sync(data: dict) -> None:
             if get_settings().database_configured:
                 count = ingest_one_file_sync(uuid.UUID(agent_id_str), filename, content)
             else:
+                logger.warning(
+                    "Ingest skipped: DATABASE_URL not set in worker. RAG and DB will be empty. "
+                    "Set DATABASE_URL in the worker env."
+                )
                 count = 0
             set_agent_indexing_status(agent_id_str, "completed")
             duration_ms = int((time.monotonic() - started) * 1000)

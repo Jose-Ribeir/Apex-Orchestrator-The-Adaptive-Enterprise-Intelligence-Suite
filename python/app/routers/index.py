@@ -55,7 +55,10 @@ def _update_agent_index_sync(
     "/update_agent_index",
     response_model=UpdateAgentIndexResponse,
     summary="Update RAG index",
-    description="Add, update, or delete a document in the agent's index. Actions: add, update (need content JSON), delete (need doc_id).",
+    description=(
+        "Add, update, or delete a document in the agent's index. "
+        "Actions: add, update (need content JSON), delete (need doc_id)."
+    ),
     operation_id="updateAgentIndex",
 )
 async def update_agent_index(

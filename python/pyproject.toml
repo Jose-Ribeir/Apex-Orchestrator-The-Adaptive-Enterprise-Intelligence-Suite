@@ -18,7 +18,7 @@ line-ending = "auto"
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP"]
-ignore = []
+ignore = ["E402", "UP037"]  # E402: import not at top (FastAPI/alembic); UP037: keep quotes for SA forward refs
 
 [tool.ruff.lint.isort]
 known-first-party = ["app"]

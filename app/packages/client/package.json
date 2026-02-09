@@ -30,13 +30,13 @@
   "dependencies": {
     "@ai-router/typescript-config": "workspace:*",
     "@tanstack/react-query": "^5.90.20",
-    "axios": "^1.13.4",
+    "axios": "^1.13.5",
     "zod": "^3.25.76"
   },
   "devDependencies": {
     "@ai-router/eslint-config": "workspace:*",
     "@hey-api/openapi-ts": "^0.77.0",
-    "@types/node": "^24.10.11",
+    "@types/node": "^24.10.12",
     "eslint": "^9.39.2",
     "tsup": "^8.5.1",
     "typescript": "5.9.3"

@@ -2325,6 +2325,40 @@ export type GetHealthResponses = {
 
 export type GetHealthResponse = GetHealthResponses[keyof GetHealthResponses];
 
+export type ListAgentStatsData = {
+  body?: never;
+  path: {
+    /**
+     * Agent Id
+     */
+    agent_id: string;
+  };
+  query?: {
+    /**
+     * Days
+     */
+    days?: number;
+  };
+  url: "/api/agents/{agent_id}/stats";
+};
+
+export type ListAgentStatsErrors = {
+  /**
+   * Validation Error
+   */
+  422: HttpValidationError;
+};
+
+export type ListAgentStatsError =
+  ListAgentStatsErrors[keyof ListAgentStatsErrors];
+
+export type ListAgentStatsResponses = {
+  /**
+   * Successful Response
+   */
+  200: unknown;
+};
+
 export type ClientOptions = {
   baseURL: `${string}://${string}` | (string & {});
 };

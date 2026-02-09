@@ -27,7 +27,9 @@ const AGENT_MODE_LABELS: Record<AgentMode, string> = {
 /**
  * Human-readable label for agent mode.
  */
-export function agentModeLabel(mode: AgentMode | undefined): string {
-  if (!mode) return "—";
+export function agentModeLabel(
+  mode: AgentMode | null | undefined,
+): string {
+  if (mode == null) return "—";
   return AGENT_MODE_LABELS[mode] ?? mode;
 }

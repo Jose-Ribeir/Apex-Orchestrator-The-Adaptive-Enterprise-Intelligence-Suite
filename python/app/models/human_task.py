@@ -1,5 +1,7 @@
 """HumanTask model: tasks for human review linked to a model query."""
 
+from __future__ import annotations
+
 import uuid
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
@@ -32,4 +34,4 @@ class HumanTask(Base):
     is_deleted: Mapped[bool] = mapped_column(Boolean(), server_default="false", nullable=False)
     deleted_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    model_query: Mapped["ModelQuery"] = relationship("ModelQuery", back_populates="human_task")
+    model_query: Mapped["ModelQuery"] = relationship("ModelQuery", back_populates="human_task")  # noqa: F821

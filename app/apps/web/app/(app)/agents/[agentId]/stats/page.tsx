@@ -1,4 +1,5 @@
 import { formatDate } from "@/lib/format";
+import { listAgentStatsOptions } from "@ai-router/client/react-query";
 import {
   Table,
   TableBody,
@@ -7,22 +8,37 @@ import {
   TableHeader,
   TableRow,
 } from "@ai-router/ui/table";
+import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
-
-type DailyStat = {
-  id: string;
-  date: string;
-  totalQueries?: number;
-  totalTokens?: number;
-  avgEfficiency?: number;
-  avgQuality?: number;
-};
 
 export default function AgentStatsPage() {
   const params = useParams();
   const agentId = params?.agentId as string;
-  const stats: DailyStat[] = [];
-  const isPending = false;
+  const days = 30;
+
+  const { data: response, isPending } = useQuery({
+    ...listAgentStatsOptions({
+      path: { agent_id: agentId },
+      query: { days },
+    }),
+    enabled: Boolean(agentId),
+  });
+
+  const stats =
+    (
+      response as
+        | {
+            data?: Array<{
+              id: string;
+              date: string;
+              totalQueries?: number;
+              totalTokens?: number | null;
+              avgEfficiency?: number | null;
+              avgQuality?: number | null;
+            }>;
+          }
+        | undefined
+    )?.data ?? [];
 
   return (
     <div className="flex flex-col gap-6">
@@ -39,7 +55,7 @@ export default function AgentStatsPage() {
         <p className="text-muted-foreground text-sm">Loading…</p>
       ) : stats.length === 0 ? (
         <p className="text-muted-foreground text-sm">
-          Daily stats are not available from the API yet.
+          No stats for the last {days} days. Use the agent to generate queries.
         </p>
       ) : (
         <Table>

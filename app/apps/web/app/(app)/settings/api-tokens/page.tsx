@@ -1,9 +1,5 @@
 "use client";
 
-import type {
-  ApiTokenListItem,
-  CreateApiTokenResponse2,
-} from "@ai-router/client";
 import {
   createApiTokenMutation,
   listApiTokensOptions,
@@ -43,11 +39,23 @@ import { useState } from "react";
 
 import { formatDateTime } from "@/lib/format";
 
+/** List item shape from list API (token value never returned). */
+type ApiTokenListItem = {
+  id?: string;
+  name?: string;
+  createdAt?: string;
+  lastUsedAt?: string;
+  expiresAt?: string;
+};
+
+/** Create response shape (plain token returned only once). */
+type CreateApiTokenResponse = { token?: string };
+
 export default function ApiTokensPage() {
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
   const [createdToken, setCreatedToken] =
-    useState<CreateApiTokenResponse2 | null>(null);
+    useState<CreateApiTokenResponse | null>(null);
   const [revokeId, setRevokeId] = useState<string | null>(null);
   const [createName, setCreateName] = useState("");
   const [createExpiresInDays, setCreateExpiresInDays] = useState("");
@@ -62,7 +70,7 @@ export default function ApiTokensPage() {
     ...createApiTokenMutation(),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: listApiTokensQueryKey({}) });
-      setCreatedToken(data as CreateApiTokenResponse2);
+      setCreatedToken(data as CreateApiTokenResponse);
       setCreateName("");
       setCreateExpiresInDays("");
     },
@@ -266,7 +274,7 @@ export default function ApiTokensPage() {
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() =>
-                revokeId && revokeToken.mutate({ path: { id: revokeId } })
+                revokeId && revokeToken.mutate({ path: { token_id: revokeId } })
               }
               disabled={revokeToken.isPending}
             >

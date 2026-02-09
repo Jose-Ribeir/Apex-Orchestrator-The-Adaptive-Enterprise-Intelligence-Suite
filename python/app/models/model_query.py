@@ -1,5 +1,7 @@
 """ModelQuery model: per-agent query log."""
 
+from __future__ import annotations
+
 import uuid
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
@@ -27,6 +29,6 @@ class ModelQuery(Base):
     is_deleted: Mapped[bool] = mapped_column(Boolean(), server_default="false", nullable=False)
     deleted_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    human_task: Mapped["HumanTask | None"] = relationship(
+    human_task: Mapped["HumanTask | None"] = relationship(  # noqa: F821
         "HumanTask", back_populates="model_query", uselist=False, cascade="all, delete-orphan"
     )

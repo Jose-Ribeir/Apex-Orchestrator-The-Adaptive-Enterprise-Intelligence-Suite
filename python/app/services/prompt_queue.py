@@ -56,7 +56,7 @@ def run_prompt_job_sync(data: dict) -> None:
     if not agent_id_str:
         raise ValueError("agent_id required")
 
-    from app.services.gemini_router import optimize_agent_prompt
+    from app.services.llm import optimize_agent_prompt
 
     agent = get_agent(agent_id_str, with_relations=True)
     if not agent:

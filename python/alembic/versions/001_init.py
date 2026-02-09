@@ -10,8 +10,6 @@ revision id (001_init). The real schema is applied in 001_unified.
 
 from collections.abc import Sequence
 
-from alembic import op
-
 revision: str = "001_init"
 down_revision: str | None = None
 branch_labels: str | Sequence[str] | None = None

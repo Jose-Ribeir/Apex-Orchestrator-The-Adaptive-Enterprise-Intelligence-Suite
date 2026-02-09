@@ -61,7 +61,7 @@ from app.services.documents_service import (
     record_documents as record_documents_svc,
 )
 from app.services.indexing_queue import enqueue_add_document, enqueue_ingest
-from app.services.prompt_queue import enqueue_generate_prompt, run_prompt_job_sync
+from app.services.prompt_queue import enqueue_generate_prompt
 from app.services.rag import get_or_create_retriever, list_agents_with_doc_counts
 
 router = APIRouter(tags=["Agents"])
@@ -243,7 +243,10 @@ class DocumentsIngestBody(BaseModel):
 @documents_router.post(
     "/{agent_id}/documents/ingest",
     summary="Ingest document for agent RAG",
-    description="Upload a document (base64); content is chunked and added to the agent's RAG index. When queue is configured, returns 202 with job_id.",
+    description=(
+        "Upload a document (base64); content is chunked and added to the agent's RAG index. "
+        "When queue is configured, returns 202 with job_id."
+    ),
     operation_id="ingestAgentDocument",
 )
 async def ingest_document(
@@ -350,7 +353,10 @@ class DocumentAddBody(BaseModel):
 @documents_router.post(
     "/{agent_id}/documents",
     summary="Add document",
-    description="Add a single document by content (and optional id/metadata). When queue is configured, returns 202 with job_id.",
+    description=(
+        "Add a single document by content (and optional id/metadata). "
+        "When queue is configured, returns 202 with job_id."
+    ),
     operation_id="addAgentDocument",
 )
 async def add_agent_document(

@@ -49,6 +49,7 @@ import {
   uploadAndIndex,
   ingestDocument,
   getHealth,
+  listAgentStats,
 } from "../sdk.gen";
 import {
   queryOptions,
@@ -160,6 +161,7 @@ import type {
   IngestDocumentError,
   IngestDocumentResponse,
   GetHealthData,
+  ListAgentStatsData,
 } from "../types.gen";
 import type { AxiosError } from "axios";
 import { client as _heyApiClient } from "../client.gen";
@@ -2270,5 +2272,27 @@ export const getHealthOptions = (options?: Options<GetHealthData>) => {
       return data;
     },
     queryKey: getHealthQueryKey(options),
+  });
+};
+
+export const listAgentStatsQueryKey = (options: Options<ListAgentStatsData>) =>
+  createQueryKey("listAgentStats", options);
+
+/**
+ * List agent daily stats
+ * Daily aggregates of model queries for this agent (totalQueries per day). Optional days=30.
+ */
+export const listAgentStatsOptions = (options: Options<ListAgentStatsData>) => {
+  return queryOptions({
+    queryFn: async ({ queryKey, signal }) => {
+      const { data } = await listAgentStats({
+        ...options,
+        ...queryKey[0],
+        signal,
+        throwOnError: true,
+      });
+      return data;
+    },
+    queryKey: listAgentStatsQueryKey(options),
   });
 };

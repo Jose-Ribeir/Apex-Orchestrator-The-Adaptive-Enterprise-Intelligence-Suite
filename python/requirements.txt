@@ -6,17 +6,28 @@ pydantic>=2.9.0
 pydantic-settings>=2.0.0
 python-multipart>=0.0.9
 
-# Gemini
+# Gemini (when LLM_PROVIDER=gemini)
 google-genai>=1.0.0
+
+# OpenAI (when LLM_PROVIDER=openai)
+openai>=1.0.0
+
+# Groq (when LLM_PROVIDER=groq; free tier)
+groq>=0.4.0
 
 # Google Cloud (RAG + files)
 google-cloud-aiplatform>=1.38.0
 google-cloud-storage>=2.14.0
 
+# MinIO (when STORAGE_PROVIDER=minio)
+minio>=7.0.0
+
 # Cloud SQL (PostgreSQL)
 sqlalchemy>=2.0.0
 psycopg2-binary>=2.9.9
 alembic>=1.13.0
+# pgvector for RAG_PROVIDER=pgvector (vector similarity search)
+pgvector>=0.2.0
 
 # Auth (cookie + Bearer API token)
 passlib[bcrypt]>=1.7.4
@@ -24,6 +35,9 @@ python-jose[cryptography]>=3.3.0
 
 # Queue (BullMQ)
 bullmq>=0.1.0
+
+# Optional: local embeddings for RAG_PROVIDER=memory (otherwise keyword fallback)
+# sentence-transformers>=2.0.0
 
 # Document parsing (ingest)
 requests>=2.32.0

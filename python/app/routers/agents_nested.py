@@ -1,10 +1,12 @@
-"""Nested agent routes: instructions, tools, queries (under /api/agents/{agent_id}/...)."""
+"""Nested agent routes: instructions, tools, queries, stats (under /api/agents/{agent_id}/...)."""
 
 import asyncio
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
+from sqlalchemy import Date, cast, func
 
 from app.auth.deps import get_current_user
 from app.db import session_scope
@@ -51,7 +53,7 @@ async def list_instructions(
         with session_scope() as session:
             rows = (
                 session.query(AgentInstruction)
-                .filter(AgentInstruction.agent_id == agent_id, AgentInstruction.is_deleted == False)
+                .filter(AgentInstruction.agent_id == agent_id, not AgentInstruction.is_deleted)
                 .order_by(AgentInstruction.order)
                 .offset((page - 1) * limit)
                 .limit(limit)
@@ -59,7 +61,7 @@ async def list_instructions(
             )
             total = (
                 session.query(AgentInstruction)
-                .filter(AgentInstruction.agent_id == agent_id, AgentInstruction.is_deleted == False)
+                .filter(AgentInstruction.agent_id == agent_id, not AgentInstruction.is_deleted)
                 .count()
             )
             return [
@@ -108,7 +110,7 @@ async def get_instruction(
                 .filter(
                     AgentInstruction.id == id,
                     AgentInstruction.agent_id == agent_id,
-                    AgentInstruction.is_deleted == False,
+                    not AgentInstruction.is_deleted,
                 )
                 .first()
             )
@@ -186,7 +188,7 @@ async def update_instruction(
                 .filter(
                     AgentInstruction.id == id,
                     AgentInstruction.agent_id == agent_id,
-                    AgentInstruction.is_deleted == False,
+                    not AgentInstruction.is_deleted,
                 )
                 .first()
             )
@@ -267,10 +269,7 @@ async def list_agent_tools(
     def _list():
         with session_scope() as session:
             base = (
-                session.query(AgentTool)
-                .filter(AgentTool.agent_id == agent_id)
-                .join(Tool)
-                .filter(Tool.is_deleted == False)
+                session.query(AgentTool).filter(AgentTool.agent_id == agent_id).join(Tool).filter(not Tool.is_deleted)
             )
             total = base.count()
             rows = base.offset((page - 1) * limit).limit(limit).all()
@@ -408,17 +407,13 @@ async def list_model_queries(
         with session_scope() as session:
             rows = (
                 session.query(ModelQuery)
-                .filter(ModelQuery.agent_id == agent_id, ModelQuery.is_deleted == False)
+                .filter(ModelQuery.agent_id == agent_id, not ModelQuery.is_deleted)
                 .order_by(ModelQuery.created_at.desc())
                 .offset((page - 1) * limit)
                 .limit(limit)
                 .all()
             )
-            total = (
-                session.query(ModelQuery)
-                .filter(ModelQuery.agent_id == agent_id, ModelQuery.is_deleted == False)
-                .count()
-            )
+            total = session.query(ModelQuery).filter(ModelQuery.agent_id == agent_id, not ModelQuery.is_deleted).count()
             return [
                 {
                     "id": str(r.id),
@@ -463,7 +458,7 @@ async def get_model_query(
         with session_scope() as session:
             return (
                 session.query(ModelQuery)
-                .filter(ModelQuery.id == id, ModelQuery.agent_id == agent_id, ModelQuery.is_deleted == False)
+                .filter(ModelQuery.id == id, ModelQuery.agent_id == agent_id, not ModelQuery.is_deleted)
                 .first()
             )
 
@@ -542,7 +537,7 @@ async def update_model_query(
         with session_scope() as session:
             r = (
                 session.query(ModelQuery)
-                .filter(ModelQuery.id == id, ModelQuery.agent_id == agent_id, ModelQuery.is_deleted == False)
+                .filter(ModelQuery.id == id, ModelQuery.agent_id == agent_id, not ModelQuery.is_deleted)
                 .first()
             )
             if not r:
@@ -600,3 +595,49 @@ async def delete_model_query(
     ok = await asyncio.to_thread(_del)
     if not ok:
         raise HTTPException(status_code=404, detail="Model query not found")
+
+
+# ---- Stats ----
+@router.get(
+    "/{agent_id}/stats",
+    summary="List agent daily stats",
+    description="Daily aggregates of model queries for this agent (totalQueries per day). Optional days=30 or from/to.",
+    operation_id="listAgentStats",
+    tags=["Agents -> Queries"],
+)
+async def list_agent_stats(
+    agent_id: UUID,
+    current_user: dict = Depends(get_current_user),
+    days: int = Query(30, ge=1, le=365, description="Number of days to include (default 30)"),
+):
+    _ensure_agent_owner(agent_id, current_user["id"])
+
+    def _stats():
+        with session_scope() as session:
+            since = datetime.now(timezone.utc) - timedelta(days=days)
+            day_col = cast(ModelQuery.created_at, Date)
+            rows = (
+                session.query(day_col.label("day"), func.count(ModelQuery.id).label("total_queries"))
+                .filter(
+                    ModelQuery.agent_id == agent_id,
+                    not ModelQuery.is_deleted,
+                    ModelQuery.created_at >= since,
+                )
+                .group_by(day_col)
+                .order_by(day_col.desc())
+                .all()
+            )
+            return [
+                {
+                    "id": f"{agent_id}_{row.day.isoformat()}",
+                    "date": row.day.isoformat(),
+                    "totalQueries": row.total_queries,
+                    "totalTokens": None,
+                    "avgEfficiency": None,
+                    "avgQuality": None,
+                }
+                for row in rows
+            ]
+
+    items = await asyncio.to_thread(_stats)
+    return {"data": items}

@@ -16,7 +16,7 @@ router = APIRouter(tags=["Health"])
     "/health",
     response_model=HealthResponse,
     summary="Health check",
-    description="Returns status, agents with RAG, GeminiMesh flag, embedding backend, and DB status.",
+    description="Returns status, agents with RAG, GeminiMesh flag, RAG/LLM providers, and DB status.",
     operation_id="getHealth",
 )
 async def health() -> HealthResponse:
@@ -28,7 +28,7 @@ async def health() -> HealthResponse:
         status="healthy",
         agents=list(retriever_cache.keys()),
         geminimesh_configured=settings.geminimesh_configured,
-        embedding_model="vertex",
+        embedding_model=settings.rag_provider or "vertex",
         database_configured=settings.database_configured,
         database_connected=database_connected,
     )

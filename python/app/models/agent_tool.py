@@ -1,7 +1,10 @@
 """AgentTool model: join table linking agents to tools."""
 
+from __future__ import annotations
+
 import uuid
 
+from python.app.models import Agent, Tool
 from sqlalchemy import DateTime, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -21,5 +24,5 @@ class AgentTool(Base):
     )
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
-    agent: Mapped["Agent"] = relationship("Agent", back_populates="agent_tools")
-    tool: Mapped["Tool"] = relationship("Tool", back_populates="agent_tools")
+    agent: Mapped[Agent] = relationship("Agent", back_populates="agent_tools")
+    tool: Mapped[Tool] = relationship("Tool", back_populates="agent_tools")

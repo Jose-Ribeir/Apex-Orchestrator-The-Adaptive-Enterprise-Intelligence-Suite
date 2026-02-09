@@ -1,7 +1,10 @@
 """AgentInstruction model: ordered instructions per agent."""
 
+from __future__ import annotations
+
 import uuid
 
+from python.app.models import Agent
 from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -26,4 +29,4 @@ class AgentInstruction(Base):
     )
     deleted_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    agent: Mapped["Agent"] = relationship("Agent", back_populates="instructions")
+    agent: Mapped[Agent] = relationship("Agent", back_populates="instructions")

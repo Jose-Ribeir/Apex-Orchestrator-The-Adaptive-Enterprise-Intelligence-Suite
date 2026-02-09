@@ -3,17 +3,44 @@
 import asyncio
 import json
 import logging
+from typing import Any
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
+from app.config import get_settings
 from app.schemas.requests import ChatRequest
 from app.services.agent_service import get_agent
-from app.services.gemini_router import build_system_prompt_from_agent, run_cheap_router, run_generator_stream
+from app.services.llm import build_system_prompt_from_agent, run_cheap_router, run_generator_stream
 from app.services.rag import get_or_create_retriever
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Chat"])
+
+# Max length to store for model_response (avoid huge DB rows)
+_MODEL_RESPONSE_MAX_CHARS = 100_000
+
+
+def _insert_model_query_sync(payload: dict[str, Any]) -> None:
+    """Best-effort insert one ModelQuery. Logs and ignores errors."""
+    try:
+        import uuid as uuid_mod
+
+        from app.db import session_scope
+        from app.models import ModelQuery
+
+        agent_id = uuid_mod.UUID(payload["agent_id"])
+        with session_scope() as session:
+            session.add(
+                ModelQuery(
+                    agent_id=agent_id,
+                    user_query=payload["user_query"],
+                    model_response=payload.get("model_response"),
+                    method_used=payload.get("method_used", "EFFICIENCY"),
+                )
+            )
+    except Exception as e:
+        logger.warning("Background ModelQuery insert failed: %s", e)
 
 
 def _rag_key(request: ChatRequest, *, resolved_agent_name: str) -> str:
@@ -48,8 +75,9 @@ def _resolve_agent_name_and_prompt(request: ChatRequest) -> tuple[str, str] | No
     return (agent_name, system_prompt)
 
 
-def _run_stream_pipeline(request: ChatRequest):
-    """Blocking: router + RAG + generator stream. Yields NDJSON lines."""
+def _run_stream_pipeline(request: ChatRequest, model_query_payload: list[dict[str, Any]] | None = None):
+    """Blocking: router + RAG + generator stream. Yields NDJSON lines.
+    If model_query_payload is provided and agent_id + DB are set, appends one dict for background ModelQuery insert."""
     resolved = _resolve_agent_name_and_prompt(request)
     if resolved is None:
         yield json.dumps({"error": "Agent not found", "detail": f"Agent {request.agent_id} not found"}) + "\n"
@@ -119,14 +147,39 @@ def _run_stream_pipeline(request: ChatRequest):
         + "\n"
     )
     yield first_line
-    yield from run_generator_stream(
+    accumulated_text: list[str] = []
+    for line in run_generator_stream(
         full_prompt,
         generator_model_name,
         tool_decision,
         input_chars,
         docs_count,
         total_docs,
-    )
+    ):
+        try:
+            parsed = json.loads(line)
+            if isinstance(parsed.get("text"), str):
+                accumulated_text.append(parsed["text"])
+        except (json.JSONDecodeError, TypeError):
+            pass
+        yield line
+    if (
+        model_query_payload is not None
+        and request.agent_id
+        and str(request.agent_id).strip()
+        and get_settings().database_configured
+    ):
+        response_text = "".join(accumulated_text)
+        if len(response_text) > _MODEL_RESPONSE_MAX_CHARS:
+            response_text = response_text[:_MODEL_RESPONSE_MAX_CHARS] + "\n...[truncated]"
+        model_query_payload.append(
+            {
+                "agent_id": str(request.agent_id).strip(),
+                "user_query": request.message,
+                "model_response": response_text or None,
+                "method_used": (tool_decision.get("model_to_use") or "EFFICIENCY").strip().upper() or "EFFICIENCY",
+            }
+        )
 
 
 @router.post(
@@ -139,16 +192,19 @@ def _run_stream_pipeline(request: ChatRequest):
     operation_id="generateStream",
 )
 async def generate_stream(request: ChatRequest):
-    queue: asyncio.Queue[str | None] = asyncio.Queue()
+    queue: asyncio.Queue[str | tuple[str, dict] | None] = asyncio.Queue()
     loop = asyncio.get_running_loop()
+    payload_holder: list[dict[str, Any]] = []
 
-    def put(chunk: str | None) -> None:
+    def put(chunk: str | tuple[str, dict] | None) -> None:
         loop.call_soon_threadsafe(queue.put_nowait, chunk)
 
     def worker() -> None:
         try:
-            for line in _run_stream_pipeline(request):
+            for line in _run_stream_pipeline(request, model_query_payload=payload_holder):
                 put(line)
+            if payload_holder:
+                put(("model_query", payload_holder[0]))
         finally:
             put(None)
 
@@ -159,6 +215,21 @@ async def generate_stream(request: ChatRequest):
             chunk = await queue.get()
             if chunk is None:
                 break
+            if isinstance(chunk, tuple) and chunk[0] == "model_query":
+
+                async def _run_insert(p: dict[str, Any]) -> None:
+                    await asyncio.to_thread(_insert_model_query_sync, p)
+
+                task = asyncio.create_task(_run_insert(chunk[1]))
+
+                def _done(t: asyncio.Task) -> None:
+                    try:
+                        t.result()
+                    except Exception as e:
+                        logger.warning("Background ModelQuery task failed: %s", e)
+
+                task.add_done_callback(_done)
+                continue
             yield chunk
 
     return StreamingResponse(
