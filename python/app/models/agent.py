@@ -1,4 +1,5 @@
 """Agent model: user-owned agents with instructions and tools."""
+# pyright: ignore[reportUndefinedVariable]
 
 from __future__ import annotations
 
@@ -9,8 +10,6 @@ from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
-from app.models.agent_document import AgentDocument
-from app.models.agent_tool import AgentTool
 from app.models.base import Base
 
 

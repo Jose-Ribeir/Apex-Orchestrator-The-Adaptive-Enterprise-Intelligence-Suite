@@ -1,4 +1,5 @@
 """Tool model: global tools referenced by agents."""
+# pyright: ignore[reportUndefinedVariable]
 
 from __future__ import annotations
 

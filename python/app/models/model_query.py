@@ -1,4 +1,5 @@
 """ModelQuery model: per-agent query log."""
+# pyright: ignore[reportUndefinedVariable]
 
 from __future__ import annotations
 

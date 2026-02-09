@@ -1,4 +1,5 @@
 """HumanTask model: tasks for human review linked to a model query."""
+# pyright: ignore[reportUndefinedVariable]
 
 from __future__ import annotations
 

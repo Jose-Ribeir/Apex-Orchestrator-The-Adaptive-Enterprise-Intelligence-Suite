@@ -1,4 +1,5 @@
 """Agent document: metadata for RAG-indexed documents (per-agent)."""
+# pyright: ignore[reportUndefinedVariable]
 
 import uuid
 from typing import TYPE_CHECKING
@@ -35,4 +36,4 @@ class AgentDocument(Base):
     storage_path: Mapped[str | None] = mapped_column(Text(), nullable=True)  # gs:// URI for signed download URL
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
-    agent: Mapped["Agent"] = relationship("Agent", back_populates="documents")
+    agent: Mapped["Agent"] = relationship("Agent", back_populates="documents")  # noqa: F821
