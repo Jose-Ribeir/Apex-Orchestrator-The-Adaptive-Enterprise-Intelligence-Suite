@@ -6,7 +6,6 @@ WORKDIR /app
 # Deps: cache until lockfile or any package.json changes
 FROM base AS deps
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY apps/api/package.json ./apps/api/
 COPY apps/web/package.json ./apps/web/
 COPY packages/client/package.json ./packages/client/
 COPY packages/ui/package.json ./packages/ui/
@@ -22,7 +21,6 @@ ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_APP_URL=$VITE_APP_URL
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
-COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=deps /app/packages ./packages
 COPY . .
 RUN pnpm --filter web build
