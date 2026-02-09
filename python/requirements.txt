@@ -28,6 +28,8 @@ psycopg2-binary>=2.9.9
 alembic>=1.13.0
 # pgvector for RAG_PROVIDER=pgvector (vector similarity search)
 pgvector>=0.2.0
+# Embeddings for pgvector (and RAG_PROVIDER=memory); required for local embedding model
+sentence-transformers>=2.0.0
 
 # LanceDB for RAG_PROVIDER=lancedb (embedded vector DB, file-based)
 lancedb>=0.4.0
@@ -38,9 +40,6 @@ python-jose[cryptography]>=3.3.0
 
 # Queue (BullMQ)
 bullmq>=0.1.0
-
-# Optional: local embeddings for RAG_PROVIDER=memory (otherwise keyword fallback)
-# sentence-transformers>=2.0.0
 
 # Document parsing (ingest)
 requests>=2.32.0

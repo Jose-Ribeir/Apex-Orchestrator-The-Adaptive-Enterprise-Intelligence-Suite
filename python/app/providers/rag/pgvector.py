@@ -5,6 +5,11 @@ Uses DATABASE_URL; requires the pgvector extension and rag_embeddings table (mig
 Embeddings use the same local model as the memory provider (BAAI/bge-base-en-v1.5);
 install sentence-transformers for embedding support (see requirements or docs).
 Senior-level: connection-scoped type registration, parameterized queries, explicit resource handling.
+
+Disk usage: PostgreSQL reclaims space via autovacuum (dead rows from UPDATE/DELETE). No app-level
+compaction. If the HNSW index grows large after heavy updates, run periodically:
+  REINDEX INDEX CONCURRENTLY ix_rag_embeddings_embedding_cosine;
+or VACUUM ANALYZE rag_embeddings; (e.g. from cron or a maintenance job).
 """
 
 from __future__ import annotations
@@ -89,6 +94,7 @@ class PgVectorRAGRetriever:
             return
         table = _get_table()
         dim = get_settings().rag_embedding_dim
+        inserted = 0
 
         with session_scope() as session:
             _register_pgvector(session)
@@ -124,6 +130,13 @@ class PgVectorRAGRetriever:
                         "metadata": json.dumps(meta),
                     },
                 )
+                inserted += 1
+        if inserted:
+            logger.info(
+                "pgvector: add_or_update_documents agent_key=%s documents_count=%s",
+                self._agent_key,
+                inserted,
+            )
 
     def delete_document(self, doc_id: str) -> bool:
         if not doc_id:
@@ -134,7 +147,10 @@ class PgVectorRAGRetriever:
                 text(f"DELETE FROM {table} WHERE agent_key = :agent_key AND doc_id = :doc_id"),
                 {"agent_key": self._agent_key, "doc_id": doc_id.strip()},
             )
-            return result.rowcount > 0
+            deleted = result.rowcount > 0
+        if deleted:
+            logger.info("pgvector: delete_document agent_key=%s doc_id=%s", self._agent_key, doc_id.strip())
+        return deleted
 
     def search(self, query: str, top_k: int = 5) -> list[dict[str, Any]]:
         qvecs = _embed_texts([query])

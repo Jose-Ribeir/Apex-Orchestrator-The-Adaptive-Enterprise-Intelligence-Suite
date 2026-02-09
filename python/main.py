@@ -44,6 +44,7 @@ logging.basicConfig(
 logger = logging.getLogger("app")
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 
 from app import __version__
 from app.auth.routes import router as auth_router
@@ -95,6 +96,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/", include_in_schema=False)
+def _root():
+    """Redirect browser visitors to API docs."""
+    return RedirectResponse(url="/docs", status_code=302)
+
 
 # Auth (cookie + Bearer API token; /auth/me for current user)
 app.include_router(auth_router)

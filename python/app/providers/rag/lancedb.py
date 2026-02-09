@@ -84,6 +84,34 @@ def _get_table():
     return db.create_table(_table_name, schema=_rag_schema(dim), mode="overwrite")
 
 
+def _compact_table_if_supported() -> None:
+    """
+    Run Lance compaction on the RAG table to merge fragments and remove deleted rows.
+    Reduces disk usage and metadata overhead when indexing causes growth.
+    No-op if lance API is unavailable or compaction fails.
+    """
+    try:
+        import lance
+    except ImportError:
+        return
+    path = (get_settings().rag_lancedb_path or "data/lancedb").strip()
+    path = os.path.abspath(path)
+    for table_path in (os.path.join(path, _table_name), os.path.join(path, f"{_table_name}.lance")):
+        if not os.path.isdir(table_path):
+            continue
+        try:
+            dataset = lance.dataset(table_path)
+            if hasattr(dataset, "optimize") and hasattr(dataset.optimize, "compact_files"):
+                dataset.optimize.compact_files(
+                    num_threads=1,
+                    target_rows_per_fragment=min(1024 * 500, max(1000, 50000)),
+                )
+                logger.info("lancedb: compaction completed for table=%s", _table_name)
+        except Exception as e:
+            logger.debug("lancedb: compaction skipped or failed: %s", e)
+        return
+
+
 class LanceDBRAGRetriever:
     """
     Per-agent RAG retriever backed by LanceDB.
@@ -161,6 +189,7 @@ class LanceDBRAGRetriever:
             for r in rows:
                 table.delete(f"row_id = '{r['row_id']}'")
             table.add(rows)
+        _compact_table_if_supported()
 
     def delete_document(self, doc_id: str) -> bool:
         if not doc_id:

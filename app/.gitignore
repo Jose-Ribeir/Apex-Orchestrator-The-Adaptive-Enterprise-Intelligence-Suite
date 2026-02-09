@@ -40,3 +40,5 @@ openapi.json
 # Misc
 .DS_Store
 *.pem
+
+.pnpm-store

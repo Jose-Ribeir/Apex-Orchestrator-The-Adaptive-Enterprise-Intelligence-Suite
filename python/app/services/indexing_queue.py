@@ -40,29 +40,43 @@ async def enqueue_ingest(agent_id: uuid.UUID, filename: str, content_base64: str
     """Enqueue an ingest job. Returns job id or None if queue unavailable."""
     q = _get_queue()
     if q is None:
+        logger.warning("Queue unavailable (Redis not configured); cannot enqueue ingest for agent_id=%s", agent_id)
         return None
     agent_id_str = str(agent_id)
-    job = await q.add(
-        "ingest",
-        {"agent_id": agent_id_str, "job_type": "ingest", "filename": filename, "content_base64": content_base64},
-    )
-    job_id = str(job.id) if job and getattr(job, "id", None) is not None else ""
-    if job_id:
-        log_queue_event(job_id, agent_id_str, "ingest", "enqueued", queue_name=QUEUE_NAME)
-    return job_id
+    try:
+        job = await q.add(
+            "ingest",
+            {"agent_id": agent_id_str, "job_type": "ingest", "filename": filename, "content_base64": content_base64},
+        )
+        job_id = str(job.id) if job and getattr(job, "id", None) is not None else ""
+        if job_id:
+            log_queue_event(job_id, agent_id_str, "ingest", "enqueued", queue_name=QUEUE_NAME)
+            logger.info("Enqueued ingest job_id=%s agent_id=%s filename=%s", job_id, agent_id_str, filename)
+        return job_id
+    except Exception as e:
+        logger.exception("Failed to enqueue ingest agent_id=%s filename=%s: %s", agent_id_str, filename, e)
+        raise
 
 
 async def enqueue_add_document(agent_id: uuid.UUID, document: dict) -> str | None:
     """Enqueue an add-document job. Returns job id or None if queue unavailable."""
     q = _get_queue()
     if q is None:
+        logger.warning(
+            "Queue unavailable (Redis not configured); cannot enqueue add-document for agent_id=%s", agent_id
+        )
         return None
     agent_id_str = str(agent_id)
-    job = await q.add("add", {"agent_id": agent_id_str, "job_type": "add", "document": document})
-    job_id = str(job.id) if job and getattr(job, "id", None) is not None else ""
-    if job_id:
-        log_queue_event(job_id, agent_id_str, "add", "enqueued", queue_name=QUEUE_NAME)
-    return job_id
+    try:
+        job = await q.add("add", {"agent_id": agent_id_str, "job_type": "add", "document": document})
+        job_id = str(job.id) if job and getattr(job, "id", None) is not None else ""
+        if job_id:
+            log_queue_event(job_id, agent_id_str, "add", "enqueued", queue_name=QUEUE_NAME)
+            logger.info("Enqueued add-document job_id=%s agent_id=%s", job_id, agent_id_str)
+        return job_id
+    except Exception as e:
+        logger.exception("Failed to enqueue add-document agent_id=%s: %s", agent_id_str, e)
+        raise
 
 
 def run_job_sync(data: dict) -> None:
@@ -76,7 +90,10 @@ def run_job_sync(data: dict) -> None:
     job_id = data.get("_job_id", "")
     started = time.monotonic()
 
+    logger.info("run_job_sync started job_id=%s agent_id=%s job_type=%s", job_id, agent_id_str, job_type)
+
     if not agent_id_str or job_type not in ("ingest", "add"):
+        logger.error("Invalid job data: job_id=%s agent_id=%s job_type=%s", job_id, agent_id_str, job_type)
         set_agent_indexing_status(agent_id_str, "error", error_message="Invalid job data")
         raise ValueError("agent_id and job_type (ingest|add) required")
 
@@ -88,8 +105,10 @@ def run_job_sync(data: dict) -> None:
                 set_agent_indexing_status(agent_id_str, "error", error_message="filename and content_base64 required")
                 raise ValueError("filename and content_base64 required")
             content = base64.b64decode(content_b64, validate=True)
+            logger.info("Ingest decoding done job_id=%s filename=%s size_bytes=%s", job_id, filename, len(content))
             if get_settings().database_configured:
                 count = ingest_one_file_sync(uuid.UUID(agent_id_str), filename, content)
+                logger.info("Ingest completed job_id=%s agent_id=%s documents_count=%s", job_id, agent_id_str, count)
             else:
                 logger.warning(
                     "Ingest skipped: DATABASE_URL not set in worker. RAG and DB will be empty. "
@@ -115,12 +134,16 @@ def run_job_sync(data: dict) -> None:
                 set_agent_indexing_status(agent_id_str, "error", error_message="document.content required")
                 raise ValueError("document.content required")
             doc_obj = {"id": doc_id, "content": content, "metadata": doc.get("metadata") or {}}
+            logger.info("Add document job_id=%s agent_id=%s doc_id=%s", job_id, agent_id_str, doc_id)
             rag = get_or_create_retriever(agent_id_str)
             rag.add_or_update_documents([doc_obj])
             if get_settings().database_configured:
                 record_documents_svc(uuid.UUID(agent_id_str), [doc_obj], source_name="")
             set_agent_indexing_status(agent_id_str, "completed")
             duration_ms = int((time.monotonic() - started) * 1000)
+            logger.info(
+                "Add document completed job_id=%s agent_id=%s duration_ms=%s", job_id, agent_id_str, duration_ms
+            )
             log_queue_event(
                 job_id,
                 agent_id_str,
@@ -131,6 +154,7 @@ def run_job_sync(data: dict) -> None:
                 queue_name=QUEUE_NAME,
             )
     except Exception as e:
+        logger.exception("run_job_sync failed job_id=%s job_type=%s: %s", job_id, job_type, e)
         set_agent_indexing_status(agent_id_str, "error", error_message=str(e))
         log_queue_event(job_id, agent_id_str, job_type, "failed", error=str(e), queue_name=QUEUE_NAME)
         raise
