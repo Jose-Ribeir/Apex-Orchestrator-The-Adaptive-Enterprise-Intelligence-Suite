@@ -206,8 +206,8 @@ export default function AgentDocumentsPage() {
                 <TableCell className="text-right text-muted-foreground text-sm">
                   {d.createdAt
                     ? new Date(d.createdAt).toLocaleDateString(undefined, {
-                      dateStyle: "short",
-                    })
+                        dateStyle: "short",
+                      })
                     : "—"}
                 </TableCell>
                 <TableCell>
@@ -260,10 +260,11 @@ export default function AgentDocumentsPage() {
           </SheetHeader>
           <div className="mt-6 flex flex-1 flex-col gap-4">
             <div
-              className={`flex min-h-[200px] flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center transition-colors ${dragOver
-                ? "border-primary bg-primary/5"
-                : "border-muted-foreground/25 hover:border-muted-foreground/50"
-                }`}
+              className={`flex min-h-[200px] flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
+                dragOver
+                  ? "border-primary bg-primary/5"
+                  : "border-muted-foreground/25 hover:border-muted-foreground/50"
+              }`}
               onDragOver={(e) => {
                 e.preventDefault();
                 setDragOver(true);

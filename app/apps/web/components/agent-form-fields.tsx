@@ -70,9 +70,7 @@ export function AgentFormFields({
         <FieldLabel htmlFor={`${idPrefix}-mode`}>Mode</FieldLabel>
         <Select
           value={value.mode}
-          onValueChange={(v) =>
-            onChange({ mode: v as AgentModeValue })
-          }
+          onValueChange={(v) => onChange({ mode: v as AgentModeValue })}
           disabled={disabled}
         >
           <SelectTrigger id={`${idPrefix}-mode`}>

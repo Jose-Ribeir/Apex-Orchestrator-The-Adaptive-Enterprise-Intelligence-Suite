@@ -7,10 +7,7 @@ import { Textarea } from "@ai-router/ui/textarea";
 import { Bot, Send } from "lucide-react";
 import * as React from "react";
 
-import {
-  streamChat,
-  type StreamLine,
-} from "./chat-stream";
+import { streamChat, type StreamLine } from "./chat-stream";
 
 type Message = { role: "user" | "assistant"; content: string };
 
