@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 
 from app.auth.deps import get_current_user
+from app.schemas.responses import ListToolsResponse, PaginationMeta, ToolItem
 from app.services import tools_service
 
 router = APIRouter(prefix="/tools", tags=["Tools"])
@@ -24,6 +25,7 @@ class UpdateToolBody(BaseModel):
     summary="List tools",
     description="Paginated list of all tools in the registry.",
     operation_id="listTools",
+    response_model=ListToolsResponse,
 )
 async def list_tools(
     page: int = Query(1, ge=1),
@@ -32,18 +34,18 @@ async def list_tools(
 ):
     rows, total = tools_service.list_tools(page=page, limit=limit)
     pages = (total + limit - 1) // limit if total else 0
-    return {
-        "data": [
-            {
-                "id": str(t.id),
-                "name": t.name,
-                "createdAt": t.created_at.isoformat(),
-                "updatedAt": t.updated_at.isoformat(),
-            }
+    return ListToolsResponse(
+        data=[
+            ToolItem(
+                id=str(t.id),
+                name=t.name,
+                createdAt=t.created_at.isoformat(),
+                updatedAt=t.updated_at.isoformat(),
+            )
             for t in rows
         ],
-        "meta": {"page": page, "limit": limit, "total": total, "pages": pages, "more": page < pages},
-    }
+        meta=PaginationMeta(page=page, limit=limit, total=total, pages=pages, more=page < pages),
+    )
 
 
 @router.get(

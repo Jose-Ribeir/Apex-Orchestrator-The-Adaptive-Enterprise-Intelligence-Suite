@@ -11,6 +11,17 @@ from sqlalchemy import Date, cast, func
 from app.auth.deps import get_current_user
 from app.db import session_scope
 from app.models import Agent, AgentInstruction, AgentTool, ModelQuery, Tool
+from app.schemas.responses import (
+    AgentStatRow,
+    AgentToolItem,
+    InstructionItem,
+    ListAgentInstructionsResponse,
+    ListAgentQueriesResponse,
+    ListAgentStatsResponse,
+    ListAgentToolsResponse,
+    ModelQueryItem,
+    PaginationMeta,
+)
 from app.services.agent_service import get_agent
 
 router = APIRouter(prefix="/agents")
@@ -39,6 +50,7 @@ class InstructionUpdateBody(BaseModel):
     summary="List agent instructions",
     description="Paginated list of instructions for an agent.",
     operation_id="listAgentInstructions",
+    response_model=ListAgentInstructionsResponse,
     tags=["Agents -> Instructions"],
 )
 async def list_instructions(
@@ -77,16 +89,16 @@ async def list_instructions(
             ], total
 
     items, total = await asyncio.to_thread(_list)
-    return {
-        "data": items,
-        "meta": {
-            "page": page,
-            "limit": limit,
-            "total": total,
-            "pages": (total + limit - 1) // limit if total else 0,
-            "more": page * limit < total,
-        },
-    }
+    return ListAgentInstructionsResponse(
+        data=[InstructionItem(**x) for x in items],
+        meta=PaginationMeta(
+            page=page,
+            limit=limit,
+            total=total,
+            pages=(total + limit - 1) // limit if total else 0,
+            more=page * limit < total,
+        ),
+    )
 
 
 @router.get(
@@ -256,6 +268,7 @@ async def delete_instruction(
     summary="List agent tools",
     description="Paginated list of tools linked to an agent.",
     operation_id="listAgentTools",
+    response_model=ListAgentToolsResponse,
     tags=["Agents -> Tools"],
 )
 async def list_agent_tools(
@@ -289,16 +302,16 @@ async def list_agent_tools(
 
     items, total = await asyncio.to_thread(_list)
     pages = (total + limit - 1) // limit if total else 0
-    return {
-        "data": items,
-        "meta": {
-            "page": page,
-            "limit": limit,
-            "total": total,
-            "pages": pages,
-            "more": page < pages,
-        },
-    }
+    return ListAgentToolsResponse(
+        data=[AgentToolItem(**x) for x in items],
+        meta=PaginationMeta(
+            page=page,
+            limit=limit,
+            total=total,
+            pages=pages,
+            more=page < pages,
+        ),
+    )
 
 
 class AddToolBody(BaseModel):
@@ -396,6 +409,7 @@ class ModelQueryUpdateBody(BaseModel):
     summary="List agent queries",
     description="Paginated list of model queries for an agent.",
     operation_id="listAgentQueries",
+    response_model=ListAgentQueriesResponse,
     tags=["Agents -> Queries"],
 )
 async def list_model_queries(
@@ -428,6 +442,9 @@ async def list_model_queries(
                     "userQuery": r.user_query,
                     "modelResponse": r.model_response,
                     "methodUsed": r.method_used,
+                    "flowLog": r.flow_log,
+                    "totalTokens": getattr(r, "total_tokens", None),
+                    "durationMs": getattr(r, "duration_ms", None),
                     "createdAt": r.created_at.isoformat(),
                     "updatedAt": r.updated_at.isoformat(),
                 }
@@ -435,16 +452,16 @@ async def list_model_queries(
             ], total
 
     items, total = await asyncio.to_thread(_list)
-    return {
-        "data": items,
-        "meta": {
-            "page": page,
-            "limit": limit,
-            "total": total,
-            "pages": (total + limit - 1) // limit if total else 0,
-            "more": page * limit < total,
-        },
-    }
+    return ListAgentQueriesResponse(
+        data=[ModelQueryItem(**x) for x in items],
+        meta=PaginationMeta(
+            page=page,
+            limit=limit,
+            total=total,
+            pages=(total + limit - 1) // limit if total else 0,
+            more=page * limit < total,
+        ),
+    )
 
 
 @router.get(
@@ -452,6 +469,7 @@ async def list_model_queries(
     summary="Get query by ID",
     description="Return a single model query for an agent.",
     operation_id="getAgentQuery",
+    response_model=ModelQueryItem,
     tags=["Agents -> Queries"],
 )
 async def get_model_query(
@@ -472,15 +490,18 @@ async def get_model_query(
     r = await asyncio.to_thread(_get)
     if not r:
         raise HTTPException(status_code=404, detail="Model query not found")
-    return {
-        "id": str(r.id),
-        "agentId": str(r.agent_id),
-        "userQuery": r.user_query,
-        "modelResponse": r.model_response,
-        "methodUsed": r.method_used,
-        "createdAt": r.created_at.isoformat(),
-        "updatedAt": r.updated_at.isoformat(),
-    }
+    return ModelQueryItem(
+        id=str(r.id),
+        agentId=str(r.agent_id),
+        userQuery=r.user_query,
+        modelResponse=r.model_response,
+        methodUsed=r.method_used,
+        flowLog=r.flow_log,
+        totalTokens=getattr(r, "total_tokens", None),
+        durationMs=getattr(r, "duration_ms", None),
+        createdAt=r.created_at.isoformat(),
+        updatedAt=r.updated_at.isoformat(),
+    )
 
 
 @router.post(
@@ -520,6 +541,9 @@ async def create_model_query(
         "userQuery": q.user_query,
         "modelResponse": q.model_response,
         "methodUsed": q.method_used,
+        "flowLog": getattr(q, "flow_log", None),
+        "totalTokens": getattr(q, "total_tokens", None),
+        "durationMs": getattr(q, "duration_ms", None),
         "createdAt": q.created_at.isoformat(),
         "updatedAt": q.updated_at.isoformat(),
     }
@@ -568,6 +592,9 @@ async def update_model_query(
         "userQuery": r.user_query,
         "modelResponse": r.model_response,
         "methodUsed": r.method_used,
+        "flowLog": r.flow_log,
+        "totalTokens": getattr(r, "total_tokens", None),
+        "durationMs": getattr(r, "duration_ms", None),
         "createdAt": r.created_at.isoformat(),
         "updatedAt": r.updated_at.isoformat(),
     }
@@ -610,6 +637,7 @@ async def delete_model_query(
     summary="List agent daily stats",
     description="Daily aggregates of model queries for this agent (totalQueries per day). Optional days=30 or from/to.",
     operation_id="listAgentStats",
+    response_model=ListAgentStatsResponse,
     tags=["Agents -> Queries"],
 )
 async def list_agent_stats(
@@ -624,7 +652,13 @@ async def list_agent_stats(
             since = datetime.now(timezone.utc) - timedelta(days=days)
             day_col = cast(ModelQuery.created_at, Date)
             rows = (
-                session.query(day_col.label("day"), func.count(ModelQuery.id).label("total_queries"))
+                session.query(
+                    day_col.label("day"),
+                    func.count(ModelQuery.id).label("total_queries"),
+                    func.sum(ModelQuery.total_tokens).label("sum_tokens"),
+                    func.avg(ModelQuery.duration_ms).label("avg_duration_ms"),
+                    func.avg(ModelQuery.quality_score).label("avg_quality"),
+                )
                 .filter(
                     ModelQuery.agent_id == agent_id,
                     ModelQuery.is_deleted.is_(False),
@@ -639,12 +673,12 @@ async def list_agent_stats(
                     "id": f"{agent_id}_{row.day.isoformat()}",
                     "date": row.day.isoformat(),
                     "totalQueries": row.total_queries,
-                    "totalTokens": None,
-                    "avgEfficiency": None,
-                    "avgQuality": None,
+                    "totalTokens": int(row.sum_tokens) if row.sum_tokens is not None else None,
+                    "avgEfficiency": float(row.avg_duration_ms) if row.avg_duration_ms is not None else None,
+                    "avgQuality": float(row.avg_quality) if row.avg_quality is not None else None,
                 }
                 for row in rows
             ]
 
     items = await asyncio.to_thread(_stats)
-    return {"data": items}
+    return ListAgentStatsResponse(data=[AgentStatRow(**x) for x in items])

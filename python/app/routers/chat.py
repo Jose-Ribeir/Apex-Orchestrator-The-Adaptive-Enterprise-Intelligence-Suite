@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+import time
 from typing import Any
 
 from fastapi import APIRouter
@@ -22,7 +23,7 @@ _MODEL_RESPONSE_MAX_CHARS = 100_000
 
 
 def _insert_model_query_sync(payload: dict[str, Any]) -> None:
-    """Best-effort insert one ModelQuery. Logs and ignores errors."""
+    """Best-effort insert one ModelQuery with optional flow_log. Logs and ignores errors."""
     try:
         import uuid as uuid_mod
 
@@ -37,6 +38,10 @@ def _insert_model_query_sync(payload: dict[str, Any]) -> None:
                     user_query=payload["user_query"],
                     model_response=payload.get("model_response"),
                     method_used=payload.get("method_used", "EFFICIENCY"),
+                    flow_log=payload.get("flow_log"),
+                    total_tokens=payload.get("total_tokens"),
+                    duration_ms=payload.get("duration_ms"),
+                    quality_score=payload.get("quality_score"),
                 )
             )
     except Exception as e:
@@ -78,6 +83,12 @@ def _resolve_agent_name_and_prompt(request: ChatRequest) -> tuple[str, str] | No
 def _run_stream_pipeline(request: ChatRequest, model_query_payload: list[dict[str, Any]] | None = None):
     """Blocking: router + RAG + generator stream. Yields NDJSON lines.
     If model_query_payload is provided and agent_id + DB are set, appends one dict for background ModelQuery insert."""
+    # Log request (full flow will be logged after response)
+    logger.info(
+        "model_query_start agent_id=%s user_query_len=%s",
+        request.agent_id or "(legacy)",
+        len(request.message or ""),
+    )
     resolved = _resolve_agent_name_and_prompt(request)
     if resolved is None:
         yield json.dumps({"error": "Agent not found", "detail": f"Agent {request.agent_id} not found"}) + "\n"
@@ -131,23 +142,28 @@ def _run_stream_pipeline(request: ChatRequest, model_query_payload: list[dict[st
 """
     input_chars = len(full_prompt)
 
+    metrics = {
+        "call_count": 1,
+        "router_model": "gemini-2.5-flash-lite",
+        "generator_model": generator_model_name,
+        "tools_executed": tool_decision.get("tools_needed", []),
+        "docs_retrieved": docs_count,
+        "total_docs": total_docs,
+        "input_chars": input_chars,
+    }
     first_line = (
         json.dumps(
             {
                 "router_decision": tool_decision,
-                "metrics": {
-                    "call_count": 1,
-                    "router_model": "gemini-2.5-flash-lite",
-                    "generator_model": generator_model_name,
-                    "tools_executed": tool_decision.get("tools_needed", []),
-                    "docs_retrieved": docs_count,
-                },
+                "metrics": metrics,
             }
         )
         + "\n"
     )
     yield first_line
     accumulated_text: list[str] = []
+    stream_total_tokens: int | None = None
+    start_time = time.perf_counter()
     for line in run_generator_stream(
         full_prompt,
         generator_model_name,
@@ -160,9 +176,13 @@ def _run_stream_pipeline(request: ChatRequest, model_query_payload: list[dict[st
             parsed = json.loads(line)
             if isinstance(parsed.get("text"), str):
                 accumulated_text.append(parsed["text"])
+            if parsed.get("is_final"):
+                metrics = parsed.get("metrics") or {}
+                stream_total_tokens = metrics.get("total_tokens")
         except (json.JSONDecodeError, TypeError):
             pass
         yield line
+    duration_ms = int((time.perf_counter() - start_time) * 1000)
     if (
         model_query_payload is not None
         and request.agent_id
@@ -172,12 +192,46 @@ def _run_stream_pipeline(request: ChatRequest, model_query_payload: list[dict[st
         response_text = "".join(accumulated_text)
         if len(response_text) > _MODEL_RESPONSE_MAX_CHARS:
             response_text = response_text[:_MODEL_RESPONSE_MAX_CHARS] + "\n...[truncated]"
+        flow_log_metrics: dict[str, Any] = {
+            "call_count": 1,
+            "router_model": "gemini-2.5-flash-lite",
+            "generator_model": tool_decision.get("model_to_use", "gemini-2.5-flash"),
+            "tools_executed": tool_decision.get("tools_needed", []),
+            "docs_retrieved": docs_count,
+            "total_docs": total_docs,
+            "input_chars": input_chars,
+            "response_chars": len(response_text),
+        }
+        if stream_total_tokens is not None:
+            flow_log_metrics["total_tokens"] = stream_total_tokens
+        flow_log_metrics["duration_ms"] = duration_ms
+        flow_log = {
+            "request": {
+                "agent_id": str(request.agent_id).strip(),
+                "user_query": request.message,
+                "user_query_len": len(request.message or ""),
+            },
+            "router_decision": tool_decision,
+            "metrics": flow_log_metrics,
+            "response_preview": (response_text[:500] + "...") if len(response_text) > 500 else response_text,
+        }
+        logger.info(
+            "model_query_complete agent_id=%s method=%s docs=%s response_chars=%s",
+            request.agent_id,
+            tool_decision.get("model_to_use", "EFFICIENCY"),
+            docs_count,
+            len(response_text),
+            extra={"flow_log": flow_log},
+        )
         model_query_payload.append(
             {
                 "agent_id": str(request.agent_id).strip(),
                 "user_query": request.message,
                 "model_response": response_text or None,
                 "method_used": (tool_decision.get("model_to_use") or "EFFICIENCY").strip().upper() or "EFFICIENCY",
+                "flow_log": flow_log,
+                "total_tokens": stream_total_tokens,
+                "duration_ms": duration_ms,
             }
         )
 

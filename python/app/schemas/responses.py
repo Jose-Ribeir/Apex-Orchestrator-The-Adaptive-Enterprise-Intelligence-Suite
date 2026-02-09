@@ -179,3 +179,126 @@ class ListHumanTasksResponse(BaseModel):
 
     data: list[HumanTaskResponse] = Field(..., description="Human tasks")
     meta: PaginationMeta = Field(..., description="Pagination metadata")
+
+
+class ModelQueryItem(BaseModel):
+    """Single model query in list or get response."""
+
+    id: str = Field(..., description="Model query ID (UUID)")
+    agentId: str = Field(..., description="Agent ID (UUID)")
+    userQuery: str = Field(..., description="User query text")
+    modelResponse: str | None = Field(None, description="Model response text")
+    methodUsed: str = Field(..., description="PERFORMANCE | EFFICIENCY")
+    flowLog: dict[str, Any] | None = Field(None, description="Request/response flow and metrics")
+    totalTokens: int | None = Field(None, description="Total tokens used (generator)")
+    durationMs: int | None = Field(None, description="Response duration in milliseconds")
+    createdAt: str = Field(..., description="Creation time (ISO)")
+    updatedAt: str = Field(..., description="Last update time (ISO)")
+
+
+class ListAgentQueriesResponse(BaseModel):
+    """Response for GET /api/agents/{agent_id}/queries: paginated model queries."""
+
+    data: list[ModelQueryItem] = Field(..., description="Model queries")
+    meta: PaginationMeta = Field(..., description="Pagination metadata")
+
+
+class AgentStatRow(BaseModel):
+    """Single day aggregate for GET /api/agents/{agent_id}/stats."""
+
+    id: str = Field(..., description="Composite id: {agent_id}_{date}")
+    date: str = Field(..., description="Date (ISO)")
+    totalQueries: int = Field(..., description="Number of queries that day")
+    totalTokens: int | None = Field(None, description="Sum of tokens that day")
+    avgEfficiency: float | None = Field(None, description="Average response time (ms)")
+    avgQuality: float | None = Field(None, description="Average quality score")
+
+
+class ListAgentStatsResponse(BaseModel):
+    """Response for GET /api/agents/{agent_id}/stats: daily aggregates."""
+
+    data: list[AgentStatRow] = Field(..., description="Daily stats")
+
+
+class InstructionItem(BaseModel):
+    """Single instruction in list response."""
+
+    id: str = Field(..., description="Instruction ID (UUID)")
+    agentId: str = Field(..., description="Agent ID (UUID)")
+    content: str = Field(..., description="Instruction content")
+    order: int = Field(..., description="Display order")
+    createdAt: str = Field(..., description="Creation time (ISO)")
+    updatedAt: str = Field(..., description="Last update time (ISO)")
+
+
+class ListAgentInstructionsResponse(BaseModel):
+    """Response for GET /api/agents/{agent_id}/instructions."""
+
+    data: list[InstructionItem] = Field(..., description="Instructions")
+    meta: PaginationMeta = Field(..., description="Pagination metadata")
+
+
+class AgentToolItem(BaseModel):
+    """Single tool in list-agent-tools response."""
+
+    id: str = Field(..., description="Tool ID (UUID)")
+    name: str = Field(..., description="Tool name")
+    createdAt: str = Field(..., description="Creation time (ISO)")
+    updatedAt: str = Field(..., description="Last update time (ISO)")
+
+
+class ListAgentToolsResponse(BaseModel):
+    """Response for GET /api/agents/{agent_id}/tools."""
+
+    data: list[AgentToolItem] = Field(..., description="Tools linked to agent")
+    meta: PaginationMeta = Field(..., description="Pagination metadata")
+
+
+class AgentDocumentItem(BaseModel):
+    """Single document in list response."""
+
+    id: str = Field(..., description="Document ID (UUID)")
+    name: str = Field(..., description="Document name")
+    sourceFilename: str | None = Field(None, description="Original filename")
+    downloadUrl: str | None = Field(None, description="Signed download URL when storage_path set")
+    createdAt: str = Field(..., description="Creation time (ISO)")
+
+
+class ListAgentDocumentsResponse(BaseModel):
+    """Response for GET /api/agents/{agent_id}/documents."""
+
+    data: list[AgentDocumentItem] = Field(..., description="Documents")
+    meta: PaginationMeta = Field(..., description="Pagination metadata")
+
+
+class ApiTokenItem(BaseModel):
+    """Single API token in list (no token value)."""
+
+    id: str = Field(..., description="Token ID (UUID)")
+    name: str | None = Field(None, description="Token name")
+    last_used_at: str | None = Field(None, description="Last use time (ISO)")
+    expires_at: str | None = Field(None, description="Expiry time (ISO)")
+    created_at: str | None = Field(None, description="Creation time (ISO)")
+
+
+class ListApiTokensResponse(BaseModel):
+    """Response for GET /api/api-tokens."""
+
+    data: list[ApiTokenItem] = Field(..., description="API tokens")
+    meta: PaginationMeta = Field(..., description="Pagination metadata")
+
+
+class ToolItem(BaseModel):
+    """Single tool in list tools response."""
+
+    id: str = Field(..., description="Tool ID (UUID)")
+    name: str = Field(..., description="Tool name")
+    createdAt: str = Field(..., description="Creation time (ISO)")
+    updatedAt: str = Field(..., description="Last update time (ISO)")
+
+
+class ListToolsResponse(BaseModel):
+    """Response for GET /api/tools."""
+
+    data: list[ToolItem] = Field(..., description="Tools")
+    meta: PaginationMeta = Field(..., description="Pagination metadata")

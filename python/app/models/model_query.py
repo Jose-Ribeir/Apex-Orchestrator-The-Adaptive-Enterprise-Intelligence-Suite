@@ -5,8 +5,8 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -23,6 +23,10 @@ class ModelQuery(Base):
     user_query: Mapped[str] = mapped_column(Text(), nullable=False)
     model_response: Mapped[str | None] = mapped_column(Text(), nullable=True)
     method_used: Mapped[str] = mapped_column(String(), nullable=False)  # PERFORMANCE, EFFICIENCY
+    flow_log: Mapped[dict | None] = mapped_column(JSONB(), nullable=True)  # request, router_decision, metrics, etc.
+    total_tokens: Mapped[int | None] = mapped_column(Integer(), nullable=True)
+    duration_ms: Mapped[int | None] = mapped_column(Integer(), nullable=True)
+    quality_score: Mapped[float | None] = mapped_column(Numeric(3, 2), nullable=True)
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False

@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 
 from app.auth.deps import get_current_user
+from app.schemas.responses import ApiTokenItem, ListApiTokensResponse, PaginationMeta
 from app.services import api_tokens_service
 
 router = APIRouter(prefix="/api-tokens", tags=["API Tokens"])
@@ -43,6 +44,7 @@ async def create_api_token(
     summary="List API tokens",
     description="List current user's API tokens (token values are never returned).",
     operation_id="listApiTokens",
+    response_model=ListApiTokensResponse,
 )
 async def list_api_tokens(
     page: int = Query(1, ge=1),
@@ -51,16 +53,10 @@ async def list_api_tokens(
 ):
     items, total = api_tokens_service.list_tokens(current_user["id"], page=page, limit=limit)
     pages = (total + limit - 1) // limit if total else 0
-    return {
-        "data": items,
-        "meta": {
-            "page": page,
-            "limit": limit,
-            "total": total,
-            "pages": pages,
-            "more": page < pages,
-        },
-    }
+    return ListApiTokensResponse(
+        data=[ApiTokenItem(**x) for x in items],
+        meta=PaginationMeta(page=page, limit=limit, total=total, pages=pages, more=page < pages),
+    )
 
 
 @router.delete(

@@ -17,11 +17,13 @@ logger = logging.getLogger("app.agents")
 from app.schemas.requests import CreateAgentRequest, UpdateAgentRequest
 from app.schemas.responses import (
     AgentDetailResponse,
+    AgentDocumentItem,
     AgentInfo,
     AgentMetadata,
     AgentMode,
     AgentStatusIndexing,
     AgentToolRef,
+    ListAgentDocumentsResponse,
     ListAgentsResponse,
     PaginationMeta,
     UserRef,
@@ -300,6 +302,7 @@ async def ingest_document(
     summary="List agent documents",
     description="Paginated list of documents in the agent's RAG index (requires database).",
     operation_id="listAgentDocuments",
+    response_model=ListAgentDocumentsResponse,
 )
 async def list_agent_documents(
     agent_id: UUID,
@@ -314,10 +317,10 @@ async def list_agent_documents(
         raise HTTPException(status_code=404, detail="Agent not found")
     items, total = await asyncio.to_thread(list_documents_svc, agent_id, page, limit)
     pages = (total + limit - 1) // limit if total else 0
-    return {
-        "data": [document_to_response_svc(d) for d in items],
-        "meta": {"page": page, "limit": limit, "total": total, "pages": pages, "more": page < pages},
-    }
+    return ListAgentDocumentsResponse(
+        data=[AgentDocumentItem(**document_to_response_svc(d)) for d in items],
+        meta=PaginationMeta(page=page, limit=limit, total=total, pages=pages, more=page < pages),
+    )
 
 
 @documents_router.get(
