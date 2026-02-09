@@ -872,6 +872,112 @@ export type ValidationError = {
   };
 };
 
+/**
+ * ModelQueryItem
+ * Single model query in list or get response
+ */
+export type ModelQueryItem = {
+  /**
+   * Model query ID (UUID)
+   */
+  id: string;
+  /**
+   * Agent ID (UUID)
+   */
+  agentId: string;
+  /**
+   * User query text
+   */
+  userQuery: string;
+  /**
+   * Model response text
+   */
+  modelResponse?: string;
+  /**
+   * PERFORMANCE | EFFICIENCY
+   */
+  methodUsed: string;
+  /**
+   * Request/response flow and metrics
+   */
+  flowLog?: {
+    [key: string]: unknown;
+  };
+  /**
+   * Total tokens used (generator)
+   */
+  totalTokens?: number;
+  /**
+   * Response duration in milliseconds
+   */
+  durationMs?: number;
+  /**
+   * Creation time (ISO)
+   */
+  createdAt: string;
+  /**
+   * Last update time (ISO)
+   */
+  updatedAt: string;
+};
+
+/**
+ * ListAgentQueriesResponse
+ * Response for GET /api/agents/{agent_id}/queries
+ */
+export type ListAgentQueriesResponse = {
+  /**
+   * Model queries
+   */
+  data: Array<ModelQueryItem>;
+  /**
+   * Pagination metadata
+   */
+  meta: PaginationMeta;
+};
+
+/**
+ * AgentStatRow
+ * Single day aggregate for GET /api/agents/{agent_id}/stats
+ */
+export type AgentStatRow = {
+  /**
+   * Composite id: {agent_id}_{date}
+   */
+  id: string;
+  /**
+   * Date (ISO)
+   */
+  date: string;
+  /**
+   * Number of queries that day
+   */
+  totalQueries: number;
+  /**
+   * Sum of tokens that day
+   */
+  totalTokens?: number;
+  /**
+   * Average response time (ms)
+   */
+  avgEfficiency?: number;
+  /**
+   * Average quality score
+   */
+  avgQuality?: number;
+};
+
+/**
+ * ListAgentStatsResponse
+ * Response for GET /api/agents/{agent_id}/stats
+ */
+export type ListAgentStatsResponse = {
+  /**
+   * Daily stats
+   */
+  data: Array<AgentStatRow>;
+};
+
 export type LoginData = {
   body: LoginBody;
   path?: never;
@@ -1263,8 +1369,11 @@ export type ListAgentQueriesResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: ListAgentQueriesResponse;
 };
+
+export type ListAgentQueriesResponse2 =
+  ListAgentQueriesResponses[keyof ListAgentQueriesResponses];
 
 export type CreateAgentQueryData = {
   body: ModelQueryCreateBody;
@@ -1360,8 +1469,11 @@ export type GetAgentQueryResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: ModelQueryItem;
 };
+
+export type GetAgentQueryResponse =
+  GetAgentQueryResponses[keyof GetAgentQueryResponses];
 
 export type UpdateAgentQueryData = {
   body: ModelQueryUpdateBody;
@@ -2356,8 +2468,11 @@ export type ListAgentStatsResponses = {
   /**
    * Successful Response
    */
-  200: unknown;
+  200: ListAgentStatsResponse;
 };
+
+export type ListAgentStatsResponse2 =
+  ListAgentStatsResponses[keyof ListAgentStatsResponses];
 
 export type ClientOptions = {
   baseURL: `${string}://${string}` | (string & {});

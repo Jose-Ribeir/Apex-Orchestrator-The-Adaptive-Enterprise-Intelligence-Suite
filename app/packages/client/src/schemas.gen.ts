@@ -1345,3 +1345,136 @@ export const ValidationErrorSchema = {
   required: ["loc", "msg", "type"],
   title: "ValidationError",
 } as const;
+
+export const ModelQueryItemSchema = {
+  type: "object",
+  required: [
+    "id",
+    "agentId",
+    "userQuery",
+    "methodUsed",
+    "createdAt",
+    "updatedAt",
+  ],
+  properties: {
+    id: {
+      type: "string",
+      description: "Model query ID (UUID)",
+    },
+    agentId: {
+      type: "string",
+      description: "Agent ID (UUID)",
+    },
+    userQuery: {
+      type: "string",
+      description: "User query text",
+    },
+    modelResponse: {
+      type: "string",
+      nullable: true,
+      description: "Model response text",
+    },
+    methodUsed: {
+      type: "string",
+      description: "PERFORMANCE | EFFICIENCY",
+    },
+    flowLog: {
+      type: "object",
+      additionalProperties: true,
+      nullable: true,
+      description: "Request/response flow and metrics",
+    },
+    totalTokens: {
+      type: "integer",
+      nullable: true,
+      description: "Total tokens used (generator)",
+    },
+    durationMs: {
+      type: "integer",
+      nullable: true,
+      description: "Response duration in milliseconds",
+    },
+    createdAt: {
+      type: "string",
+      description: "Creation time (ISO)",
+    },
+    updatedAt: {
+      type: "string",
+      description: "Last update time (ISO)",
+    },
+  },
+  title: "ModelQueryItem",
+  description: "Single model query in list or get response",
+} as const;
+
+export const ListAgentQueriesResponseSchema = {
+  type: "object",
+  required: ["data", "meta"],
+  properties: {
+    data: {
+      type: "array",
+      items: {
+        $ref: "#/components/schemas/ModelQueryItem",
+      },
+      description: "Model queries",
+    },
+    meta: {
+      $ref: "#/components/schemas/PaginationMeta",
+      description: "Pagination metadata",
+    },
+  },
+  title: "ListAgentQueriesResponse",
+  description: "Response for GET /api/agents/{agent_id}/queries",
+} as const;
+
+export const AgentStatRowSchema = {
+  type: "object",
+  required: ["id", "date", "totalQueries"],
+  properties: {
+    id: {
+      type: "string",
+      description: "Composite id: {agent_id}_{date}",
+    },
+    date: {
+      type: "string",
+      description: "Date (ISO)",
+    },
+    totalQueries: {
+      type: "integer",
+      description: "Number of queries that day",
+    },
+    totalTokens: {
+      type: "integer",
+      nullable: true,
+      description: "Sum of tokens that day",
+    },
+    avgEfficiency: {
+      type: "number",
+      nullable: true,
+      description: "Average response time (ms)",
+    },
+    avgQuality: {
+      type: "number",
+      nullable: true,
+      description: "Average quality score",
+    },
+  },
+  title: "AgentStatRow",
+  description: "Single day aggregate for GET /api/agents/{agent_id}/stats",
+} as const;
+
+export const ListAgentStatsResponseSchema = {
+  type: "object",
+  required: ["data"],
+  properties: {
+    data: {
+      type: "array",
+      items: {
+        $ref: "#/components/schemas/AgentStatRow",
+      },
+      description: "Daily stats",
+    },
+  },
+  title: "ListAgentStatsResponse",
+  description: "Response for GET /api/agents/{agent_id}/stats",
+} as const;

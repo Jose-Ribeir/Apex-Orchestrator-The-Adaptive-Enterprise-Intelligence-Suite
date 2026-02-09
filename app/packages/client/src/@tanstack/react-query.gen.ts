@@ -84,6 +84,7 @@ import type {
   RemoveAgentToolResponse,
   ListAgentQueriesData,
   ListAgentQueriesError,
+  ListAgentQueriesResponse2,
   CreateAgentQueryData,
   CreateAgentQueryError,
   DeleteAgentQueryData,
@@ -805,9 +806,9 @@ export const listAgentQueriesInfiniteOptions = (
   options: Options<ListAgentQueriesData>,
 ) => {
   return infiniteQueryOptions<
-    unknown,
+    ListAgentQueriesResponse2,
     AxiosError<ListAgentQueriesError>,
-    InfiniteData<unknown>,
+    InfiniteData<ListAgentQueriesResponse2>,
     QueryKey<Options<ListAgentQueriesData>>,
     | number
     | Pick<
