@@ -2,7 +2,7 @@
 name = "gemini-agent-factory"
 version = "6.4.0"
 description = "FastAPI service: dynamic 2-call pipeline + per-agent RAG"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = []  # use requirements.txt for runtime
 
 [tool.ruff]
