@@ -66,7 +66,7 @@ async def oauth_callback(
     parsed = connections_service.verify_state(state)
     if not parsed:
         frontend_url = get_settings().app_frontend_url.rstrip("/")
-        redirect_url = f"{frontend_url}/connections?error=invalid_state"
+        redirect_url = f"{frontend_url}/settings/connections?error=invalid_state"
         return RedirectResponse(url=redirect_url, status_code=status.HTTP_302_FOUND)
     user_id, connection_key = parsed
     base = str(request.base_url).rstrip("/")

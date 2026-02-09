@@ -44,11 +44,11 @@ export const platformNavConfig: PlatformNavItem[] = [
   { title: "Queries", path: "queries", icon: BarChart3, agentScoped: true },
   { title: "Stats", path: "stats", icon: Activity, agentScoped: true },
   { title: "Human tasks", path: "/human-tasks", icon: Sliders },
-  { title: "Connections", path: "/connections", icon: Link2 },
 ];
 
 export const settingsNavConfig: SettingsNavItem[] = [
   { title: "Agents", path: "/settings/agents", icon: Bot },
+  { title: "Connections", path: "/settings/connections", icon: Link2 },
   { title: "Tools", path: "/tools", icon: Wrench },
 ];
 

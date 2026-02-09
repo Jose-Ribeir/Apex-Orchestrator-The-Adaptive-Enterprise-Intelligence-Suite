@@ -113,12 +113,12 @@ def exchange_code_and_store(
     parsed = verify_state(state)
     if not parsed or parsed[0] != user_id or parsed[1] != connection_provider_key:
         logger.warning("Invalid OAuth state or mismatch")
-        return f"{settings.app_frontend_url.rstrip('/')}/connections?error=invalid_state"
+        return f"{settings.app_frontend_url.rstrip('/')}/settings/connections?error=invalid_state"
 
     with session_scope() as session:
         ct = session.query(ConnectionType).filter(ConnectionType.provider_key == connection_provider_key).first()
         if not ct:
-            return f"{settings.app_frontend_url.rstrip('/')}/connections?error=unknown_connection"
+            return f"{settings.app_frontend_url.rstrip('/')}/settings/connections?error=unknown_connection"
         connection_type_id = ct.id
 
     resp = requests.post(
@@ -135,7 +135,7 @@ def exchange_code_and_store(
     )
     if resp.status_code != 200:
         logger.warning("Google token exchange failed: %s %s", resp.status_code, resp.text[:200])
-        return f"{settings.app_frontend_url.rstrip('/')}/connections?error=token_exchange_failed"
+        return f"{settings.app_frontend_url.rstrip('/')}/settings/connections?error=token_exchange_failed"
 
     data = resp.json()
     access_token = data.get("access_token")
@@ -143,7 +143,7 @@ def exchange_code_and_store(
     expires_in = data.get("expires_in")
 
     if not access_token:
-        return f"{settings.app_frontend_url.rstrip('/')}/connections?error=no_access_token"
+        return f"{settings.app_frontend_url.rstrip('/')}/settings/connections?error=no_access_token"
 
     expires_at = None
     if expires_in is not None:
@@ -170,7 +170,7 @@ def exchange_code_and_store(
                 )
             )
 
-    return f"{settings.app_frontend_url.rstrip('/')}/connections?connected={connection_provider_key}"
+    return f"{settings.app_frontend_url.rstrip('/')}/settings/connections?connected={connection_provider_key}"
 
 
 def disconnect_user_connection(user_id: str, user_connection_id: UUID) -> bool:

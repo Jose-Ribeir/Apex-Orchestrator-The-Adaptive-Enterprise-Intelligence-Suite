@@ -60,7 +60,7 @@ export default function ConnectionsPage() {
         type: "success",
         text: `Connected to ${connected} successfully.`,
       });
-      navigate("/connections", { replace: true });
+      navigate("/settings/connections", { replace: true });
     } else if (err) {
       setMessage({
         type: "error",
@@ -69,7 +69,7 @@ export default function ConnectionsPage() {
             ? "Connection was cancelled or expired."
             : "Connection failed. Please try again.",
       });
-      navigate("/connections", { replace: true });
+      navigate("/settings/connections", { replace: true });
     }
   }, [searchParams, navigate]);
 
