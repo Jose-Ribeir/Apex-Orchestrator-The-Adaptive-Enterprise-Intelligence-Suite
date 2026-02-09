@@ -57,6 +57,13 @@ services:
       MINIO_ROOT_PASSWORD: '${MINIO_ROOT_PASSWORD}'
     volumes:
       - 'minio_data:/data'
+    # Expose via Traefik at https://storage.geminimesh.com (Coolify proxy)
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.minio.rule=Host(`storage.geminimesh.com`)
+      - traefik.http.routers.minio.entrypoints=websecure
+      - traefik.http.routers.minio.service=minio
+      - traefik.http.services.minio.loadbalancer.server.port=9000
     ports:
       - '9000:9000'
       - '9001:9001'

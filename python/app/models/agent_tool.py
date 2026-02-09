@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import uuid
 
-from python.app.models import Agent, Tool
 from sqlalchemy import DateTime, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
+from app.models.agent import Agent
 from app.models.base import Base
+from app.models.tool import Tool
 
 
 class AgentTool(Base):

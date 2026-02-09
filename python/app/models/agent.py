@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import uuid
 
-from python.app.models.agent_document import AgentDocument
-from python.app.models.agent_tool import AgentTool
 from sqlalchemy import Boolean, DateTime, String, Text
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
+from app.models.agent_document import AgentDocument
+from app.models.agent_tool import AgentTool
 from app.models.base import Base
 
 
