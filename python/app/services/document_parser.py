@@ -1,9 +1,10 @@
-"""Extract raw text from uploaded documents (PDF, TXT, DOCX) and optional chunking."""
+"""Extract raw text from uploaded documents (PDF, TXT, DOCX, CSV) and optional chunking."""
 
+import csv
 import logging
 import re
 import time
-from io import BytesIO
+from io import BytesIO, StringIO
 from pathlib import Path
 
 from docx import Document as DocxDocument
@@ -40,7 +41,22 @@ def _extract_pdf_text(content: bytes) -> str:
         raise ValueError(f"Failed to parse PDF: {e}") from e
 
 
-ALLOWED_EXTENSIONS = {".pdf", ".txt", ".docx"}
+def csv_to_text(content: bytes) -> str:
+    """Parse CSV to readable text (pipe-separated). Used by RAG and chat attachments."""
+    text = content.decode("utf-8", errors="replace")
+    reader = csv.reader(StringIO(text))
+    rows = list(reader)
+    if not rows:
+        return ""
+    return "\n".join(" | ".join(str(cell) for cell in row) for row in rows)
+
+
+def _extract_csv_text(content: bytes) -> str:
+    """Extract text from CSV for RAG chunking."""
+    return csv_to_text(content)
+
+
+ALLOWED_EXTENSIONS = {".pdf", ".txt", ".docx", ".csv"}
 MAX_FILE_SIZE_BYTES = 20 * 1024 * 1024  # 20 MB
 CHUNK_SIZE_CHARS = 2000
 CHUNK_OVERLAP_CHARS = 200
@@ -128,6 +144,9 @@ def extract_text_from_file(content: bytes, filename: str) -> str:
             return "\n\n".join(p.text for p in doc.paragraphs if p.text.strip())
         except Exception as e:
             raise ValueError(f"Failed to parse DOCX: {e}") from e
+
+    if suffix == ".csv":
+        return _extract_csv_text(content)
 
     raise ValueError(f"Unsupported file type: {suffix}")
 

@@ -5,7 +5,7 @@ import { Button } from "@ai-router/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@ai-router/ui/card";
 import { Textarea } from "@ai-router/ui/textarea";
 import { motion } from "framer-motion";
-import { Bot, Paperclip, Send, X } from "lucide-react";
+import { Bot, ChevronDown, ChevronUp, Paperclip, Send, X } from "lucide-react";
 import * as React from "react";
 
 import { Link } from "react-router-dom";
@@ -13,6 +13,7 @@ import {
   streamChat,
   type ChatAttachmentParam,
   type HumanTaskLine,
+  type RouterInfo,
   type StreamLine,
 } from "./chat-stream";
 
@@ -20,6 +21,7 @@ type Message = {
   role: "user" | "assistant";
   content: string;
   attachments?: ChatAttachmentParam[];
+  routerInfo?: RouterInfo;
 };
 
 function fileToAttachment(file: File): Promise<ChatAttachmentParam> {
@@ -42,7 +44,17 @@ export default function Page() {
   const [attachments, setAttachments] = React.useState<ChatAttachmentParam[]>([]);
   const [isStreaming, setIsStreaming] = React.useState(false);
   const [pendingHumanTask, setPendingHumanTask] = React.useState<HumanTaskLine | null>(null);
+  const [collapsedRouterIndices, setCollapsedRouterIndices] = React.useState<Set<number>>(new Set());
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const toggleRouterCollapsed = React.useCallback((index: number) => {
+    setCollapsedRouterIndices((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index);
+      else next.add(index);
+      return next;
+    });
+  }, []);
 
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
   const scrollToBottom = React.useCallback(() => {
@@ -74,6 +86,27 @@ export default function Page() {
           message,
           attachments: attachmentsToSend.length ? attachmentsToSend : undefined,
           onLine(data: StreamLine) {
+            if (
+              "router_decision" in data &&
+              data.router_decision != null &&
+              "metrics" in data &&
+              data.metrics != null
+            ) {
+              setMessages((prev) => {
+                const next = [...prev];
+                const last = next[next.length - 1];
+                if (last?.role === "assistant") {
+                  next[next.length - 1] = {
+                    ...last,
+                    routerInfo: {
+                      router_decision: data.router_decision as RouterInfo["router_decision"],
+                      metrics: data.metrics as RouterInfo["metrics"],
+                    },
+                  };
+                }
+                return next;
+              });
+            }
             if ("text" in data && typeof data.text === "string") {
               setMessages((prev) => {
                 const next = [...prev];
@@ -217,6 +250,73 @@ export default function Page() {
                       : 0,
                 }}
               >
+                {msg.role === "assistant" && msg.routerInfo && (() => {
+                  const toolsUsed = (msg.routerInfo.metrics.tools_executed ?? msg.routerInfo.router_decision.tools_needed ?? []).length > 0
+                    ? (msg.routerInfo.metrics.tools_executed ?? msg.routerInfo.router_decision.tools_needed ?? []).join(", ")
+                    : "—";
+                  const isCollapsed = collapsedRouterIndices.has(i);
+                  return (
+                    <div className="mb-2 rounded-md border border-border/60 bg-muted/40 px-2.5 py-1.5 text-xs text-muted-foreground">
+                      <div className="flex items-center justify-between gap-2">
+                        <span>
+                          <strong className="font-medium text-foreground/80">Tools used:</strong>{" "}
+                          {toolsUsed}
+                        </span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 shrink-0 px-1.5 text-muted-foreground hover:text-foreground"
+                          onClick={() => toggleRouterCollapsed(i)}
+                          aria-label={isCollapsed ? "Show routing details" : "Hide routing details"}
+                        >
+                          {isCollapsed ? (
+                            <ChevronDown className="size-3.5" />
+                          ) : (
+                            <ChevronUp className="size-3.5" />
+                          )}
+                        </Button>
+                      </div>
+                      {!isCollapsed && (
+                        <>
+                          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 border-t border-border/40 pt-1.5">
+                            {msg.routerInfo.metrics.agent_mode ? (
+                              <span>
+                                <strong className="font-medium text-foreground/80">Mode:</strong>{" "}
+                                {msg.routerInfo.metrics.agent_mode}
+                              </span>
+                            ) : null}
+                            <span>
+                              <strong className="font-medium text-foreground/80">Tools available:</strong>{" "}
+                              {(msg.routerInfo.metrics.tools_available ?? []).length > 0
+                                ? (msg.routerInfo.metrics.tools_available ?? []).join(", ")
+                                : "—"}
+                            </span>
+                            {(msg.routerInfo.metrics.connections_used ?? msg.routerInfo.router_decision.connections_needed ?? []).length > 0 && (
+                              <span>
+                                <strong className="font-medium text-foreground/80">Connections:</strong>{" "}
+                                {(msg.routerInfo.metrics.connections_used ?? msg.routerInfo.router_decision.connections_needed ?? []).join(", ")}
+                              </span>
+                            )}
+                            <span>
+                              <strong className="font-medium text-foreground/80">Router:</strong>{" "}
+                              {msg.routerInfo.metrics.router_model ?? "—"}
+                            </span>
+                            <span>
+                              <strong className="font-medium text-foreground/80">Model:</strong>{" "}
+                              {msg.routerInfo.metrics.generator_model ?? msg.routerInfo.router_decision.model_to_use ?? "—"}
+                            </span>
+                          </div>
+                          {msg.routerInfo.router_decision.reason && (
+                            <p className="mt-1 border-t border-border/40 pt-1 italic">
+                              {msg.routerInfo.router_decision.reason}
+                            </p>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  );
+                })()}
                 {msg.role === "user" && msg.attachments?.length ? (
                   <div className="flex flex-col gap-2">
                     {msg.attachments.map((att, j) =>
@@ -234,6 +334,13 @@ export default function Page() {
                           className="max-w-full"
                           src={`data:${att.mimeType};base64,${att.dataBase64}`}
                         />
+                      ) : att.mimeType === "text/csv" || att.mimeType === "application/csv" ? (
+                        <span
+                          key={j}
+                          className="inline-flex items-center gap-1 rounded-md border bg-muted/50 px-2 py-1.5 text-xs text-muted-foreground"
+                        >
+                          CSV file
+                        </span>
                       ) : null
                     )}
                     {msg.content ? (
@@ -305,7 +412,7 @@ export default function Page() {
             <input
               ref={fileInputRef}
               type="file"
-              accept="image/*,audio/*"
+              accept="image/*,audio/*,.csv,text/csv"
               multiple
               className="hidden"
               aria-hidden
@@ -352,7 +459,7 @@ export default function Page() {
                 size="icon"
                 disabled={isStreaming}
                 onClick={onAttachmentClick}
-                aria-label="Attach image or audio"
+                aria-label="Attach image, audio, or CSV"
                 className="shrink-0"
               >
                 <Paperclip className="size-4" />

@@ -10,6 +10,7 @@ import { Separator } from "@ai-router/ui/separator";
 import {
   SidebarInset,
   SidebarProvider,
+  SidebarResizer,
   SidebarTrigger,
 } from "@ai-router/ui/sidebar";
 import { Search } from "lucide-react";
@@ -38,8 +39,9 @@ export function AppLayout() {
 
   return (
     <AgentGate>
-      <SidebarProvider className="h-svh overflow-hidden">
+      <SidebarProvider className="h-svh overflow-hidden" resizable>
         <AppSidebar />
+        <SidebarResizer />
         <SidebarInset className="min-h-0">
           <header className="relative z-10 flex h-16 shrink-0 items-center gap-2 border-b border-border bg-background px-4 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">
             <SidebarTrigger className="-ml-1 shrink-0" />

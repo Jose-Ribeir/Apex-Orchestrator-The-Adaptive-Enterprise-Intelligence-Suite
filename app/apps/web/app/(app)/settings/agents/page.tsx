@@ -9,6 +9,7 @@ import {
 import { agentModeLabel, formatDate } from "@/lib/format";
 import { useActiveAgent } from "@/providers/active-agent";
 import type { AgentInfo, AgentMode } from "@ai-router/client";
+import { client } from "@ai-router/client/client.gen";
 import {
   deleteAgentMutation,
   listAgentsOptions,
@@ -28,6 +29,11 @@ import {
 } from "@ai-router/ui/alert-dialog";
 import { Button } from "@ai-router/ui/button";
 import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@ai-router/ui/collapsible";
+import {
   Sheet,
   SheetContent,
   SheetHeader,
@@ -42,8 +48,21 @@ import {
   TableRow,
 } from "@ai-router/ui/table";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bot, Pencil, Trash2 } from "lucide-react";
+import { Bot, ChevronDown, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
+
+type SystemPromptResponse = { system_prompt: string };
+
+async function fetchAgentSystemPrompt(agentId: string): Promise<string> {
+  const response = await client.get({
+    url: "/api/agents/{agent_id}/system-prompt",
+    path: { agent_id: agentId },
+    responseType: "json",
+  });
+  if ("error" in response && response.error) throw response.error;
+  const data = (response as { data?: SystemPromptResponse }).data;
+  return data?.system_prompt ?? "";
+}
 
 export default function SettingsAgentsPage() {
   const queryClient = useQueryClient();
@@ -60,6 +79,12 @@ export default function SettingsAgentsPage() {
   });
   const toolsList: ToolItem[] =
     (toolsData as { data?: ToolItem[] } | undefined)?.data ?? [];
+
+  const { data: systemPrompt, isPending: systemPromptLoading } = useQuery({
+    queryKey: ["agentSystemPrompt", editAgent?.agent_id],
+    queryFn: () => fetchAgentSystemPrompt(editAgent!.agent_id),
+    enabled: Boolean(editAgent?.agent_id),
+  });
 
   const updateAgent = useMutation({
     ...updateAgentMutation(),
@@ -190,6 +215,25 @@ export default function SettingsAgentsPage() {
                 toolsLabel="Tools"
                 instructionsRows={5}
               />
+              <Collapsible className="rounded-md border border-border/80">
+                <CollapsibleTrigger className="flex w-full items-center justify-between px-3 py-2 text-left text-sm font-medium hover:bg-muted/50">
+                  System prompt (read-only)
+                  <ChevronDown className="size-4 shrink-0 opacity-50" />
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="max-h-48 overflow-auto border-t border-border/80 bg-muted/30 p-3">
+                    {systemPromptLoading ? (
+                      <p className="text-muted-foreground text-sm">
+                        Loading…
+                      </p>
+                    ) : (
+                      <pre className="whitespace-pre-wrap break-words font-mono text-xs text-foreground">
+                        {systemPrompt ?? ""}
+                      </pre>
+                    )}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
               {updateAgent.error && (
                 <p className="text-sm text-destructive" role="alert">
                   {(updateAgent.error as { message?: string })?.message ??

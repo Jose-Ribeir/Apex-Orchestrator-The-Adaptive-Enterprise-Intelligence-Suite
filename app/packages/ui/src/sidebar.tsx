@@ -26,6 +26,9 @@ const SIDEBAR_WIDTH = "16rem";
 const SIDEBAR_WIDTH_MOBILE = "18rem";
 const SIDEBAR_WIDTH_ICON = "3rem";
 const SIDEBAR_KEYBOARD_SHORTCUT = "b";
+const SIDEBAR_WIDTH_MIN_REM = 12;
+const SIDEBAR_WIDTH_MAX_REM = 36;
+const SIDEBAR_WIDTH_STORAGE_KEY = "sidebar_width_rem";
 
 type SidebarContextProps = {
   state: "expanded" | "collapsed";
@@ -35,6 +38,10 @@ type SidebarContextProps = {
   setOpenMobile: (open: boolean) => void;
   isMobile: boolean;
   toggleSidebar: () => void;
+  /** When resizable, current width in rem (e.g. "16"). */
+  sidebarWidthRem: string | null;
+  setSidebarWidthRem: ((value: string) => void) | null;
+  resizable: boolean;
 };
 
 const SidebarContext = React.createContext<SidebarContextProps | null>(null);
@@ -48,12 +55,29 @@ function useSidebar() {
   return context;
 }
 
+function getStoredSidebarWidthRem(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const stored = localStorage.getItem(SIDEBAR_WIDTH_STORAGE_KEY);
+    if (stored == null) return null;
+    const n = parseFloat(stored);
+    if (Number.isFinite(n) && n >= SIDEBAR_WIDTH_MIN_REM && n <= SIDEBAR_WIDTH_MAX_REM) {
+      return stored;
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
 const SidebarProvider = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div"> & {
     defaultOpen?: boolean;
     open?: boolean;
     onOpenChange?: (open: boolean) => void;
+    /** When true, sidebar width can be resized by dragging; width is persisted in localStorage. */
+    resizable?: boolean;
   }
 >(
   (
@@ -61,6 +85,7 @@ const SidebarProvider = React.forwardRef<
       defaultOpen = true,
       open: openProp,
       onOpenChange: setOpenProp,
+      resizable = false,
       className,
       style,
       children,
@@ -70,6 +95,28 @@ const SidebarProvider = React.forwardRef<
   ) => {
     const isMobile = useIsMobile();
     const [openMobile, setOpenMobile] = React.useState(false);
+
+    const [sidebarWidthRem, setSidebarWidthRemState] = React.useState<string | null>(() =>
+      resizable ? getStoredSidebarWidthRem() : null,
+    );
+    const setSidebarWidthRem = React.useCallback(
+      (value: string) => {
+        const n = parseFloat(value);
+        if (!Number.isFinite(n)) return;
+        const clamped = Math.min(
+          SIDEBAR_WIDTH_MAX_REM,
+          Math.max(SIDEBAR_WIDTH_MIN_REM, n),
+        );
+        const s = String(clamped);
+        setSidebarWidthRemState(s);
+        try {
+          localStorage.setItem(SIDEBAR_WIDTH_STORAGE_KEY, s);
+        } catch {
+          /* ignore */
+        }
+      },
+      [],
+    );
 
     // This is the internal state of the sidebar.
     // We use openProp and setOpenProp for control from outside the component.
@@ -117,6 +164,9 @@ const SidebarProvider = React.forwardRef<
     // This makes it easier to style the sidebar with Tailwind classes.
     const state = open ? "expanded" : "collapsed";
 
+    const effectiveWidth =
+      resizable && sidebarWidthRem ? `${sidebarWidthRem}rem` : SIDEBAR_WIDTH;
+
     const contextValue = React.useMemo<SidebarContextProps>(
       () => ({
         state,
@@ -126,6 +176,9 @@ const SidebarProvider = React.forwardRef<
         openMobile,
         setOpenMobile,
         toggleSidebar,
+        sidebarWidthRem: resizable ? sidebarWidthRem : null,
+        setSidebarWidthRem: resizable ? setSidebarWidthRem : null,
+        resizable,
       }),
       [
         state,
@@ -135,6 +188,9 @@ const SidebarProvider = React.forwardRef<
         openMobile,
         setOpenMobile,
         toggleSidebar,
+        resizable,
+        sidebarWidthRem,
+        setSidebarWidthRem,
       ],
     );
 
@@ -143,7 +199,7 @@ const SidebarProvider = React.forwardRef<
         <div
           style={
             {
-              "--sidebar-width": SIDEBAR_WIDTH,
+              "--sidebar-width": effectiveWidth,
               "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
               ...style,
             } as React.CSSProperties
@@ -324,6 +380,83 @@ const SidebarRail = React.forwardRef<
   );
 });
 SidebarRail.displayName = "SidebarRail";
+
+const SidebarResizer = React.forwardRef<
+  HTMLDivElement,
+  React.ComponentProps<"div">
+>(({ className, ...props }, ref) => {
+  const { state, isMobile, resizable, sidebarWidthRem, setSidebarWidthRem } =
+    useSidebar();
+  const isExpanded = state === "expanded";
+  const [isDragging, setIsDragging] = React.useState(false);
+
+  const handlePointerDown = React.useCallback(
+    (e: React.PointerEvent) => {
+      if (!resizable || !setSidebarWidthRem || !sidebarWidthRem || isMobile) return;
+      e.preventDefault();
+      (e.target as HTMLDivElement).setPointerCapture?.(e.pointerId);
+      setIsDragging(true);
+    },
+    [resizable, setSidebarWidthRem, sidebarWidthRem, isMobile],
+  );
+
+  const currentRemRef = React.useRef(parseFloat(sidebarWidthRem || "16") || 16);
+  React.useEffect(() => {
+    currentRemRef.current = parseFloat(sidebarWidthRem || "16") || 16;
+  }, [sidebarWidthRem]);
+
+  React.useEffect(() => {
+    if (!isDragging || !setSidebarWidthRem) return;
+    const remPerPx = 1 / 16; // 1rem = 16px
+
+    const handlePointerMove = (e: PointerEvent) => {
+      const delta = e.movementX;
+      const next = Math.min(
+        SIDEBAR_WIDTH_MAX_REM,
+        Math.max(SIDEBAR_WIDTH_MIN_REM, currentRemRef.current + delta * remPerPx),
+      );
+      currentRemRef.current = next;
+      setSidebarWidthRem(String(next));
+    };
+    const handlePointerUp = () => {
+      setIsDragging(false);
+    };
+
+    document.addEventListener("pointermove", handlePointerMove);
+    document.addEventListener("pointerup", handlePointerUp);
+    document.addEventListener("pointercancel", handlePointerUp);
+    return () => {
+      document.removeEventListener("pointermove", handlePointerMove);
+      document.removeEventListener("pointerup", handlePointerUp);
+      document.removeEventListener("pointercancel", handlePointerUp);
+    };
+  }, [isDragging, setSidebarWidthRem]);
+
+  if (!resizable || !isExpanded || isMobile) return null;
+
+  return (
+    <div
+      ref={ref}
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Resize sidebar"
+      data-sidebar="resizer"
+      onPointerDown={handlePointerDown}
+      className={cn(
+        "relative z-20 hidden w-2 shrink-0 cursor-col-resize select-none transition-colors hover:bg-sidebar-border/80 md:block",
+        isDragging && "bg-sidebar-border",
+        className,
+      )}
+      style={
+        {
+          touchAction: "none",
+        } as React.CSSProperties
+      }
+      {...props}
+    />
+  );
+});
+SidebarResizer.displayName = "SidebarResizer";
 
 const SidebarInset = React.forwardRef<
   HTMLDivElement,
@@ -761,6 +894,7 @@ export {
   SidebarMenuSubItem,
   SidebarProvider,
   SidebarRail,
+  SidebarResizer,
   SidebarSeparator,
   SidebarTrigger,
   useSidebar,

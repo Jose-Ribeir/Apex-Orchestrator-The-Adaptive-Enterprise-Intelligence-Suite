@@ -24,7 +24,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 
 const AGENT_SUB_PATH =
-  /^\/agents\/([^/]+)\/(instructions|tools|queries|stats|documents)$/;
+  /^\/agents\/([^/]+)\/(instructions|prompt|documents|tools|queries|stats)$/;
 
 export function CommandPalette({
   open,

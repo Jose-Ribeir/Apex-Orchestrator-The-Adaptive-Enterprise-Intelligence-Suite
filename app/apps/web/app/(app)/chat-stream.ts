@@ -23,6 +23,33 @@ export type HumanTaskLine = {
   retrieved_data?: string | null;
 };
 
+/** First-line payload: router choice and model names */
+export interface RouterDecision {
+  tools_needed?: string[];
+  connections_needed?: string[];
+  model_to_use?: string;
+  reason?: string;
+  needs_rag?: boolean;
+  needs_human_review?: boolean;
+}
+
+export interface RouterMetrics {
+  router_model?: string;
+  generator_model?: string;
+  agent_mode?: string;
+  tools_available?: string[];
+  tools_executed?: string[];
+  connections_used?: string[];
+  docs_retrieved?: number;
+  total_docs?: number;
+  input_chars?: number;
+}
+
+export interface RouterInfo {
+  router_decision: RouterDecision;
+  metrics: RouterMetrics;
+}
+
 export type StreamLine =
   | { router_decision?: unknown; metrics?: unknown }
   | { text?: string; metrics?: unknown }

@@ -71,8 +71,50 @@ export type AgentDetailResponse = {
 };
 
 /**
+ * AgentDocumentItem
+ * Single knowledge base item in list response.
+ */
+export type AgentDocumentItem = {
+    /**
+     * Id
+     * Document ID (UUID)
+     */
+    id: string;
+    /**
+     * Name
+     * Document name
+     */
+    name: string;
+    /**
+     * Sourcefilename
+     * Original filename
+     */
+    sourceFilename?: string | null;
+    /**
+     * Downloadurl
+     * Signed download URL when storage_path set
+     */
+    downloadUrl?: string | null;
+    /**
+     * Sourcetype
+     * Source type: file, text, or url
+     */
+    sourceType?: string | null;
+    /**
+     * Sourceurl
+     * Original URL when sourceType is url
+     */
+    sourceUrl?: string | null;
+    /**
+     * Createdat
+     * Creation time (ISO)
+     */
+    createdAt: string;
+};
+
+/**
  * AgentInfo
- * Single agent in list: agent_id, name, user ref; optional doc_count, metadata, timestamps, tools, instructions when from DB.
+ * Single agent in list: agent_id, name, user ref; optional doc_count, metadata, timestamps, tools, instructions.
  */
 export type AgentInfo = {
     /**
@@ -131,13 +173,23 @@ export type AgentInfo = {
 
 /**
  * AgentMetadata
- * Agent metadata; status.indexing (document) and status.enrich (prompt) state.
+ * Agent metadata; status.indexing (document) and status.enrich (prompt) state; optional long-context settings.
  */
 export type AgentMetadata = {
     /**
      * Status including indexing and enrich state
      */
     status?: AgentStatusIndexing;
+    /**
+     * Long Context Enabled
+     * When true, use full docs in context when under token cap
+     */
+    long_context_enabled?: boolean | null;
+    /**
+     * Long Context Max Tokens
+     * Max tokens for long-context mode (e.g. 1M or 2M for Pro)
+     */
+    long_context_max_tokens?: number | null;
 };
 
 /**
@@ -157,6 +209,43 @@ export const AgentMode = {
 } as const;
 
 /**
+ * AgentStatRow
+ * Single day aggregate for GET /api/agents/{agent_id}/stats.
+ */
+export type AgentStatRow = {
+    /**
+     * Id
+     * Composite id: {agent_id}_{date}
+     */
+    id: string;
+    /**
+     * Date
+     * Date (ISO)
+     */
+    date: string;
+    /**
+     * Totalqueries
+     * Number of queries that day
+     */
+    totalQueries: number;
+    /**
+     * Totaltokens
+     * Sum of tokens that day
+     */
+    totalTokens?: number | null;
+    /**
+     * Avgefficiency
+     * Average response time (ms)
+     */
+    avgEfficiency?: number | null;
+    /**
+     * Avgquality
+     * Average quality score
+     */
+    avgQuality?: number | null;
+};
+
+/**
  * AgentStatusIndexing
  * Indexing and enrich status: pending | error | completed.
  */
@@ -174,6 +263,33 @@ export type AgentStatusIndexing = {
 };
 
 /**
+ * AgentToolItem
+ * Single tool in list-agent-tools response.
+ */
+export type AgentToolItem = {
+    /**
+     * Id
+     * Tool ID (UUID)
+     */
+    id: string;
+    /**
+     * Name
+     * Tool name
+     */
+    name: string;
+    /**
+     * Createdat
+     * Creation time (ISO)
+     */
+    createdAt: string;
+    /**
+     * Updatedat
+     * Last update time (ISO)
+     */
+    updatedAt: string;
+};
+
+/**
  * AgentToolRef
  * Tool reference in agent response (id and name).
  */
@@ -188,6 +304,38 @@ export type AgentToolRef = {
      * Tool display name
      */
     name: string;
+};
+
+/**
+ * ApiTokenItem
+ * Single API token in list (no token value).
+ */
+export type ApiTokenItem = {
+    /**
+     * Id
+     * Token ID (UUID)
+     */
+    id: string;
+    /**
+     * Name
+     * Token name
+     */
+    name?: string | null;
+    /**
+     * Last Used At
+     * Last use time (ISO)
+     */
+    last_used_at?: string | null;
+    /**
+     * Expires At
+     * Expiry time (ISO)
+     */
+    expires_at?: string | null;
+    /**
+     * Created At
+     * Creation time (ISO)
+     */
+    created_at?: string | null;
 };
 
 /**
@@ -233,6 +381,23 @@ export type BodyUploadAndIndex = {
 };
 
 /**
+ * ChatAttachment
+ * Single attachment: base64-encoded image or audio for multimodal chat.
+ */
+export type ChatAttachment = {
+    /**
+     * Mime Type
+     * IANA MIME type, e.g. image/png, audio/wav
+     */
+    mime_type: string;
+    /**
+     * Data Base64
+     * Base64-encoded bytes (no data URL prefix)
+     */
+    data_base64: string;
+};
+
+/**
  * ChatRequest
  * Request for streaming chat with 2-call router + generator.
  * When agent_id is set, backend loads agent and builds system_prompt; agent_name and system_prompt are optional.
@@ -259,6 +424,11 @@ export type ChatRequest = {
      * Full system prompt including TOOLS line (legacy; required when agent_id is not provided)
      */
     system_prompt?: string | null;
+    /**
+     * Attachments
+     * Optional images or audio as base64 for multimodal chat
+     */
+    attachments?: Array<ChatAttachment> | null;
 };
 
 /**
@@ -425,7 +595,7 @@ export type HealthResponse = {
     geminimesh_configured: boolean;
     /**
      * Embedding Model
-     * 'loaded' or 'not_loaded'
+     * RAG provider name (e.g. vertex, memory)
      */
     embedding_model: string;
     /**
@@ -460,6 +630,13 @@ export type HumanTaskModelQueryRef = {
      * Model response text
      */
     modelResponse?: string | null;
+    /**
+     * Flowlog
+     * Request/response flow, metrics, retrieved_documents, prompt_sent_to_model
+     */
+    flowLog?: {
+        [key: string]: unknown;
+    } | null;
 };
 
 /**
@@ -528,6 +705,43 @@ export type InstructionCreateBody = {
 };
 
 /**
+ * InstructionItem
+ * Single instruction in list response.
+ */
+export type InstructionItem = {
+    /**
+     * Id
+     * Instruction ID (UUID)
+     */
+    id: string;
+    /**
+     * Agentid
+     * Agent ID (UUID)
+     */
+    agentId: string;
+    /**
+     * Content
+     * Instruction content
+     */
+    content: string;
+    /**
+     * Order
+     * Display order
+     */
+    order: number;
+    /**
+     * Createdat
+     * Creation time (ISO)
+     */
+    createdAt: string;
+    /**
+     * Updatedat
+     * Last update time (ISO)
+     */
+    updatedAt: string;
+};
+
+/**
  * InstructionUpdateBody
  */
 export type InstructionUpdateBody = {
@@ -539,6 +753,82 @@ export type InstructionUpdateBody = {
      * Order
      */
     order?: number | null;
+};
+
+/**
+ * ListAgentDocumentsResponse
+ * Response for GET /api/agents/{agent_id}/documents.
+ */
+export type ListAgentDocumentsResponse = {
+    /**
+     * Data
+     * Documents
+     */
+    data: Array<AgentDocumentItem>;
+    /**
+     * Pagination metadata
+     */
+    meta: PaginationMeta;
+};
+
+/**
+ * ListAgentInstructionsResponse
+ * Response for GET /api/agents/{agent_id}/instructions.
+ */
+export type ListAgentInstructionsResponse = {
+    /**
+     * Data
+     * Instructions
+     */
+    data: Array<InstructionItem>;
+    /**
+     * Pagination metadata
+     */
+    meta: PaginationMeta;
+};
+
+/**
+ * ListAgentQueriesResponse
+ * Response for GET /api/agents/{agent_id}/queries: paginated model queries.
+ */
+export type ListAgentQueriesResponse = {
+    /**
+     * Data
+     * Model queries
+     */
+    data: Array<ModelQueryItem>;
+    /**
+     * Pagination metadata
+     */
+    meta: PaginationMeta;
+};
+
+/**
+ * ListAgentStatsResponse
+ * Response for GET /api/agents/{agent_id}/stats: daily aggregates.
+ */
+export type ListAgentStatsResponse = {
+    /**
+     * Data
+     * Daily stats
+     */
+    data: Array<AgentStatRow>;
+};
+
+/**
+ * ListAgentToolsResponse
+ * Response for GET /api/agents/{agent_id}/tools.
+ */
+export type ListAgentToolsResponse = {
+    /**
+     * Data
+     * Tools linked to agent
+     */
+    data: Array<AgentToolItem>;
+    /**
+     * Pagination metadata
+     */
+    meta: PaginationMeta;
 };
 
 /**
@@ -558,6 +848,22 @@ export type ListAgentsResponse = {
 };
 
 /**
+ * ListApiTokensResponse
+ * Response for GET /api/api-tokens.
+ */
+export type ListApiTokensResponse = {
+    /**
+     * Data
+     * API tokens
+     */
+    data: Array<ApiTokenItem>;
+    /**
+     * Pagination metadata
+     */
+    meta: PaginationMeta;
+};
+
+/**
  * ListHumanTasksResponse
  * Response for GET /human-tasks: paginated list of human tasks.
  */
@@ -567,6 +873,22 @@ export type ListHumanTasksResponse = {
      * Human tasks
      */
     data: Array<HumanTaskResponse>;
+    /**
+     * Pagination metadata
+     */
+    meta: PaginationMeta;
+};
+
+/**
+ * ListToolsResponse
+ * Response for GET /api/tools.
+ */
+export type ListToolsResponse = {
+    /**
+     * Data
+     * Tools
+     */
+    data: Array<ToolItem>;
     /**
      * Pagination metadata
      */
@@ -603,6 +925,65 @@ export type ModelQueryCreateBody = {
      * Method Used
      */
     method_used?: string;
+};
+
+/**
+ * ModelQueryItem
+ * Single model query in list or get response.
+ */
+export type ModelQueryItem = {
+    /**
+     * Id
+     * Model query ID (UUID)
+     */
+    id: string;
+    /**
+     * Agentid
+     * Agent ID (UUID)
+     */
+    agentId: string;
+    /**
+     * Userquery
+     * User query text
+     */
+    userQuery: string;
+    /**
+     * Modelresponse
+     * Model response text
+     */
+    modelResponse?: string | null;
+    /**
+     * Methodused
+     * PERFORMANCE | EFFICIENCY
+     */
+    methodUsed: string;
+    /**
+     * Flowlog
+     * Request/response flow and metrics
+     */
+    flowLog?: {
+        [key: string]: unknown;
+    } | null;
+    /**
+     * Totaltokens
+     * Total tokens used (generator)
+     */
+    totalTokens?: number | null;
+    /**
+     * Durationms
+     * Response duration in milliseconds
+     */
+    durationMs?: number | null;
+    /**
+     * Createdat
+     * Creation time (ISO)
+     */
+    createdAt: string;
+    /**
+     * Updatedat
+     * Last update time (ISO)
+     */
+    updatedAt: string;
 };
 
 /**
@@ -671,6 +1052,33 @@ export type RegisterBody = {
      * Name
      */
     name?: string;
+};
+
+/**
+ * ToolItem
+ * Single tool in list tools response.
+ */
+export type ToolItem = {
+    /**
+     * Id
+     * Tool ID (UUID)
+     */
+    id: string;
+    /**
+     * Name
+     * Tool name
+     */
+    name: string;
+    /**
+     * Createdat
+     * Creation time (ISO)
+     */
+    createdAt: string;
+    /**
+     * Updatedat
+     * Last update time (ISO)
+     */
+    updatedAt: string;
 };
 
 /**
@@ -754,6 +1162,14 @@ export type UpdateAgentRequest = {
      * Tools
      */
     tools?: Array<string> | null;
+    /**
+     * Long Context Mode
+     */
+    long_context_mode?: boolean | null;
+    /**
+     * Long Context Max Tokens
+     */
+    long_context_max_tokens?: number | null;
 };
 
 /**
@@ -882,155 +1298,6 @@ export type ValidationError = {
     };
 };
 
-/**
- * ModelQueryItem
- * Single model query in list or get response
- */
-export type ModelQueryItem = {
-    /**
-     * Model query ID (UUID)
-     */
-    id: string;
-    /**
-     * Agent ID (UUID)
-     */
-    agentId: string;
-    /**
-     * User query text
-     */
-    userQuery: string;
-    /**
-     * Model response text
-     */
-    modelResponse?: string;
-    /**
-     * PERFORMANCE | EFFICIENCY
-     */
-    methodUsed: string;
-    /**
-     * Request/response flow and metrics
-     */
-    flowLog?: {
-        [key: string]: unknown;
-    };
-    /**
-     * Total tokens used (generator)
-     */
-    totalTokens?: number;
-    /**
-     * Response duration in milliseconds
-     */
-    durationMs?: number;
-    /**
-     * Creation time (ISO)
-     */
-    createdAt: string;
-    /**
-     * Last update time (ISO)
-     */
-    updatedAt: string;
-};
-
-/**
- * ListAgentQueriesResponse
- * Response for GET /api/agents/{agent_id}/queries
- */
-export type ListAgentQueriesResponse = {
-    /**
-     * Model queries
-     */
-    data: Array<ModelQueryItem>;
-    /**
-     * Pagination metadata
-     */
-    meta: PaginationMeta;
-};
-
-/**
- * AgentStatRow
- * Single day aggregate for GET /api/agents/{agent_id}/stats
- */
-export type AgentStatRow = {
-    /**
-     * Composite id: {agent_id}_{date}
-     */
-    id: string;
-    /**
-     * Date (ISO)
-     */
-    date: string;
-    /**
-     * Number of queries that day
-     */
-    totalQueries: number;
-    /**
-     * Sum of tokens that day
-     */
-    totalTokens?: number;
-    /**
-     * Average response time (ms)
-     */
-    avgEfficiency?: number;
-    /**
-     * Average quality score
-     */
-    avgQuality?: number;
-};
-
-/**
- * ListAgentStatsResponse
- * Response for GET /api/agents/{agent_id}/stats
- */
-export type ListAgentStatsResponse = {
-    /**
-     * Daily stats
-     */
-    data: Array<AgentStatRow>;
-};
-
-/**
- * ConnectionItem
- * Single connection type with status for current user
- */
-export type ConnectionItem = {
-    /**
-     * Id
-     * Connection type ID
-     */
-    id: string;
-    /**
-     * Name
-     * Display name (e.g. Google)
-     */
-    name: string;
-    /**
-     * Provider Key
-     * Provider key (e.g. google)
-     */
-    providerKey: string;
-    /**
-     * Connected
-     * Whether the current user has connected this provider
-     */
-    connected: boolean;
-    /**
-     * User Connection Id
-     * User connection ID when connected, for disconnect
-     */
-    userConnectionId?: string;
-};
-
-/**
- * ListConnectionsResponse
- * Response for GET /api/connections
- */
-export type ListConnectionsResponse = {
-    /**
-     * Connection types with status
-     */
-    data: Array<ConnectionItem>;
-};
-
 export type LoginData = {
     body: LoginBody;
     path?: never;
@@ -1150,8 +1417,10 @@ export type ListAgentInstructionsResponses = {
     /**
      * Successful Response
      */
-    200: unknown;
+    200: ListAgentInstructionsResponse;
 };
+
+export type ListAgentInstructionsResponse2 = ListAgentInstructionsResponses[keyof ListAgentInstructionsResponses];
 
 export type CreateAgentInstructionData = {
     body: InstructionCreateBody;
@@ -1313,8 +1582,10 @@ export type ListAgentToolsResponses = {
     /**
      * Successful Response
      */
-    200: unknown;
+    200: ListAgentToolsResponse;
 };
+
+export type ListAgentToolsResponse2 = ListAgentToolsResponses[keyof ListAgentToolsResponses];
 
 export type AddAgentToolData = {
     body: AddToolBody;
@@ -1545,6 +1816,42 @@ export type UpdateAgentQueryResponses = {
     200: unknown;
 };
 
+export type ListAgentStatsData = {
+    body?: never;
+    path: {
+        /**
+         * Agent Id
+         */
+        agent_id: string;
+    };
+    query?: {
+        /**
+         * Days
+         * Number of days to include (default 30)
+         */
+        days?: number;
+    };
+    url: '/api/agents/{agent_id}/stats';
+};
+
+export type ListAgentStatsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListAgentStatsError = ListAgentStatsErrors[keyof ListAgentStatsErrors];
+
+export type ListAgentStatsResponses = {
+    /**
+     * Successful Response
+     */
+    200: ListAgentStatsResponse;
+};
+
+export type ListAgentStatsResponse2 = ListAgentStatsResponses[keyof ListAgentStatsResponses];
+
 export type IngestAgentDocumentData = {
     body: DocumentsIngestBody;
     path: {
@@ -1635,8 +1942,10 @@ export type ListAgentDocumentsResponses = {
     /**
      * Successful Response
      */
-    200: unknown;
+    200: ListAgentDocumentsResponse;
 };
+
+export type ListAgentDocumentsResponse2 = ListAgentDocumentsResponses[keyof ListAgentDocumentsResponses];
 
 export type AddAgentDocumentData = {
     body: DocumentAddBody;
@@ -1938,8 +2247,10 @@ export type ListApiTokensResponses = {
     /**
      * Successful Response
      */
-    200: unknown;
+    200: ListApiTokensResponse;
 };
+
+export type ListApiTokensResponse2 = ListApiTokensResponses[keyof ListApiTokensResponses];
 
 export type CreateApiTokenData = {
     body: CreateApiTokenBody;
@@ -1994,65 +2305,6 @@ export type RevokeApiTokenResponses = {
 
 export type RevokeApiTokenResponse = RevokeApiTokenResponses[keyof RevokeApiTokenResponses];
 
-export type ListConnectionsData = {
-    body?: never;
-    path?: never;
-    query?: never;
-    url: '/api/connections';
-};
-
-export type ListConnectionsErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type ListConnectionsError = ListConnectionsErrors[keyof ListConnectionsErrors];
-
-export type ListConnectionsResponses = {
-    /**
-     * Successful Response
-     */
-    200: ListConnectionsResponse;
-};
-
-export type ListConnectionsResponse2 = ListConnectionsResponses[keyof ListConnectionsResponses];
-
-export type DisconnectUserConnectionData = {
-    body?: never;
-    path: {
-        /**
-         * User Connection Id
-         */
-        user_connection_id: string;
-    };
-    query?: never;
-    url: '/api/connections/user/{user_connection_id}';
-};
-
-export type DisconnectUserConnectionErrors = {
-    /**
-     * Connection not found
-     */
-    404: unknown;
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type DisconnectUserConnectionError = DisconnectUserConnectionErrors[keyof DisconnectUserConnectionErrors];
-
-export type DisconnectUserConnectionResponses = {
-    /**
-     * Successful Response
-     */
-    204: void;
-};
-
-export type DisconnectUserConnectionResponse = DisconnectUserConnectionResponses[keyof DisconnectUserConnectionResponses];
-
 export type ListToolsData = {
     body?: never;
     path?: never;
@@ -2082,8 +2334,10 @@ export type ListToolsResponses = {
     /**
      * Successful Response
      */
-    200: unknown;
+    200: ListToolsResponse;
 };
+
+export type ListToolsResponse2 = ListToolsResponses[keyof ListToolsResponses];
 
 export type CreateToolData = {
     body: CreateToolBody;
@@ -2414,6 +2668,59 @@ export type ResolveHumanTaskResponses = {
 
 export type ResolveHumanTaskResponse = ResolveHumanTaskResponses[keyof ResolveHumanTaskResponses];
 
+export type ListConnectionsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/connections';
+};
+
+export type ListConnectionsErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListConnectionsError = ListConnectionsErrors[keyof ListConnectionsErrors];
+
+export type ListConnectionsResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type DisconnectUserConnectionData = {
+    body?: never;
+    path: {
+        /**
+         * User Connection Id
+         */
+        user_connection_id: string;
+    };
+    query?: never;
+    url: '/api/connections/user/{user_connection_id}';
+};
+
+export type DisconnectUserConnectionErrors = {
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DisconnectUserConnectionError = DisconnectUserConnectionErrors[keyof DisconnectUserConnectionErrors];
+
+export type DisconnectUserConnectionResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DisconnectUserConnectionResponse = DisconnectUserConnectionResponses[keyof DisconnectUserConnectionResponses];
+
 export type GenerateStreamData = {
     body: ChatRequest;
     path?: never;
@@ -2528,40 +2835,19 @@ export type GetHealthResponses = {
 
 export type GetHealthResponse = GetHealthResponses[keyof GetHealthResponses];
 
-export type ListAgentStatsData = {
+export type ModelsListModelsGetData = {
     body?: never;
-    path: {
-        /**
-         * Agent Id
-         */
-        agent_id: string;
-    };
-    query?: {
-        /**
-         * Days
-         */
-        days?: number;
-    };
-    url: '/api/agents/{agent_id}/stats';
+    path?: never;
+    query?: never;
+    url: '/models';
 };
 
-export type ListAgentStatsErrors = {
-    /**
-     * Validation Error
-     */
-    422: HttpValidationError;
-};
-
-export type ListAgentStatsError = ListAgentStatsErrors[keyof ListAgentStatsErrors];
-
-export type ListAgentStatsResponses = {
+export type ModelsListModelsGetResponses = {
     /**
      * Successful Response
      */
-    200: ListAgentStatsResponse;
+    200: unknown;
 };
-
-export type ListAgentStatsResponse2 = ListAgentStatsResponses[keyof ListAgentStatsResponses];
 
 export type ClientOptions = {
     baseURL: `${string}://${string}` | (string & {});

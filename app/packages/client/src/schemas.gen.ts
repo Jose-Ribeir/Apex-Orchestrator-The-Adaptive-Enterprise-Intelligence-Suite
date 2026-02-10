@@ -89,6 +89,78 @@ export const AgentDetailResponseSchema = {
     description: 'Single agent full detail (GET /agents/{id}).'
 } as const;
 
+export const AgentDocumentItemSchema = {
+    properties: {
+        id: {
+            type: 'string',
+            title: 'Id',
+            description: 'Document ID (UUID)'
+        },
+        name: {
+            type: 'string',
+            title: 'Name',
+            description: 'Document name'
+        },
+        sourceFilename: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Sourcefilename',
+            description: 'Original filename'
+        },
+        downloadUrl: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Downloadurl',
+            description: 'Signed download URL when storage_path set'
+        },
+        sourceType: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Sourcetype',
+            description: 'Source type: file, text, or url'
+        },
+        sourceUrl: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Sourceurl',
+            description: 'Original URL when sourceType is url'
+        },
+        createdAt: {
+            type: 'string',
+            title: 'Createdat',
+            description: 'Creation time (ISO)'
+        }
+    },
+    type: 'object',
+    required: ['id', 'name', 'createdAt'],
+    title: 'AgentDocumentItem',
+    description: 'Single knowledge base item in list response.'
+} as const;
+
 export const AgentInfoSchema = {
     properties: {
         agent_id: {
@@ -191,7 +263,7 @@ export const AgentInfoSchema = {
     type: 'object',
     required: ['agent_id', 'name'],
     title: 'AgentInfo',
-    description: 'Single agent in list: agent_id, name, user ref; optional doc_count, metadata, timestamps, tools, instructions when from DB.'
+    description: 'Single agent in list: agent_id, name, user ref; optional doc_count, metadata, timestamps, tools, instructions.'
 } as const;
 
 export const AgentMetadataSchema = {
@@ -199,11 +271,35 @@ export const AgentMetadataSchema = {
         status: {
             '$ref': '#/components/schemas/AgentStatusIndexing',
             description: 'Status including indexing and enrich state'
+        },
+        long_context_enabled: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Long Context Enabled',
+            description: 'When true, use full docs in context when under token cap'
+        },
+        long_context_max_tokens: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Long Context Max Tokens',
+            description: 'Max tokens for long-context mode (e.g. 1M or 2M for Pro)'
         }
     },
     type: 'object',
     title: 'AgentMetadata',
-    description: 'Agent metadata; status.indexing (document) and status.enrich (prompt) state.'
+    description: 'Agent metadata; status.indexing (document) and status.enrich (prompt) state; optional long-context settings.'
 } as const;
 
 export const AgentModeSchema = {
@@ -211,6 +307,66 @@ export const AgentModeSchema = {
     enum: ['PERFORMANCE', 'EFFICIENCY', 'BALANCED'],
     title: 'AgentMode',
     description: 'Agent mode: PERFORMANCE | EFFICIENCY | BALANCED.'
+} as const;
+
+export const AgentStatRowSchema = {
+    properties: {
+        id: {
+            type: 'string',
+            title: 'Id',
+            description: 'Composite id: {agent_id}_{date}'
+        },
+        date: {
+            type: 'string',
+            title: 'Date',
+            description: 'Date (ISO)'
+        },
+        totalQueries: {
+            type: 'integer',
+            title: 'Totalqueries',
+            description: 'Number of queries that day'
+        },
+        totalTokens: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Totaltokens',
+            description: 'Sum of tokens that day'
+        },
+        avgEfficiency: {
+            anyOf: [
+                {
+                    type: 'number'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Avgefficiency',
+            description: 'Average response time (ms)'
+        },
+        avgQuality: {
+            anyOf: [
+                {
+                    type: 'number'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Avgquality',
+            description: 'Average quality score'
+        }
+    },
+    type: 'object',
+    required: ['id', 'date', 'totalQueries'],
+    title: 'AgentStatRow',
+    description: 'Single day aggregate for GET /api/agents/{agent_id}/stats.'
 } as const;
 
 export const AgentStatusIndexingSchema = {
@@ -233,6 +389,35 @@ export const AgentStatusIndexingSchema = {
     description: 'Indexing and enrich status: pending | error | completed.'
 } as const;
 
+export const AgentToolItemSchema = {
+    properties: {
+        id: {
+            type: 'string',
+            title: 'Id',
+            description: 'Tool ID (UUID)'
+        },
+        name: {
+            type: 'string',
+            title: 'Name',
+            description: 'Tool name'
+        },
+        createdAt: {
+            type: 'string',
+            title: 'Createdat',
+            description: 'Creation time (ISO)'
+        },
+        updatedAt: {
+            type: 'string',
+            title: 'Updatedat',
+            description: 'Last update time (ISO)'
+        }
+    },
+    type: 'object',
+    required: ['id', 'name', 'createdAt', 'updatedAt'],
+    title: 'AgentToolItem',
+    description: 'Single tool in list-agent-tools response.'
+} as const;
+
 export const AgentToolRefSchema = {
     properties: {
         id: {
@@ -250,6 +435,68 @@ export const AgentToolRefSchema = {
     required: ['id', 'name'],
     title: 'AgentToolRef',
     description: 'Tool reference in agent response (id and name).'
+} as const;
+
+export const ApiTokenItemSchema = {
+    properties: {
+        id: {
+            type: 'string',
+            title: 'Id',
+            description: 'Token ID (UUID)'
+        },
+        name: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Name',
+            description: 'Token name'
+        },
+        last_used_at: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Last Used At',
+            description: 'Last use time (ISO)'
+        },
+        expires_at: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Expires At',
+            description: 'Expiry time (ISO)'
+        },
+        created_at: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Created At',
+            description: 'Creation time (ISO)'
+        }
+    },
+    type: 'object',
+    required: ['id'],
+    title: 'ApiTokenItem',
+    description: 'Single API token in list (no token value).'
 } as const;
 
 export const Body_ingestDocumentSchema = {
@@ -328,6 +575,25 @@ export const Body_uploadAndIndexSchema = {
     title: 'Body_uploadAndIndex'
 } as const;
 
+export const ChatAttachmentSchema = {
+    properties: {
+        mime_type: {
+            type: 'string',
+            title: 'Mime Type',
+            description: 'IANA MIME type, e.g. image/png, audio/wav'
+        },
+        data_base64: {
+            type: 'string',
+            title: 'Data Base64',
+            description: 'Base64-encoded bytes (no data URL prefix)'
+        }
+    },
+    type: 'object',
+    required: ['mime_type', 'data_base64'],
+    title: 'ChatAttachment',
+    description: 'Single attachment: base64-encoded image or audio for multimodal chat.'
+} as const;
+
 export const ChatRequestSchema = {
     properties: {
         agent_id: {
@@ -370,6 +636,21 @@ export const ChatRequestSchema = {
             ],
             title: 'System Prompt',
             description: 'Full system prompt including TOOLS line (legacy; required when agent_id is not provided)'
+        },
+        attachments: {
+            anyOf: [
+                {
+                    items: {
+                        '$ref': '#/components/schemas/ChatAttachment'
+                    },
+                    type: 'array'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Attachments',
+            description: 'Optional images or audio as base64 for multimodal chat'
         }
     },
     type: 'object',
@@ -619,7 +900,7 @@ export const HealthResponseSchema = {
         embedding_model: {
             type: 'string',
             title: 'Embedding Model',
-            description: "'loaded' or 'not_loaded'"
+            description: 'RAG provider name (e.g. vertex, memory)'
         },
         database_configured: {
             type: 'boolean',
@@ -668,6 +949,19 @@ export const HumanTaskModelQueryRefSchema = {
             ],
             title: 'Modelresponse',
             description: 'Model response text'
+        },
+        flowLog: {
+            anyOf: [
+                {
+                    additionalProperties: true,
+                    type: 'object'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Flowlog',
+            description: 'Request/response flow, metrics, retrieved_documents, prompt_sent_to_model'
         }
     },
     type: 'object',
@@ -774,6 +1068,45 @@ export const InstructionCreateBodySchema = {
     title: 'InstructionCreateBody'
 } as const;
 
+export const InstructionItemSchema = {
+    properties: {
+        id: {
+            type: 'string',
+            title: 'Id',
+            description: 'Instruction ID (UUID)'
+        },
+        agentId: {
+            type: 'string',
+            title: 'Agentid',
+            description: 'Agent ID (UUID)'
+        },
+        content: {
+            type: 'string',
+            title: 'Content',
+            description: 'Instruction content'
+        },
+        order: {
+            type: 'integer',
+            title: 'Order',
+            description: 'Display order'
+        },
+        createdAt: {
+            type: 'string',
+            title: 'Createdat',
+            description: 'Creation time (ISO)'
+        },
+        updatedAt: {
+            type: 'string',
+            title: 'Updatedat',
+            description: 'Last update time (ISO)'
+        }
+    },
+    type: 'object',
+    required: ['id', 'agentId', 'content', 'order', 'createdAt', 'updatedAt'],
+    title: 'InstructionItem',
+    description: 'Single instruction in list response.'
+} as const;
+
 export const InstructionUpdateBodySchema = {
     properties: {
         content: {
@@ -801,6 +1134,107 @@ export const InstructionUpdateBodySchema = {
     },
     type: 'object',
     title: 'InstructionUpdateBody'
+} as const;
+
+export const ListAgentDocumentsResponseSchema = {
+    properties: {
+        data: {
+            items: {
+                '$ref': '#/components/schemas/AgentDocumentItem'
+            },
+            type: 'array',
+            title: 'Data',
+            description: 'Documents'
+        },
+        meta: {
+            '$ref': '#/components/schemas/PaginationMeta',
+            description: 'Pagination metadata'
+        }
+    },
+    type: 'object',
+    required: ['data', 'meta'],
+    title: 'ListAgentDocumentsResponse',
+    description: 'Response for GET /api/agents/{agent_id}/documents.'
+} as const;
+
+export const ListAgentInstructionsResponseSchema = {
+    properties: {
+        data: {
+            items: {
+                '$ref': '#/components/schemas/InstructionItem'
+            },
+            type: 'array',
+            title: 'Data',
+            description: 'Instructions'
+        },
+        meta: {
+            '$ref': '#/components/schemas/PaginationMeta',
+            description: 'Pagination metadata'
+        }
+    },
+    type: 'object',
+    required: ['data', 'meta'],
+    title: 'ListAgentInstructionsResponse',
+    description: 'Response for GET /api/agents/{agent_id}/instructions.'
+} as const;
+
+export const ListAgentQueriesResponseSchema = {
+    properties: {
+        data: {
+            items: {
+                '$ref': '#/components/schemas/ModelQueryItem'
+            },
+            type: 'array',
+            title: 'Data',
+            description: 'Model queries'
+        },
+        meta: {
+            '$ref': '#/components/schemas/PaginationMeta',
+            description: 'Pagination metadata'
+        }
+    },
+    type: 'object',
+    required: ['data', 'meta'],
+    title: 'ListAgentQueriesResponse',
+    description: 'Response for GET /api/agents/{agent_id}/queries: paginated model queries.'
+} as const;
+
+export const ListAgentStatsResponseSchema = {
+    properties: {
+        data: {
+            items: {
+                '$ref': '#/components/schemas/AgentStatRow'
+            },
+            type: 'array',
+            title: 'Data',
+            description: 'Daily stats'
+        }
+    },
+    type: 'object',
+    required: ['data'],
+    title: 'ListAgentStatsResponse',
+    description: 'Response for GET /api/agents/{agent_id}/stats: daily aggregates.'
+} as const;
+
+export const ListAgentToolsResponseSchema = {
+    properties: {
+        data: {
+            items: {
+                '$ref': '#/components/schemas/AgentToolItem'
+            },
+            type: 'array',
+            title: 'Data',
+            description: 'Tools linked to agent'
+        },
+        meta: {
+            '$ref': '#/components/schemas/PaginationMeta',
+            description: 'Pagination metadata'
+        }
+    },
+    type: 'object',
+    required: ['data', 'meta'],
+    title: 'ListAgentToolsResponse',
+    description: 'Response for GET /api/agents/{agent_id}/tools.'
 } as const;
 
 export const ListAgentsResponseSchema = {
@@ -831,6 +1265,27 @@ export const ListAgentsResponseSchema = {
     description: 'Response for GET /agents: paginated agents with doc counts.'
 } as const;
 
+export const ListApiTokensResponseSchema = {
+    properties: {
+        data: {
+            items: {
+                '$ref': '#/components/schemas/ApiTokenItem'
+            },
+            type: 'array',
+            title: 'Data',
+            description: 'API tokens'
+        },
+        meta: {
+            '$ref': '#/components/schemas/PaginationMeta',
+            description: 'Pagination metadata'
+        }
+    },
+    type: 'object',
+    required: ['data', 'meta'],
+    title: 'ListApiTokensResponse',
+    description: 'Response for GET /api/api-tokens.'
+} as const;
+
 export const ListHumanTasksResponseSchema = {
     properties: {
         data: {
@@ -850,6 +1305,27 @@ export const ListHumanTasksResponseSchema = {
     required: ['data', 'meta'],
     title: 'ListHumanTasksResponse',
     description: 'Response for GET /human-tasks: paginated list of human tasks.'
+} as const;
+
+export const ListToolsResponseSchema = {
+    properties: {
+        data: {
+            items: {
+                '$ref': '#/components/schemas/ToolItem'
+            },
+            type: 'array',
+            title: 'Data',
+            description: 'Tools'
+        },
+        meta: {
+            '$ref': '#/components/schemas/PaginationMeta',
+            description: 'Pagination metadata'
+        }
+    },
+    type: 'object',
+    required: ['data', 'meta'],
+    title: 'ListToolsResponse',
+    description: 'Response for GET /api/tools.'
 } as const;
 
 export const LoginBodySchema = {
@@ -894,6 +1370,94 @@ export const ModelQueryCreateBodySchema = {
     type: 'object',
     required: ['user_query'],
     title: 'ModelQueryCreateBody'
+} as const;
+
+export const ModelQueryItemSchema = {
+    properties: {
+        id: {
+            type: 'string',
+            title: 'Id',
+            description: 'Model query ID (UUID)'
+        },
+        agentId: {
+            type: 'string',
+            title: 'Agentid',
+            description: 'Agent ID (UUID)'
+        },
+        userQuery: {
+            type: 'string',
+            title: 'Userquery',
+            description: 'User query text'
+        },
+        modelResponse: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Modelresponse',
+            description: 'Model response text'
+        },
+        methodUsed: {
+            type: 'string',
+            title: 'Methodused',
+            description: 'PERFORMANCE | EFFICIENCY'
+        },
+        flowLog: {
+            anyOf: [
+                {
+                    additionalProperties: true,
+                    type: 'object'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Flowlog',
+            description: 'Request/response flow and metrics'
+        },
+        totalTokens: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Totaltokens',
+            description: 'Total tokens used (generator)'
+        },
+        durationMs: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Durationms',
+            description: 'Response duration in milliseconds'
+        },
+        createdAt: {
+            type: 'string',
+            title: 'Createdat',
+            description: 'Creation time (ISO)'
+        },
+        updatedAt: {
+            type: 'string',
+            title: 'Updatedat',
+            description: 'Last update time (ISO)'
+        }
+    },
+    type: 'object',
+    required: ['id', 'agentId', 'userQuery', 'methodUsed', 'createdAt', 'updatedAt'],
+    title: 'ModelQueryItem',
+    description: 'Single model query in list or get response.'
 } as const;
 
 export const ModelQueryUpdateBodySchema = {
@@ -989,6 +1553,35 @@ export const RegisterBodySchema = {
     type: 'object',
     required: ['email', 'password'],
     title: 'RegisterBody'
+} as const;
+
+export const ToolItemSchema = {
+    properties: {
+        id: {
+            type: 'string',
+            title: 'Id',
+            description: 'Tool ID (UUID)'
+        },
+        name: {
+            type: 'string',
+            title: 'Name',
+            description: 'Tool name'
+        },
+        createdAt: {
+            type: 'string',
+            title: 'Createdat',
+            description: 'Creation time (ISO)'
+        },
+        updatedAt: {
+            type: 'string',
+            title: 'Updatedat',
+            description: 'Last update time (ISO)'
+        }
+    },
+    type: 'object',
+    required: ['id', 'name', 'createdAt', 'updatedAt'],
+    title: 'ToolItem',
+    description: 'Single tool in list tools response.'
 } as const;
 
 export const UpdateAgentIndexRequestSchema = {
@@ -1147,6 +1740,28 @@ export const UpdateAgentRequestSchema = {
                 }
             ],
             title: 'Tools'
+        },
+        long_context_mode: {
+            anyOf: [
+                {
+                    type: 'boolean'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Long Context Mode'
+        },
+        long_context_max_tokens: {
+            anyOf: [
+                {
+                    type: 'integer'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Long Context Max Tokens'
         }
     },
     type: 'object',
@@ -1332,183 +1947,4 @@ export const ValidationErrorSchema = {
     type: 'object',
     required: ['loc', 'msg', 'type'],
     title: 'ValidationError'
-} as const;
-
-export const ModelQueryItemSchema = {
-    type: 'object',
-    required: ['id', 'agentId', 'userQuery', 'methodUsed', 'createdAt', 'updatedAt'],
-    properties: {
-        id: {
-            type: 'string',
-            description: 'Model query ID (UUID)'
-        },
-        agentId: {
-            type: 'string',
-            description: 'Agent ID (UUID)'
-        },
-        userQuery: {
-            type: 'string',
-            description: 'User query text'
-        },
-        modelResponse: {
-            type: 'string',
-            nullable: true,
-            description: 'Model response text'
-        },
-        methodUsed: {
-            type: 'string',
-            description: 'PERFORMANCE | EFFICIENCY'
-        },
-        flowLog: {
-            type: 'object',
-            additionalProperties: true,
-            nullable: true,
-            description: 'Request/response flow and metrics'
-        },
-        totalTokens: {
-            type: 'integer',
-            nullable: true,
-            description: 'Total tokens used (generator)'
-        },
-        durationMs: {
-            type: 'integer',
-            nullable: true,
-            description: 'Response duration in milliseconds'
-        },
-        createdAt: {
-            type: 'string',
-            description: 'Creation time (ISO)'
-        },
-        updatedAt: {
-            type: 'string',
-            description: 'Last update time (ISO)'
-        }
-    },
-    title: 'ModelQueryItem',
-    description: 'Single model query in list or get response'
-} as const;
-
-export const ListAgentQueriesResponseSchema = {
-    type: 'object',
-    required: ['data', 'meta'],
-    properties: {
-        data: {
-            type: 'array',
-            items: {
-                '$ref': '#/components/schemas/ModelQueryItem'
-            },
-            description: 'Model queries'
-        },
-        meta: {
-            '$ref': '#/components/schemas/PaginationMeta',
-            description: 'Pagination metadata'
-        }
-    },
-    title: 'ListAgentQueriesResponse',
-    description: 'Response for GET /api/agents/{agent_id}/queries'
-} as const;
-
-export const AgentStatRowSchema = {
-    type: 'object',
-    required: ['id', 'date', 'totalQueries'],
-    properties: {
-        id: {
-            type: 'string',
-            description: 'Composite id: {agent_id}_{date}'
-        },
-        date: {
-            type: 'string',
-            description: 'Date (ISO)'
-        },
-        totalQueries: {
-            type: 'integer',
-            description: 'Number of queries that day'
-        },
-        totalTokens: {
-            type: 'integer',
-            nullable: true,
-            description: 'Sum of tokens that day'
-        },
-        avgEfficiency: {
-            type: 'number',
-            nullable: true,
-            description: 'Average response time (ms)'
-        },
-        avgQuality: {
-            type: 'number',
-            nullable: true,
-            description: 'Average quality score'
-        }
-    },
-    title: 'AgentStatRow',
-    description: 'Single day aggregate for GET /api/agents/{agent_id}/stats'
-} as const;
-
-export const ListAgentStatsResponseSchema = {
-    type: 'object',
-    required: ['data'],
-    properties: {
-        data: {
-            type: 'array',
-            items: {
-                '$ref': '#/components/schemas/AgentStatRow'
-            },
-            description: 'Daily stats'
-        }
-    },
-    title: 'ListAgentStatsResponse',
-    description: 'Response for GET /api/agents/{agent_id}/stats'
-} as const;
-
-export const ConnectionItemSchema = {
-    type: 'object',
-    required: ['id', 'name', 'providerKey', 'connected'],
-    properties: {
-        id: {
-            type: 'string',
-            format: 'uuid',
-            title: 'Id',
-            description: 'Connection type ID'
-        },
-        name: {
-            type: 'string',
-            title: 'Name',
-            description: 'Display name (e.g. Google)'
-        },
-        providerKey: {
-            type: 'string',
-            title: 'Provider Key',
-            description: 'Provider key (e.g. google)'
-        },
-        connected: {
-            type: 'boolean',
-            title: 'Connected',
-            description: 'Whether the current user has connected this provider'
-        },
-        userConnectionId: {
-            type: 'string',
-            format: 'uuid',
-            nullable: true,
-            title: 'User Connection Id',
-            description: 'User connection ID when connected, for disconnect'
-        }
-    },
-    title: 'ConnectionItem',
-    description: 'Single connection type with status for current user'
-} as const;
-
-export const ListConnectionsResponseSchema = {
-    type: 'object',
-    required: ['data'],
-    properties: {
-        data: {
-            type: 'array',
-            items: {
-                '$ref': '#/components/schemas/ConnectionItem'
-            },
-            description: 'Connection types with status'
-        }
-    },
-    title: 'ListConnectionsResponse',
-    description: 'Response for GET /api/connections'
 } as const;

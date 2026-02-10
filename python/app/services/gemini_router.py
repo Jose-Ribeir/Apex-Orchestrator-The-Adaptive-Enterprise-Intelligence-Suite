@@ -2,14 +2,41 @@
 
 import base64
 import json
-from collections.abc import Generator
+import logging
+import queue
+import threading
+from collections.abc import Generator, Iterator
+from pathlib import Path
 from typing import Any
 
+# If no chunk arrives for this many seconds, treat stream as done (avoids hang when API doesn't close).
+GENERATOR_STREAM_CHUNK_TIMEOUT_SECONDS = 15
+
 from google import genai
+
+logger = logging.getLogger(__name__)
+_GENERATOR_LOG_PATH = Path(__file__).resolve().parent.parent.parent / "chat_stream.log"
+
+
+def _console_log(msg: str) -> None:
+    import sys
+    print(f"[generator] {msg}", file=sys.stderr, flush=True)
+
+
+def _append_generator_log(line: str) -> None:
+    try:
+        with open(_GENERATOR_LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(line.rstrip() + "\n")
+    except Exception:
+        pass
 from google.genai import types
 from pydantic import BaseModel, Field
 
 from app.config import get_settings
+from app.prompt_registry import (
+    build_optimized_prompt_with_registry,
+    build_system_prompt_from_agent as _build_system_prompt_from_agent_shared,
+)
 from app.schemas.requests import AgentConfig
 
 
@@ -27,7 +54,7 @@ class RouterDecision(BaseModel):
     )
     model_to_use: str = Field(
         ...,
-        description="e.g. gemini-2.5-flash, gemini-3-flash-preview",
+        description="Gemini 3 only: gemini-3-flash-preview or gemini-3-pro-preview",
     )
     reason: str = Field(..., description="One-sentence reason")
     needs_human_review: bool = Field(
@@ -54,7 +81,7 @@ Output JSON only with:
 - needs_rag: true/false
 - tools_needed: ["RAG"]|["RAG","Calculator"]|[]
 - connections_needed: ["google"]|[]
-- model_to_use: "gemini-3-flash-preview"|"gemini-2.5-flash" (use flash only; pro has no free-tier quota)
+- model_to_use: "gemini-3-flash-preview"|"gemini-3-pro-preview" (Gemini 3 only)
 - reason: "1-sentence"
 - needs_human_review: true if the query should be escalated to a human (e.g. customer complaint, refund, sensitive, escalation request); otherwise false
 """
@@ -66,6 +93,9 @@ def _get_client() -> genai.Client:
     global _client
     if _client is None:
         settings = get_settings()
+        key = (settings.gemini_api_key or "").strip()
+        if key:
+            logger.info("Gemini client using GEMINI_API_KEY ending in ...%s", key[-4:] if len(key) >= 4 else "****")
         _client = genai.Client(api_key=settings.gemini_api_key)
     return _client
 
@@ -119,10 +149,14 @@ def run_cheap_router(
         )
         text = (getattr(resp, "text", None) or "").strip()
         if not text:
+            logger.warning("router empty response text query_len=%s", len(query))
             return fallback
         data = json.loads(text)
         raw_model = str(data.get("model_to_use") or "gemini-3-flash-preview")
+        # Enforce Gemini 3 only; normalize to flash or pro
         if "gemini-3-pro" in raw_model:
+            raw_model = "gemini-3-pro-preview"
+        elif "gemini-3" not in raw_model:
             raw_model = "gemini-3-flash-preview"
         return {
             "needs_rag": bool(data.get("needs_rag", True)),
@@ -132,16 +166,19 @@ def run_cheap_router(
             "reason": str(data.get("reason") or "ok"),
             "needs_human_review": bool(data.get("needs_human_review", False)),
         }
-    except (json.JSONDecodeError, AttributeError, TypeError, KeyError, Exception):
+    except (json.JSONDecodeError, AttributeError, TypeError, KeyError, Exception) as e:
+        logger.warning("router fallback query_len=%s error=%s", len(query), e, exc_info=True)
         return fallback
 
 
 def _resolve_generator_model(model_name: str) -> str:
-    """Return model name; map pro to flash (no free-tier quota) and fallback if invalid."""
+    """Return Gemini 3 model only; any non-v3 choice becomes gemini-3-flash-preview."""
     name = (model_name or "").strip() or "gemini-3-flash-preview"
     if "gemini-3-pro" in name:
-        return "gemini-3-flash-preview"
-    return name
+        return "gemini-3-pro-preview"
+    if "gemini-3" in name:
+        return name
+    return "gemini-3-flash-preview"
 
 
 def _build_contents(full_prompt: str, attachments: list[dict[str, str]] | None) -> Any:
@@ -164,8 +201,57 @@ def _build_contents(full_prompt: str, attachments: list[dict[str, str]] | None) 
                 continue
             parts.append(Part(inline_data=Blob(mime_type=mime, data=data)))
         return [Content(role="user", parts=parts)]
-    except Exception:
+    except Exception as e:
+        logger.warning("_build_contents failed (multimodal), falling back to text only: %s", e, exc_info=True)
         return full_prompt
+
+
+def _stream_with_chunk_timeout(
+    stream: Iterator[Any],
+    timeout_seconds: float = GENERATOR_STREAM_CHUNK_TIMEOUT_SECONDS,
+) -> Generator[Any, None, None]:
+    """Consume stream in a thread; yield chunks with a per-chunk timeout so we never hang indefinitely."""
+    q: queue.Queue[Any] = queue.Queue()
+    sentinel = object()
+    put_count: list[int] = [0]
+
+    def consume() -> None:
+        try:
+            for chunk in stream:
+                q.put(chunk)
+                put_count[0] += 1
+        except Exception as e:
+            logger.warning(
+                "generator_stream consume thread error chunks_put=%s: %s",
+                put_count[0],
+                e,
+                exc_info=True,
+            )
+        finally:
+            q.put(sentinel)
+
+    t = threading.Thread(target=consume, daemon=True)
+    t.start()
+    yielded = 0
+    while True:
+        try:
+            chunk = q.get(timeout=timeout_seconds)
+        except queue.Empty:
+            logger.warning(
+                "generator_stream chunk timeout after %ss (no chunk for %s s); ending stream. chunks_received=%s",
+                timeout_seconds,
+                timeout_seconds,
+                yielded,
+            )
+            break
+        if chunk is sentinel:
+            logger.info(
+                "generator_stream normal end; chunks_received=%s",
+                yielded,
+            )
+            break
+        yielded += 1
+        yield chunk
 
 
 def run_generator_stream(
@@ -177,27 +263,136 @@ def run_generator_stream(
     total_docs: int,
     attachments: list[dict[str, str]] | None = None,
 ) -> Generator[str, None, None]:
-    """Stream generator model response; yields NDJSON lines. Supports optional multimodal attachments."""
+    """Stream generator model response; yields NDJSON lines. Supports optional multimodal attachments.
+    Uses a per-chunk timeout so if the API stream never closes (e.g. after safety/human-review style
+    responses), we still finish and yield is_final instead of hanging."""
     client = _get_client()
     model_name = _resolve_generator_model(generator_model_name)
     output_chars = 0
     output_tokens = 0
     contents = _build_contents(full_prompt, attachments)
+    attachment_count = len(attachments) if attachments else 0
+    logger.info(
+        "generator_stream start model=%s prompt_chars=%s attachment_count=%s",
+        model_name,
+        len(full_prompt),
+        attachment_count,
+    )
+    _console_log(f"start model={model_name} prompt_chars={len(full_prompt)} attachment_count={attachment_count}")
+    _append_generator_log(f"generator_stream start model={model_name} prompt_chars={len(full_prompt)} attachment_count={attachment_count}")
+    def _is_quota_error(exc: BaseException) -> bool:
+        if getattr(exc, "status_code", None) == 429:
+            return True
+        return "429" in str(getattr(exc, "message", "")) or "RESOURCE_EXHAUSTED" in str(exc)
 
     try:
-        stream = client.models.generate_content_stream(
+        raw_stream = client.models.generate_content_stream(
             model=model_name,
             contents=contents,
         )
-    except Exception:
+    except Exception as e:
+        if _is_quota_error(e):
+            _console_log("generate_content_stream 429 quota exceeded")
+            logger.warning("generator_stream 429 quota exceeded: %s", e)
+            yield (
+                json.dumps(
+                    {
+                        "text": "Gemini API quota exceeded (429). Please try again later or check your plan: https://ai.google.dev/gemini-api/docs/rate-limits",
+                        "metrics": {"call_count": 2, "input_chars": input_chars, "output_chars": 0, "generator_model": model_name},
+                    }
+                )
+                + "\n"
+            )
+            yield (
+                json.dumps(
+                    {
+                        "text": "",
+                        "is_final": True,
+                        "metrics": {
+                            "total_calls": 2,
+                            "router_model": "gemini-3-flash-preview",
+                            "generator_model": model_name,
+                            "tools_used": tool_decision.get("tools_needed", []),
+                            "connections_used": tool_decision.get("connections_needed", []),
+                            "docs_retrieved": docs_count,
+                            "total_docs": total_docs,
+                            "total_tokens": 0,
+                        },
+                    }
+                )
+                + "\n"
+            )
+            return
+        _console_log(f"generate_content_stream error: {e!s}")
+        logger.warning("generator_stream fallback to flash after error: %s", e)
+        _append_generator_log(f"generator_stream generate_content_stream error: {e!s}")
         model_name = "gemini-3-flash-preview"
-        stream = client.models.generate_content_stream(
-            model=model_name,
-            contents=contents,
-        )
+        try:
+            raw_stream = client.models.generate_content_stream(
+                model=model_name,
+                contents=contents,
+            )
+        except Exception as e2:
+            if _is_quota_error(e2):
+                yield (
+                    json.dumps(
+                        {
+                            "text": "Gemini API quota exceeded (429). Please try again later or check your plan: https://ai.google.dev/gemini-api/docs/rate-limits",
+                            "metrics": {"call_count": 2, "input_chars": input_chars, "output_chars": 0, "generator_model": model_name},
+                        }
+                    )
+                    + "\n"
+                )
+                yield (
+                    json.dumps(
+                        {
+                            "text": "",
+                            "is_final": True,
+                            "metrics": {
+                                "total_calls": 2,
+                                "router_model": "gemini-3-flash-preview",
+                                "generator_model": model_name,
+                                "tools_used": tool_decision.get("tools_needed", []),
+                                "connections_used": tool_decision.get("connections_needed", []),
+                                "docs_retrieved": docs_count,
+                                "total_docs": total_docs,
+                                "total_tokens": 0,
+                            },
+                        }
+                    )
+                    + "\n"
+                )
+                return
+            _console_log(f"fallback also failed: {e2!s}")
+            _append_generator_log(f"generator_stream fallback also failed: {e2!s}")
+            raise
 
+    def _chunk_text(chunk: Any) -> str:
+        """Safely extract text from a stream chunk; chunk.text can raise ValueError for non-text content."""
+        try:
+            t = getattr(chunk, "text", None)
+            if t is not None and isinstance(t, str):
+                return t or ""
+        except (ValueError, AttributeError):
+            pass
+        candidates = getattr(chunk, "candidates", None) or []
+        if not candidates:
+            return ""
+        c0 = candidates[0]
+        content = getattr(c0, "content", None)
+        if content is None:
+            return ""
+        parts = getattr(content, "parts", None) or []
+        return "".join(getattr(p, "text", None) or "" for p in parts if getattr(p, "text", None))
+
+    stream = _stream_with_chunk_timeout(raw_stream)
+    chunk_count = 0
+    last_finish_reason: Any = None
+    last_block_reason: Any = None
+    prompt_feedback: Any = None
     for chunk in stream:
-        text = getattr(chunk, "text", None) or ""
+        chunk_count += 1
+        text = _chunk_text(chunk)
         if text:
             output_chars += len(text)
             output_tokens += len(text) // 4
@@ -217,7 +412,58 @@ def run_generator_stream(
                 )
                 + "\n"
             )
+        candidates = getattr(chunk, "candidates", None) or []
+        if candidates:
+            c0 = candidates[0]
+            last_finish_reason = getattr(c0, "finish_reason", None)
+            if last_finish_reason is not None:
+                logger.info(
+                    "generator_stream seen finish_reason=%s, ending stream",
+                    last_finish_reason,
+                )
+                break
+        prompt_feedback = getattr(chunk, "prompt_feedback", None)
+        if prompt_feedback is not None:
+            last_block_reason = getattr(prompt_feedback, "block_reason", None)
 
+    if output_chars == 0:
+        if last_finish_reason is not None or last_block_reason is not None:
+            logger.warning(
+                "generator_stream empty response chunks=%s finish_reason=%s block_reason=%s",
+                chunk_count,
+                last_finish_reason,
+                last_block_reason,
+            )
+            msg = "Response was blocked or empty."
+        else:
+            logger.warning(
+                "generator_stream no chunks (e.g. API error/429) chunks=%s",
+                chunk_count,
+            )
+            msg = "The model did not return a response. This can happen if the API quota was exceeded (429). Please try again later."
+        yield (
+            json.dumps(
+                {
+                    "text": msg,
+                    "metrics": {
+                        "call_count": 2,
+                        "input_chars": input_chars,
+                        "output_chars": 0,
+                        "generator_model": model_name,
+                    },
+                }
+            )
+            + "\n"
+        )
+        output_tokens = output_tokens or 0
+
+    logger.info(
+        "generator_stream loop done chunks=%s output_chars=%s; yielding is_final",
+        chunk_count,
+        output_chars,
+    )
+    _console_log(f"loop_done chunks={chunk_count} output_chars={output_chars} finish_reason={last_finish_reason} block_reason={last_block_reason}")
+    _append_generator_log(f"generator_stream loop_done chunks={chunk_count} output_chars={output_chars} finish_reason={last_finish_reason} block_reason={last_block_reason}")
     yield (
         json.dumps(
             {
@@ -279,30 +525,22 @@ def build_system_prompt_from_agent(
     prompt_override: str | None = None,
 ) -> str:
     """Build system prompt string from agent fields (for chat when agent_id is provided)."""
-    instructions_blob = "\n".join(f"- {i}" for i in instructions) if instructions else "(none)"
-    tools_str = ", ".join(tools) if tools else "None"
-    base = f"""You are **{name}** ({mode}).
-
-INSTRUCTIONS:
-{instructions_blob}
-
-TOOLS: {tools_str}"""
-    if prompt_override and prompt_override.strip():
-        return base + "\n\n" + prompt_override.strip()
-    return base
+    return _build_system_prompt_from_agent_shared(
+        name=name,
+        mode=mode,
+        instructions=instructions,
+        tools=tools,
+        prompt_override=prompt_override,
+    )
 
 
 def build_optimized_prompt(config: AgentConfig, analysis: dict[str, Any]) -> str:
     """Build final optimized system prompt from config and analysis."""
-    instructions_blob = "\n".join(f"- {i}" for i in config.instructions)
-    tools_str = ", ".join(config.tools) if config.tools else "None"
-    return f"""You are **{config.name}** ({config.mode}).
-
-INSTRUCTIONS:
-{instructions_blob}
-
-TOOLS: {tools_str}
-
-{ANALYSIS_V5_TEMPLATE}
-
-ANALYSIS: {json.dumps(analysis)}"""
+    return build_optimized_prompt_with_registry(
+        name=config.name,
+        mode=config.mode,
+        instructions=config.instructions,
+        tools=config.tools,
+        analysis_json=analysis,
+        analysis_v5_template=ANALYSIS_V5_TEMPLATE,
+    )

@@ -1,3 +1,4 @@
+import { useActiveAgent } from "@/providers/active-agent";
 import { useUser } from "@/providers/user";
 import type { AgentInfo } from "@ai-router/client";
 import { listAgentsOptions } from "@ai-router/client/react-query";
@@ -12,6 +13,7 @@ export default function AgentIdLayout({
 }) {
   const params = useParams();
   const navigate = useNavigate();
+  const { setAgentId } = useActiveAgent();
   const agentId = params.agentId as string;
   const user = useUser();
 
@@ -23,6 +25,13 @@ export default function AgentIdLayout({
   const agents =
     (agentsData as { agents?: AgentInfo[] } | undefined)?.agents ?? [];
   const agentInList = agents.some((a) => a.agent_id === agentId);
+
+  // Sync sidebar active agent from URL so Instructions, Prompt, Documents, etc. show for this agent
+  useEffect(() => {
+    if (agentId && agentInList) {
+      setAgentId(agentId);
+    }
+  }, [agentId, agentInList, setAgentId]);
 
   useEffect(() => {
     if (isPending || !agentId) return;

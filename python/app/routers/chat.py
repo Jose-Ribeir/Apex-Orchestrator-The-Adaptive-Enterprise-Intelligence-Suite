@@ -1,9 +1,11 @@
 """Streaming chat with 2-call router + dynamic generator."""
 
+import base64
 import asyncio
 import json
 import logging
 import time
+from pathlib import Path
 from typing import Any
 from uuid import UUID
 
@@ -15,14 +17,47 @@ from app.config import get_settings
 from app.schemas.requests import ChatRequest
 from app.services import connections_service, gmail_service, human_tasks_service
 from app.services.agent_service import get_agent
+from app.prompt_registry import get_router_tools_line
 from app.services.llm import build_system_prompt_from_agent, run_cheap_router, run_generator_stream
+from app.services.document_parser import csv_to_text
 from app.services.rag import get_or_create_retriever
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Chat"])
 
+_CHAT_LOG_PATH = Path(__file__).resolve().parent.parent.parent / "chat_stream.log"
+
+# Ensure chat logs go to chat_stream.log so they can be read without terminal access
+def _ensure_chat_file_handler() -> None:
+    has_file = any(getattr(h, "baseFilename", "") == str(_CHAT_LOG_PATH) for h in logger.handlers)
+    if not has_file:
+        try:
+            fh = logging.FileHandler(_CHAT_LOG_PATH, encoding="utf-8")
+            fh.setFormatter(logging.Formatter("%(asctime)s [%(name)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S"))
+            logger.addHandler(fh)
+        except Exception:
+            pass
+
+
+def _append_chat_log(line: str) -> None:
+    """Append one line to chat_stream.log so logs can be read without terminal access."""
+    _ensure_chat_file_handler()
+    try:
+        with open(_CHAT_LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(line.rstrip() + "\n")
+            f.flush()
+    except Exception:
+        pass
+
+# When the model outputs this phrase, hide it and everything after from the chat; show only on human tasks.
+HUMAN_REVIEW_MARKER = "Human Supervisor Review Required"
+
 # Max length to store for model_response (avoid huge DB rows)
 _MODEL_RESPONSE_MAX_CHARS = 100_000
+# Cap flow_log payload for human tasks (retrieved docs and prompt sent)
+_FLOW_LOG_PROMPT_MAX_CHARS = 100_000
+_RETRIEVED_DOCS_MAX = 50
+_RETRIEVED_DOC_CONTENT_MAX = 2_000
 
 
 def _insert_model_query_sync(payload: dict[str, Any]) -> None:
@@ -86,10 +121,10 @@ def _rag_key(request: ChatRequest, *, resolved_agent_name: str) -> str:
     return resolved_agent_name.strip()
 
 
-def _resolve_agent_name_and_prompt(request: ChatRequest) -> tuple[str, str] | None:
+def _resolve_agent_name_and_prompt(request: ChatRequest) -> tuple[str, str, Any] | None:
     """
-    When request.agent_id is set, load agent and build system_prompt; return (agent_name, system_prompt).
-    When not set (legacy), return (request.agent_name, request.system_prompt).
+    When request.agent_id is set, load agent and build system_prompt; return (agent_name, system_prompt, agent).
+    When not set (legacy), return (agent_name, system_prompt, None).
     Returns None if agent_id was set but agent not found (caller should yield error and return).
     """
     if request.agent_id and str(request.agent_id).strip():
@@ -105,10 +140,10 @@ def _resolve_agent_name_and_prompt(request: ChatRequest) -> tuple[str, str] | No
             tools=tools,
             prompt_override=agent.prompt,
         )
-        return (agent.name, system_prompt)
+        return (agent.name, system_prompt, agent)
     agent_name = (request.agent_name or "").strip()
     system_prompt = (request.system_prompt or "").strip()
-    return (agent_name, system_prompt)
+    return (agent_name, system_prompt, None)
 
 
 def _run_stream_pipeline(
@@ -120,22 +155,36 @@ def _run_stream_pipeline(
     If model_query_payload and agent_id + DB are set, appends one dict for ModelQuery insert.
     When user_id is set and router returns connections_needed including 'google', Gmail is searched and added to context."""  # noqa: E501
     # Log request (full flow will be logged after response)
+    attachment_count = len(request.attachments) if request.attachments else 0
+    first_mime = (request.attachments[0].mime_type or "") if request.attachments else ""
     logger.info(
-        "model_query_start agent_id=%s user_query_len=%s",
+        "model_query_start agent_id=%s user_query_len=%s attachment_count=%s first_mime=%s",
         request.agent_id or "(legacy)",
         len(request.message or ""),
+        attachment_count,
+        first_mime or "(none)",
+    )
+    _console_log(
+        f"model_query_start agent_id={request.agent_id} attachment_count={attachment_count} first_mime={first_mime or '(none)'}"
+    )
+    _append_chat_log(
+        f"model_query_start agent_id={request.agent_id} user_query_len={len(request.message or '')} attachment_count={attachment_count} first_mime={first_mime or '(none)'}"
     )
     resolved = _resolve_agent_name_and_prompt(request)
     if resolved is None:
         yield json.dumps({"error": "Agent not found", "detail": f"Agent {request.agent_id} not found"}) + "\n"
         return
-    agent_name, system_prompt = resolved
+    agent_name, system_prompt, agent = resolved
 
-    tools_line = next(
-        (line for line in system_prompt.split("\n") if "TOOLS:" in line),
-        "TOOLS: []",
-    )
-    tools_list = tools_line.split("TOOLS: ")[1].split("\n")[0] if "TOOLS:" in tools_line else "[]"
+    if agent is not None:
+        tool_names = [at.tool.name for at in agent.agent_tools]
+        tools_list = get_router_tools_line(tool_names)
+    else:
+        tools_line = next(
+            (line for line in system_prompt.split("\n") if "TOOLS:" in line),
+            "TOOLS: []",
+        )
+        tools_list = tools_line.split("TOOLS: ")[1].split("\n")[0] if "TOOLS:" in tools_line else "[]"
     try:
         connections_list = connections_service.list_connection_provider_keys()
     except Exception:
@@ -150,12 +199,12 @@ def _run_stream_pipeline(
     context_str = ""
     docs_count = 0
     total_docs = rag.count_documents()
+    rag_search_results: list[dict[str, Any]] = []
 
     # Long context mode: when enabled and total docs under cap, use raw docs instead of vector search
     long_context_used = False
-    if request.agent_id and total_docs > 0:
-        agent = get_agent(request.agent_id, with_relations=True)
-        if agent and agent.resolved_metadata.get("long_context_enabled"):
+    if agent is not None and total_docs > 0:
+        if agent.resolved_metadata.get("long_context_enabled"):
             max_tokens = agent.resolved_metadata.get("long_context_max_tokens", 1_000_000)
             result = rag.get_all_content_for_context(max_tokens)
             if result is not None:
@@ -172,6 +221,7 @@ def _run_stream_pipeline(
     if not long_context_used and tool_decision.get("needs_rag", False):
         try:
             results = rag.search(request.message)
+            rag_search_results = results
             docs_count = len(results)
             context_str = "\n\n".join(r["contents"] for r in results)
             logger.info(
@@ -190,6 +240,7 @@ def _run_stream_pipeline(
             logger.warning("RAG search failed, continuing without context: %s", e, exc_info=True)
             context_str = ""
             docs_count = 0
+            rag_search_results = []
     # When user is authenticated and router asked for Gmail, search or list messages and add to context
     gmail_context_for_actions = ""
     if user_id and "google" in tool_decision.get("connections_needed", []):
@@ -209,6 +260,18 @@ def _run_stream_pipeline(
                 context_str += "\n\n[GMAIL: could not load messages.]"
         else:
             context_str += "\n\n[GMAIL: not connected. Connect Gmail in Connections to see emails here.]"
+    # Parse CSV attachments and append text to context (non-CSV attachments go to run_generator_stream)
+    if request.attachments:
+        for a in request.attachments:
+            mime = (a.mime_type or "").lower()
+            if mime in ("text/csv", "application/csv"):
+                try:
+                    raw = base64.b64decode(a.data_base64, validate=True)
+                    csv_text = csv_to_text(raw)
+                    if csv_text.strip():
+                        context_str += f"\n\n[CSV ATTACHMENT]\n{csv_text}"
+                except Exception as e:
+                    logger.warning("Failed to parse CSV attachment: %s", e)
     generator_model_name = tool_decision.get("model_to_use", "gemini-3-flash-preview")
     full_prompt = f"""
 [SYSTEM]{system_prompt}
@@ -221,10 +284,25 @@ def _run_stream_pipeline(
 """
     input_chars = len(full_prompt)
 
+    if agent is not None:
+        tools_available = [at.tool.name for at in agent.agent_tools]
+        if "RAG" not in tools_available:
+            tools_available = ["RAG"] + list(tools_available)
+        agent_mode = (getattr(agent, "mode", None) or "EFFICIENCY").strip()
+    else:
+        try:
+            tools_available = json.loads(tools_list) if isinstance(tools_list, str) else (tools_list or [])
+        except (json.JSONDecodeError, TypeError):
+            tools_available = []
+        if not isinstance(tools_available, list):
+            tools_available = []
+        agent_mode = ""
     metrics = {
         "call_count": 1,
         "router_model": "gemini-3-flash-preview",
         "generator_model": generator_model_name,
+        "agent_mode": agent_mode,
+        "tools_available": tools_available,
         "tools_executed": tool_decision.get("tools_needed", []),
         "connections_used": tool_decision.get("connections_needed", []),
         "docs_retrieved": docs_count,
@@ -246,7 +324,23 @@ def _run_stream_pipeline(
     start_time = time.perf_counter()
     attachments_list: list[dict[str, str]] | None = None
     if request.attachments:
-        attachments_list = [{"mime_type": a.mime_type, "data_base64": a.data_base64} for a in request.attachments]
+        csv_mimes = {"text/csv", "application/csv"}
+        attachments_list = [
+            {"mime_type": a.mime_type, "data_base64": a.data_base64}
+            for a in request.attachments
+            if (a.mime_type or "").lower() not in csv_mimes
+        ]
+        if not attachments_list:
+            attachments_list = None
+    logger.info(
+        "chat_stream generator_loop_start agent_id=%s model=%s needs_human_review=%s has_attachments=%s",
+        request.agent_id,
+        generator_model_name,
+        tool_decision.get("needs_human_review"),
+        attachments_list is not None and len(attachments_list) > 0,
+    )
+    line_count = 0
+    human_review_content_triggered = False
     for line in run_generator_stream(
         full_prompt,
         generator_model_name,
@@ -256,18 +350,59 @@ def _run_stream_pipeline(
         total_docs,
         attachments=attachments_list,
     ):
+        line_count += 1
         try:
             parsed = json.loads(line)
             if isinstance(parsed.get("text"), str):
                 accumulated_text.append(parsed["text"])
+                full_so_far = "".join(accumulated_text)
+                if not human_review_content_triggered and HUMAN_REVIEW_MARKER in full_so_far:
+                    pos = full_so_far.find(HUMAN_REVIEW_MARKER)
+                    already_yielded_len = len(full_so_far) - len(parsed["text"])
+                    safe_len = max(0, min(len(parsed["text"]), pos - already_yielded_len))
+                    line = json.dumps({**parsed, "text": parsed["text"][:safe_len]}) + "\n"
+                    human_review_content_triggered = True
+                elif human_review_content_triggered:
+                    line = json.dumps({**parsed, "text": ""}) + "\n"
             if parsed.get("is_final"):
                 metrics = parsed.get("metrics") or {}
                 stream_total_tokens = metrics.get("total_tokens")
+                logger.info(
+                    "chat_stream is_final received line_count=%s response_chars=%s",
+                    line_count,
+                    sum(len(t) for t in accumulated_text),
+                )
         except (json.JSONDecodeError, TypeError):
             pass
         yield line
     response_text = "".join(accumulated_text)
     duration_ms = int((time.perf_counter() - start_time) * 1000)
+    has_attachments = attachments_list is not None and len(attachments_list) > 0
+    logger.info(
+        "chat_stream generator_loop_finished agent_id=%s line_count=%s response_chars=%s duration_ms=%s has_attachments=%s",
+        request.agent_id,
+        line_count,
+        len(response_text),
+        duration_ms,
+        has_attachments,
+    )
+    _console_log(
+        f"generator_loop_finished agent_id={request.agent_id} response_chars={len(response_text)} duration_ms={duration_ms} has_attachments={has_attachments}"
+    )
+    _append_chat_log(
+        f"generator_loop_finished agent_id={request.agent_id} line_count={line_count} response_chars={len(response_text)} duration_ms={duration_ms} has_attachments={has_attachments}"
+    )
+    # Log model response output for debugging (truncated)
+    if response_text:
+        preview = response_text[:500] + "..." if len(response_text) > 500 else response_text
+        short_preview = (preview[:80] + "...") if len(preview) > 80 else preview
+        _console_log(f"model_response_preview agent_id={request.agent_id} response_chars={len(response_text)} preview={short_preview!r}")
+        logger.info("chat_stream model_response_preview agent_id=%s preview=%s", request.agent_id, preview)
+        _append_chat_log(f"model_response_preview agent_id={request.agent_id} response_chars={len(response_text)} preview={preview!r}")
+    else:
+        _console_log(f"model_response_empty agent_id={request.agent_id} line_count={line_count} response_chars=0")
+        logger.warning("chat_stream model_response_empty agent_id=%s line_count=%s", request.agent_id, line_count)
+        _append_chat_log(f"model_response_empty agent_id={request.agent_id} line_count={line_count} response_chars=0")
     human_task_created = False
 
     # Router requested human review (e.g. customer support escalation)
@@ -278,6 +413,10 @@ def _run_stream_pipeline(
         and request.agent_id
         and str(request.agent_id).strip()
     ):
+        logger.info(
+            "chat_stream creating human_task (needs_human_review) agent_id=%s",
+            request.agent_id,
+        )
         response_truncated = (
             response_text[:_MODEL_RESPONSE_MAX_CHARS] + "\n...[truncated]"
             if len(response_text) > _MODEL_RESPONSE_MAX_CHARS
@@ -296,6 +435,18 @@ def _run_stream_pipeline(
         }
         if stream_total_tokens is not None:
             flow_log_metrics["total_tokens"] = stream_total_tokens
+        # Retrieved documents for human task review (vector search or long-context placeholder)
+        if long_context_used:
+            retrieved_documents = [{"long_context": True, "total_docs": total_docs}]
+        else:
+            retrieved_documents = [
+                {
+                    "contents": (r.get("contents") or "")[:_RETRIEVED_DOC_CONTENT_MAX]
+                    + ("..." if len((r.get("contents") or "")) > _RETRIEVED_DOC_CONTENT_MAX else ""),
+                    "score": r.get("score"),
+                }
+                for r in (rag_search_results or [])[:_RETRIEVED_DOCS_MAX]
+            ]
         flow_log = {
             "request": {
                 "agent_id": str(request.agent_id).strip(),
@@ -305,7 +456,14 @@ def _run_stream_pipeline(
             "router_decision": tool_decision,
             "metrics": flow_log_metrics,
             "response_preview": (response_text[:500] + "...") if len(response_text) > 500 else response_text,
+            "retrieved_documents": retrieved_documents,
         }
+        if long_context_used and full_prompt:
+            flow_log["prompt_sent_to_model"] = (
+                full_prompt[:_FLOW_LOG_PROMPT_MAX_CHARS] + "\n...[truncated]"
+                if len(full_prompt) > _FLOW_LOG_PROMPT_MAX_CHARS
+                else full_prompt
+            )
         payload = {
             "agent_id": str(request.agent_id).strip(),
             "user_query": request.message,
@@ -323,7 +481,9 @@ def _run_stream_pipeline(
                     model_query_id=UUID(model_query_id),
                     reason=reason[:500] if len(reason) > 500 else reason,
                     model_message=response_text[:5000] or "",
-                    retrieved_data=json.dumps({"source": "router", "needs_human_review": True}),
+                    retrieved_data=json.dumps(
+                        {"source": "router", "needs_human_review": True, "doc_count": docs_count, "long_context_used": long_context_used}
+                    ),
                     status="PENDING",
                 )
                 human_task_created = True
@@ -342,9 +502,117 @@ def _run_stream_pipeline(
                     )
                     + "\n"
                 )
-                logger.info("Human task created (router needs_human_review) task_id=%s", task.id)
+                logger.info(
+                    "chat_stream human_task yielded task_id=%s model_query_id=%s",
+                    task.id,
+                    model_query_id,
+                )
             except Exception as e:
                 logger.warning("Human task create (router) failed: %s", e, exc_info=True)
+
+    # Model output requested human review (e.g. "Human Supervisor Review Required" in response)
+    if (
+        human_review_content_triggered
+        and not human_task_created
+        and get_settings().database_configured
+        and model_query_payload is not None
+        and request.agent_id
+        and str(request.agent_id).strip()
+    ):
+        logger.info(
+            "chat_stream creating human_task (content-triggered) agent_id=%s",
+            request.agent_id,
+        )
+        response_truncated = (
+            response_text[:_MODEL_RESPONSE_MAX_CHARS] + "\n...[truncated]"
+            if len(response_text) > _MODEL_RESPONSE_MAX_CHARS
+            else response_text
+        )
+        flow_log_metrics_ct: dict[str, Any] = {
+            "call_count": 1,
+            "router_model": "gemini-3-flash-preview",
+            "generator_model": tool_decision.get("model_to_use", "gemini-3-flash-preview"),
+            "tools_executed": tool_decision.get("tools_needed", []),
+            "docs_retrieved": docs_count,
+            "total_docs": total_docs,
+            "input_chars": input_chars,
+            "response_chars": len(response_text),
+            "duration_ms": duration_ms,
+        }
+        if stream_total_tokens is not None:
+            flow_log_metrics_ct["total_tokens"] = stream_total_tokens
+        if long_context_used:
+            retrieved_documents_ct = [{"long_context": True, "total_docs": total_docs}]
+        else:
+            retrieved_documents_ct = [
+                {
+                    "contents": (r.get("contents") or "")[:_RETRIEVED_DOC_CONTENT_MAX]
+                    + ("..." if len((r.get("contents") or "")) > _RETRIEVED_DOC_CONTENT_MAX else ""),
+                    "score": r.get("score"),
+                }
+                for r in (rag_search_results or [])[:_RETRIEVED_DOCS_MAX]
+            ]
+        flow_log_ct = {
+            "request": {
+                "agent_id": str(request.agent_id).strip(),
+                "user_query": request.message,
+                "user_query_len": len(request.message or ""),
+            },
+            "router_decision": tool_decision,
+            "metrics": flow_log_metrics_ct,
+            "response_preview": (response_text[:500] + "...") if len(response_text) > 500 else response_text,
+            "retrieved_documents": retrieved_documents_ct,
+        }
+        if long_context_used and full_prompt:
+            flow_log_ct["prompt_sent_to_model"] = (
+                full_prompt[:_FLOW_LOG_PROMPT_MAX_CHARS] + "\n...[truncated]"
+                if len(full_prompt) > _FLOW_LOG_PROMPT_MAX_CHARS
+                else full_prompt
+            )
+        payload_ct = {
+            "agent_id": str(request.agent_id).strip(),
+            "user_query": request.message,
+            "model_response": response_truncated or None,
+            "method_used": (tool_decision.get("model_to_use") or "EFFICIENCY").strip().upper() or "EFFICIENCY",
+            "flow_log": flow_log_ct,
+            "total_tokens": stream_total_tokens,
+            "duration_ms": duration_ms,
+        }
+        model_query_id_ct = _insert_model_query_sync_return_id(payload_ct)
+        if model_query_id_ct:
+            try:
+                task_ct = human_tasks_service.create_task(
+                    model_query_id=UUID(model_query_id_ct),
+                    reason="Critical issue: human supervisor review required",
+                    model_message=response_text[:5000] or "",
+                    retrieved_data=json.dumps(
+                        {"source": "content", "human_review_marker": HUMAN_REVIEW_MARKER, "doc_count": docs_count, "long_context_used": long_context_used}
+                    ),
+                    status="PENDING",
+                )
+                human_task_created = True
+                yield (
+                    json.dumps(
+                        {
+                            "human_task": {
+                                "id": str(task_ct.id),
+                                "model_query_id": model_query_id_ct,
+                                "reason": task_ct.reason,
+                                "status": task_ct.status,
+                                "model_message": (task_ct.model_message or "")[:500],
+                                "retrieved_data": task_ct.retrieved_data,
+                            },
+                        }
+                    )
+                    + "\n"
+                )
+                logger.info(
+                    "chat_stream human_task yielded (content-triggered) task_id=%s model_query_id=%s",
+                    task_ct.id,
+                    model_query_id_ct,
+                )
+            except Exception as e:
+                logger.warning("Human task create (content-triggered) failed: %s", e, exc_info=True)
 
     # If we had Gmail context, check for email action: require human approval (insert task) or execute
     if user_id and gmail_context_for_actions and not human_task_created:
@@ -494,6 +762,12 @@ def _run_stream_pipeline(
         )
 
 
+def _console_log(msg: str) -> None:
+    """Write to stderr so it appears in the server terminal regardless of logging config."""
+    import sys
+    print(f"[chat] {msg}", file=sys.stderr, flush=True)
+
+
 @router.post(
     "/generate_stream",
     summary="Stream chat (router + generator)",
@@ -507,6 +781,9 @@ async def generate_stream(
     request: ChatRequest,
     current_user: dict | None = Depends(get_current_user_optional),
 ):
+    _console_log(f"generate_stream request agent_id={request.agent_id} message_len={len(request.message or '')}")
+    logger.info("generate_stream request received agent_id=%s message_len=%s", request.agent_id, len(request.message or ""))
+    _append_chat_log(f"generate_stream request agent_id={request.agent_id} message_len={len(request.message or '')}")
     user_id = current_user["id"] if current_user else None
     queue: asyncio.Queue[str | tuple[str, dict] | None] = asyncio.Queue()
     loop = asyncio.get_running_loop()
@@ -516,13 +793,20 @@ async def generate_stream(
         loop.call_soon_threadsafe(queue.put_nowait, chunk)
 
     def worker() -> None:
+        _console_log(f"worker_start agent_id={request.agent_id}")
+        logger.info("chat_stream worker_start agent_id=%s", request.agent_id)
         try:
             for line in _run_stream_pipeline(request, model_query_payload=payload_holder, user_id=user_id):
                 put(line)
             if payload_holder:
                 put(("model_query", payload_holder[0]))
+        except Exception as e:
+            _console_log(f"worker_error agent_id={request.agent_id} error={e!s}")
+            raise
         finally:
             put(None)
+            _console_log(f"worker_finished agent_id={request.agent_id}")
+            logger.info("chat_stream worker_finished agent_id=%s", request.agent_id)
 
     loop.run_in_executor(None, worker)
 

@@ -35,13 +35,35 @@ from contextlib import asynccontextmanager
 
 from app.config import get_settings
 
+# Ensure request/stream logs from app.routers.chat and app.services.gemini_router are visible.
+# Uvicorn can override root logging; we explicitly configure the "app" logger so it always outputs.
+# Also log to a file so logs can be read without terminal access.
+_CHAT_LOG_FILE = _APP_DIR / "chat_stream.log"
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
     datefmt="%Y-%m-%d %H:%M:%S",
     stream=sys.stdout,
 )
-logger = logging.getLogger("app")
+_root = logging.getLogger()
+_root.setLevel(logging.INFO)
+_app_logger = logging.getLogger("app")
+_app_logger.setLevel(logging.INFO)
+_log_fmt = logging.Formatter("%(asctime)s %(levelname)s [%(name)s] %(message)s", datefmt="%Y-%m-%d %H:%M:%S")
+if not _app_logger.handlers:
+    _handler = logging.StreamHandler(sys.stdout)
+    _handler.setLevel(logging.INFO)
+    _handler.setFormatter(_log_fmt)
+    _app_logger.addHandler(_handler)
+try:
+    _file_handler = logging.FileHandler(_CHAT_LOG_FILE, encoding="utf-8")
+    _file_handler.setLevel(logging.INFO)
+    _file_handler.setFormatter(_log_fmt)
+    _app_logger.addHandler(_file_handler)
+except Exception:  # e.g. read-only filesystem
+    pass
+_app_logger.propagate = True  # allow propagation to root so uvicorn terminal shows our logs
+logger = _app_logger
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
@@ -50,15 +72,24 @@ from app import __version__
 from app.auth.routes import router as auth_router
 from app.routers import chat, connections, health, index
 from app.routers.api_router import api_router
-from app.seed import seed_connection_types, seed_tools
+from app.seed import seed_agents, seed_connection_types, seed_tools, seed_users
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup/shutdown lifecycle."""
     try:
+        with open(_CHAT_LOG_FILE, "a", encoding="utf-8") as f:
+            import datetime
+            f.write(f"\n===== App started {datetime.datetime.now().isoformat()} =====\n")
+            f.flush()
+    except Exception:
+        pass
+    try:
         seed_tools()
         seed_connection_types()
+        seed_users()
+        await seed_agents()
     except Exception as e:
         logger.warning("Startup seed skipped: %s", e)
     yield

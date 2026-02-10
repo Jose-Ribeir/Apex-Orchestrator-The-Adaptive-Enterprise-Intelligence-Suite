@@ -46,7 +46,7 @@ import {
 import { useCallback, useState } from "react";
 import { useParams } from "react-router-dom";
 
-const ALLOWED_EXTENSIONS = [".pdf", ".txt", ".docx"];
+const ALLOWED_EXTENSIONS = [".pdf", ".txt", ".docx", ".csv"];
 const MAX_FILE_SIZE_MB = 20;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
 
@@ -170,7 +170,7 @@ export default function AgentDocumentsPage() {
     for (const file of selectedFiles) {
       if (!isAllowedFile(file)) {
         setUploadError(
-          `"${file.name}" not allowed. Use PDF, TXT, or DOCX; max ${MAX_FILE_SIZE_MB} MB.`,
+          `"${file.name}" not allowed. Use PDF, TXT, DOCX, or CSV; max ${MAX_FILE_SIZE_MB} MB.`,
         );
         return;
       }
@@ -302,8 +302,8 @@ export default function AgentDocumentsPage() {
                 <TableCell className="text-right text-muted-foreground text-sm">
                   {d.createdAt
                     ? new Date(d.createdAt).toLocaleDateString(undefined, {
-                        dateStyle: "short",
-                      })
+                      dateStyle: "short",
+                    })
                     : "—"}
                 </TableCell>
                 <TableCell>
@@ -407,11 +407,10 @@ export default function AgentDocumentsPage() {
             {addMode === "files" && (
               <>
                 <div
-                  className={`flex min-h-[180px] flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center transition-colors ${
-                    dragOver
+                  className={`flex min-h-[180px] flex-col items-center justify-center rounded-xl border-2 border-dashed p-6 text-center transition-colors ${dragOver
                       ? "border-primary bg-primary/5"
                       : "border-muted-foreground/25 hover:border-muted-foreground/50"
-                  }`}
+                    }`}
                   onDragOver={(e) => {
                     e.preventDefault();
                     setDragOver(true);

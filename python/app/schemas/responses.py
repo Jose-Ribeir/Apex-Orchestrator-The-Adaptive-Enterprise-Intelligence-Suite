@@ -70,6 +70,12 @@ class AgentInfo(BaseModel):
     )
 
 
+class AgentSystemPromptResponse(BaseModel):
+    """Effective system prompt for an agent (as used in chat)."""
+
+    system_prompt: str = Field(..., description="Full system prompt built from name, mode, instructions, tools, and optional override")
+
+
 class AgentDetailResponse(BaseModel):
     """Single agent full detail (GET /agents/{id})."""
 
@@ -164,6 +170,7 @@ class HumanTaskModelQueryRef(BaseModel):
     id: str = Field(..., description="Model query ID")
     userQuery: str | None = Field(None, description="User query text")
     modelResponse: str | None = Field(None, description="Model response text")
+    flowLog: dict[str, Any] | None = Field(None, description="Request/response flow, metrics, retrieved_documents, prompt_sent_to_model")
 
 
 class HumanTaskResponse(BaseModel):

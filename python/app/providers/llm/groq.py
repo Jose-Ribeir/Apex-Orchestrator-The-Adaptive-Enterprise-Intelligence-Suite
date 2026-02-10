@@ -7,6 +7,10 @@ from collections.abc import Generator
 from typing import Any
 
 from app.config import get_settings
+from app.prompt_registry import (
+    build_optimized_prompt_with_registry,
+    build_system_prompt_from_agent as build_system_prompt_from_agent_shared,
+)
 from app.schemas.requests import AgentConfig
 
 ROUTER_MODEL = "llama-3.1-8b-instant"
@@ -145,17 +149,13 @@ class GroqLLMProvider:
         tools: list[str],
         prompt_override: str | None = None,
     ) -> str:
-        instructions_blob = "\n".join(f"- {i}" for i in instructions) if instructions else "(none)"
-        tools_str = ", ".join(tools) if tools else "None"
-        base = f"""You are **{name}** ({mode}).
-
-INSTRUCTIONS:
-{instructions_blob}
-
-TOOLS: {tools_str}"""
-        if prompt_override and prompt_override.strip():
-            return base + "\n\n" + prompt_override.strip()
-        return base
+        return build_system_prompt_from_agent_shared(
+            name=name,
+            mode=mode,
+            instructions=instructions,
+            tools=tools,
+            prompt_override=prompt_override,
+        )
 
     def optimize_agent_prompt(self, config: AgentConfig) -> tuple[str, dict[str, Any]]:
         """Simple analysis without LLM call; returns (prompt, analysis)."""
@@ -164,14 +164,11 @@ TOOLS: {tools_str}"""
             "complexity": "medium",
             "needs_rag": bool(config.tools),
         }
-        instructions_blob = "\n".join(f"- {i}" for i in config.instructions)
-        tools_str = ", ".join(config.tools) if config.tools else "None"
-        prompt = f"""You are **{config.name}** ({config.mode}).
-
-INSTRUCTIONS:
-{instructions_blob}
-
-TOOLS: {tools_str}
-
-ANALYSIS: {json.dumps(analysis)}"""
+        prompt = build_optimized_prompt_with_registry(
+            name=config.name,
+            mode=config.mode,
+            instructions=config.instructions,
+            tools=config.tools,
+            analysis_json=analysis,
+        )
         return prompt, analysis

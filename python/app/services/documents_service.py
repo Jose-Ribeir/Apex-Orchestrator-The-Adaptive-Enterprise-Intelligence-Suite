@@ -108,6 +108,8 @@ def ingest_one_file_sync(
         content_type = "text/plain"
     elif filename.lower().endswith(".docx"):
         content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    elif filename.lower().endswith(".csv"):
+        content_type = "text/csv"
     storage_path = gcs_upload(str(agent_id), f"{doc_id}/{filename}", content, content_type)
     docs = file_to_docs(content, filename, storage_path)
     if not docs:

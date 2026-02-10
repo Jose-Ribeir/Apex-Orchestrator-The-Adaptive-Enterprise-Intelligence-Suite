@@ -1,4 +1,4 @@
-"""RAG index: add/update/delete documents, upload JSONL, ingest PDF/TXT/DOCX."""
+"""RAG index: add/update/delete documents, upload JSONL, ingest PDF/TXT/DOCX/CSV."""
 
 import asyncio
 import json
@@ -22,6 +22,7 @@ _CONTENT_TYPES = {
     ".pdf": "application/pdf",
     ".txt": "text/plain",
     ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    ".csv": "text/csv",
 }
 
 router = APIRouter(tags=["Index"])

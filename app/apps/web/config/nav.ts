@@ -9,6 +9,7 @@ import {
   MessageSquare,
   Sliders,
   Wrench,
+  ScrollText,
 } from "lucide-react";
 
 export type PlatformNavItem = {
@@ -32,6 +33,12 @@ export const platformNavConfig: PlatformNavItem[] = [
     title: "Instructions",
     path: "instructions",
     icon: FileText,
+    agentScoped: true,
+  },
+  {
+    title: "Prompt",
+    path: "prompt",
+    icon: ScrollText,
     agentScoped: true,
   },
   {

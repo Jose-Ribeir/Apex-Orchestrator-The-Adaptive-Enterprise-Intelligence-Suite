@@ -50,6 +50,7 @@ def _task_to_response(task) -> HumanTaskResponse:
                 id=str(mq.id),
                 userQuery=mq.user_query,
                 modelResponse=mq.model_response,
+                flowLog=getattr(mq, "flow_log", None),
             )
             if mq
             else None

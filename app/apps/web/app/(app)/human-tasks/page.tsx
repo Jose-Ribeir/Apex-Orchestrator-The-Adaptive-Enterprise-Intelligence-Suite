@@ -1,19 +1,12 @@
 "use client";
 
 import { formatDateTime } from "@/lib/format";
-import type { HumanTaskResponse } from "@ai-router/client";
 import {
   listHumanTasksOptions,
   resolveHumanTaskMutation,
 } from "@ai-router/client/react-query";
 import { Badge } from "@ai-router/ui/badge";
 import { Button } from "@ai-router/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@ai-router/ui/sheet";
 import {
   Table,
   TableBody,
@@ -25,10 +18,11 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Check, Pencil } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 export default function HumanTasksPage() {
   const queryClient = useQueryClient();
-  const [detailTask, setDetailTask] = useState<HumanTaskResponse | null>(null);
+  const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<boolean | undefined>(
     undefined,
   );
@@ -48,7 +42,6 @@ export default function HumanTasksPage() {
     ...resolveHumanTaskMutation(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["listHumanTasks"] });
-      setDetailTask(null);
     },
   });
 
@@ -124,7 +117,7 @@ export default function HumanTasksPage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => setDetailTask(task)}
+                      onClick={() => navigate(`/human-tasks/${task.id}`)}
                       aria-label="View"
                     >
                       <Pencil className="size-4" />
@@ -151,66 +144,6 @@ export default function HumanTasksPage() {
           </TableBody>
         </Table>
       )}
-
-      <Sheet
-        open={detailTask != null}
-        onOpenChange={(open) => !open && setDetailTask(null)}
-      >
-        <SheetContent side="right" className="w-full max-w-lg sm:max-w-lg">
-          <SheetHeader>
-            <SheetTitle>Human task</SheetTitle>
-          </SheetHeader>
-          {detailTask && (
-            <div className="mt-6 flex flex-col gap-4">
-              <div>
-                <span className="text-muted-foreground text-sm">Status</span>
-                <p className="font-medium">{detailTask.status ?? "—"}</p>
-              </div>
-              <div>
-                <span className="text-muted-foreground text-sm">Reason</span>
-                <p className="whitespace-pre-wrap">
-                  {detailTask.reason ?? "—"}
-                </p>
-              </div>
-              <div>
-                <span className="text-muted-foreground text-sm">
-                  Model message
-                </span>
-                <p className="whitespace-pre-wrap">
-                  {detailTask.modelMessage ?? "—"}
-                </p>
-              </div>
-              <div>
-                <span className="text-muted-foreground text-sm">
-                  Retrieved data
-                </span>
-                <p className="whitespace-pre-wrap text-sm">
-                  {detailTask.retrievedData ?? "—"}
-                </p>
-              </div>
-              <div>
-                <span className="text-muted-foreground text-sm">Created</span>
-                <p>{formatDateTime(detailTask.createdAt)}</p>
-              </div>
-              {detailTask.status === "PENDING" && (
-                <Button
-                  onClick={() =>
-                    resolveTask.mutate({
-                      path: { task_id: detailTask.id },
-                    })
-                  }
-                  disabled={resolveTask.isPending}
-                >
-                  {resolveTask.isPending ? "Resolving…" : "Mark resolved"}
-                </Button>
-              )}
-              <Button variant="outline" onClick={() => setDetailTask(null)}>
-                Close
-              </Button>
-            </div>
-          )}
-        </SheetContent>
-      </Sheet>
     </div>
   );
 }

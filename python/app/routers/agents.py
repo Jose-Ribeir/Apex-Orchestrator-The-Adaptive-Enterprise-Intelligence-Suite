@@ -22,6 +22,7 @@ from app.schemas.responses import (
     AgentMetadata,
     AgentMode,
     AgentStatusIndexing,
+    AgentSystemPromptResponse,
     AgentToolRef,
     ListAgentDocumentsResponse,
     ListAgentsResponse,
@@ -66,6 +67,7 @@ from app.services.documents_service import (
     record_documents as record_documents_svc,
 )
 from app.services.indexing_queue import enqueue_add_document, enqueue_ingest, enqueue_ingest_url
+from app.services.llm import build_system_prompt_from_agent
 from app.services.prompt_queue import enqueue_generate_prompt
 from app.services.rag import get_or_create_retriever, list_agents_with_doc_counts
 
@@ -201,6 +203,36 @@ async def get_agent_by_id(
     if detail is None:
         raise HTTPException(status_code=404, detail="Agent not found")
     return detail
+
+
+@router.get(
+    "/agents/{agent_id}/system-prompt",
+    response_model=AgentSystemPromptResponse,
+    summary="Get agent system prompt",
+    description="Returns the effective system prompt for this agent (as used in chat). Read-only.",
+    operation_id="getAgentSystemPrompt",
+)
+async def get_agent_system_prompt(
+    agent_id: UUID,
+    current_user: dict = Depends(get_current_user),
+    user_id: str | None = Query(None, description="Require owner"),
+) -> AgentSystemPromptResponse:
+    if not get_settings().database_configured:
+        raise HTTPException(status_code=503, detail="Database not configured")
+    uid = user_id or current_user["id"]
+    agent = await asyncio.to_thread(get_agent, agent_id, user_id=uid, with_relations=True)
+    if agent is None:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    instructions = [i.content for i in sorted(agent.instructions, key=lambda x: x.order)]
+    tools = [at.tool.name for at in agent.agent_tools]
+    system_prompt = build_system_prompt_from_agent(
+        name=agent.name,
+        mode=agent.mode,
+        instructions=instructions,
+        tools=tools,
+        prompt_override=agent.prompt,
+    )
+    return AgentSystemPromptResponse(system_prompt=system_prompt)
 
 
 @router.patch(
