@@ -243,6 +243,32 @@ class LanceDBRAGRetriever:
             logger.warning("lancedb count failed, %s", e)
             return 0
 
+    def get_all_content_for_context(self, max_tokens: int) -> tuple[str, int] | None:
+        table = _get_table()
+        try:
+            import pyarrow.compute as pc
+
+            arrow = table.to_arrow()
+            if arrow.num_rows == 0:
+                return ("", 0)
+            mask = pc.equal(arrow["agent_key"], self._agent_key)
+            filtered = arrow.filter(mask)
+            if filtered.num_rows == 0:
+                return ("", 0)
+            parts = []
+            for i in range(filtered.num_rows):
+                content = (filtered["content"][i].as_py() or "").strip()
+                if content:
+                    parts.append(content)
+            concatenated = "\n\n".join(parts)
+            estimated_tokens = len(concatenated) // 4
+            if estimated_tokens > max_tokens:
+                return None
+            return (concatenated, estimated_tokens)
+        except Exception as e:
+            logger.warning("lancedb get_all_content_for_context failed, %s", e)
+            return None
+
 
 class LanceDBRAGProvider:
     """RAG provider backed by LanceDB. File-based, shared across API and worker when using same path."""
@@ -274,8 +300,9 @@ class LanceDBRAGProvider:
             arrow = table.to_arrow()
             if arrow.num_rows == 0:
                 return []
-            import pyarrow.compute as pc
             from collections import Counter
+
+            import pyarrow.compute as pc
 
             agent_col = arrow["agent_key"]
             counts = Counter(agent_col[i].as_py() for i in range(arrow.num_rows))

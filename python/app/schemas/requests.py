@@ -24,6 +24,8 @@ class UpdateAgentRequest(BaseModel):
     prompt: str | None = None
     instructions: list[str] | None = None
     tools: list[str] | None = None
+    long_context_mode: bool | None = None
+    long_context_max_tokens: int | None = None
 
 
 class AgentConfig(BaseModel):
@@ -34,6 +36,13 @@ class AgentConfig(BaseModel):
     mode: str = Field(default="PERFORMANCE", description="Agent mode (e.g. PERFORMANCE)")
     instructions: list[str] = Field(..., description="List of instruction lines")
     tools: list[str] = Field(default_factory=list, description="Tool names (e.g. RAG, Calculator)")
+
+
+class ChatAttachment(BaseModel):
+    """Single attachment: base64-encoded image or audio for multimodal chat."""
+
+    mime_type: str = Field(..., description="IANA MIME type, e.g. image/png, audio/wav")
+    data_base64: str = Field(..., description="Base64-encoded bytes (no data URL prefix)")
 
 
 class ChatRequest(BaseModel):
@@ -48,6 +57,9 @@ class ChatRequest(BaseModel):
     message: str = Field(..., description="User message")
     system_prompt: str | None = Field(
         None, description="Full system prompt including TOOLS line (legacy; required when agent_id is not provided)"
+    )
+    attachments: list[ChatAttachment] | None = Field(
+        None, description="Optional images or audio as base64 for multimodal chat"
     )
 
     @model_validator(mode="after")

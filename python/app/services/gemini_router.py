@@ -1,13 +1,40 @@
-"""Gemini 2-call pipeline: cheap router (flash-lite) + dynamic generator."""
+"""Gemini 2-call pipeline: router (gemini-3-flash-preview) + dynamic generator."""
 
+import base64
 import json
 from collections.abc import Generator
 from typing import Any
 
 from google import genai
+from google.genai import types
+from pydantic import BaseModel, Field
 
 from app.config import get_settings
 from app.schemas.requests import AgentConfig
+
+
+class RouterDecision(BaseModel):
+    """Structured output from router; must match Gemini response_schema."""
+
+    needs_rag: bool = Field(..., description="Whether to use RAG retrieval")
+    tools_needed: list[str] = Field(
+        default_factory=list,
+        description="e.g. ['RAG'], ['RAG','Calculator'], []",
+    )
+    connections_needed: list[str] = Field(
+        default_factory=list,
+        description="e.g. ['google'] or []",
+    )
+    model_to_use: str = Field(
+        ...,
+        description="e.g. gemini-2.5-flash, gemini-3-flash-preview",
+    )
+    reason: str = Field(..., description="One-sentence reason")
+    needs_human_review: bool = Field(
+        False,
+        description="True when the query should be escalated or reviewed by a human (e.g. customer support, complaint, sensitive request)",
+    )
+
 
 ANALYSIS_V5_TEMPLATE = """
 --- ROUTING LOGIC (V5) ---
@@ -16,21 +43,20 @@ Rule: If doubt, choose '1-Yes'. Reply ONLY '1-Yes' or '2-No'.
 """
 
 CHEAP_ROUTER_TEMPLATE = """
-CHEAP ROUTER (gemini-2.5-flash-lite) - 50 tokens max:
+ROUTER (gemini-3-flash-preview) - 50 tokens max:
 
 AGENT: {agent_name}
 TOOLS: {tools_list}
 CONNECTIONS: {connections_list}
 QUERY: "{query}"
 
-JSON ONLY:
-{{
-  "needs_rag": true/false,
-  "tools_needed": ["RAG"]|["RAG","Calculator"]|[],
-  "connections_needed": ["google"]|[],
-  "model_to_use": "gemini-3-pro-preview"|"gemini-3-flash-preview"|"gemini-2.5-flash",
-  "reason": "1-sentence"
-}}
+Output JSON only with:
+- needs_rag: true/false
+- tools_needed: ["RAG"]|["RAG","Calculator"]|[]
+- connections_needed: ["google"]|[]
+- model_to_use: "gemini-3-flash-preview"|"gemini-2.5-flash" (use flash only; pro has no free-tier quota)
+- reason: "1-sentence"
+- needs_human_review: true if the query should be escalated to a human (e.g. customer complaint, refund, sensitive, escalation request); otherwise false
 """
 
 _client: genai.Client | None = None
@@ -44,13 +70,36 @@ def _get_client() -> genai.Client:
     return _client
 
 
+def list_models(page_size: int = 100) -> list[dict[str, Any]]:
+    """List available Gemini models (base models). Returns name and supported methods."""
+    client = _get_client()
+    result = client.models.list(config={"page_size": page_size, "query_base": True})
+    page = getattr(result, "page", None) or []
+    return [
+        {
+            "name": getattr(m, "name", None) or "",
+            "display_name": getattr(m, "display_name", None) or "",
+            "supported_generate_methods": list(getattr(m, "supported_generate_methods", None) or []),
+        }
+        for m in page
+    ]
+
+
 def run_cheap_router(
     agent_name: str,
     tools_list: str,
     query: str,
     connections_list: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Call gemini-2.5-flash-lite to get needs_rag, tools_needed, connections_needed, model_to_use."""
+    """Call router (gemini-3-flash-preview) to get needs_rag, tools_needed, connections_needed, model_to_use."""
+    fallback = {
+        "needs_rag": True,
+        "tools_needed": ["RAG"],
+        "connections_needed": [],
+        "model_to_use": "gemini-3-flash-preview",
+        "reason": "fallback",
+        "needs_human_review": False,
+    }
     client = _get_client()
     connections_json = json.dumps(connections_list or [])
     prompt = CHEAP_ROUTER_TEMPLATE.format(
@@ -59,25 +108,64 @@ def run_cheap_router(
         connections_list=connections_json,
         query=query,
     )
-    resp = client.models.generate_content(
-        model="gemini-2.5-flash-lite",
-        contents=prompt,
-    )
     try:
-        return json.loads(resp.text.strip())
-    except (json.JSONDecodeError, AttributeError):
+        resp = client.models.generate_content(
+            model="gemini-3-flash-preview",
+            contents=prompt,
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                response_schema=RouterDecision.model_json_schema(),
+            ),
+        )
+        text = (getattr(resp, "text", None) or "").strip()
+        if not text:
+            return fallback
+        data = json.loads(text)
+        raw_model = str(data.get("model_to_use") or "gemini-3-flash-preview")
+        if "gemini-3-pro" in raw_model:
+            raw_model = "gemini-3-flash-preview"
         return {
-            "needs_rag": True,
-            "tools_needed": ["RAG"],
-            "connections_needed": [],
-            "model_to_use": "gemini-2.5-flash",
-            "reason": "fallback",
+            "needs_rag": bool(data.get("needs_rag", True)),
+            "tools_needed": list(data.get("tools_needed") or []),
+            "connections_needed": list(data.get("connections_needed") or []),
+            "model_to_use": raw_model,
+            "reason": str(data.get("reason") or "ok"),
+            "needs_human_review": bool(data.get("needs_human_review", False)),
         }
+    except (json.JSONDecodeError, AttributeError, TypeError, KeyError, Exception):
+        return fallback
 
 
 def _resolve_generator_model(model_name: str) -> str:
-    """Return model name; fallback to gemini-2.5-flash if invalid."""
-    return model_name or "gemini-2.5-flash"
+    """Return model name; map pro to flash (no free-tier quota) and fallback if invalid."""
+    name = (model_name or "").strip() or "gemini-3-flash-preview"
+    if "gemini-3-pro" in name:
+        return "gemini-3-flash-preview"
+    return name
+
+
+def _build_contents(full_prompt: str, attachments: list[dict[str, str]] | None) -> Any:
+    """Build contents for generate_content_stream: string or multimodal parts."""
+    if not attachments:
+        return full_prompt
+    try:
+        Content = getattr(types, "Content", None)
+        Part = getattr(types, "Part", None)
+        Blob = getattr(types, "Blob", None)
+        if not all((Content, Part, Blob)):
+            return full_prompt
+        parts: list[Any] = [Part(text=full_prompt)]
+        for att in attachments:
+            mime = att.get("mime_type") or "application/octet-stream"
+            b64 = att.get("data_base64") or ""
+            try:
+                data = base64.b64decode(b64, validate=True)
+            except Exception:
+                continue
+            parts.append(Part(inline_data=Blob(mime_type=mime, data=data)))
+        return [Content(role="user", parts=parts)]
+    except Exception:
+        return full_prompt
 
 
 def run_generator_stream(
@@ -87,23 +175,25 @@ def run_generator_stream(
     input_chars: int,
     docs_count: int,
     total_docs: int,
+    attachments: list[dict[str, str]] | None = None,
 ) -> Generator[str, None, None]:
-    """Stream generator model response; yields NDJSON lines."""
+    """Stream generator model response; yields NDJSON lines. Supports optional multimodal attachments."""
     client = _get_client()
     model_name = _resolve_generator_model(generator_model_name)
     output_chars = 0
     output_tokens = 0
+    contents = _build_contents(full_prompt, attachments)
 
     try:
         stream = client.models.generate_content_stream(
             model=model_name,
-            contents=full_prompt,
+            contents=contents,
         )
     except Exception:
-        model_name = "gemini-2.5-flash"
+        model_name = "gemini-3-flash-preview"
         stream = client.models.generate_content_stream(
             model=model_name,
-            contents=full_prompt,
+            contents=contents,
         )
 
     for chunk in stream:
@@ -135,7 +225,7 @@ def run_generator_stream(
                 "is_final": True,
                 "metrics": {
                     "total_calls": 2,
-                    "router_model": "gemini-2.5-flash-lite",
+                    "router_model": "gemini-3-flash-preview",
                     "generator_model": model_name,
                     "tools_used": tool_decision.get("tools_needed", []),
                     "connections_used": tool_decision.get("connections_needed", []),
@@ -165,7 +255,7 @@ def optimize_agent_prompt(config: AgentConfig) -> tuple[str, dict[str, Any]]:
     }}
     """
     resp = client.models.generate_content(
-        model="gemini-3-pro-preview",
+        model="gemini-3-flash-preview",
         contents=analysis_prompt,
     )
     raw = (resp.text or "").strip()

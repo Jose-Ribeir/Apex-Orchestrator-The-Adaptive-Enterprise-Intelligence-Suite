@@ -1,8 +1,8 @@
 """
 Gemini Agent Factory – FastAPI application entrypoint.
 
-Dynamic 2-call pipeline: cheap router (gemini-2.5-flash-lite) + dynamic generator
-(gemini-3-pro-preview / gemini-3-flash-preview / gemini-2.5-flash). Per-agent LanceDB RAG.
+Dynamic 2-call pipeline: router (gemini-3-flash-preview) + dynamic generator
+(gemini-3-flash-preview / gemini-2.5-flash; pro not on free tier). Per-agent LanceDB RAG.
 Optional GeminiMesh integration to update agent prompts via POST /agents.
 
 Run locally:
@@ -82,7 +82,7 @@ OPENAPI_TAGS = [
 
 app = FastAPI(
     title="Gemini Agent Factory",
-    description="Dynamic 2-call pipeline: cheap router + dynamic generator. "
+    description="Dynamic 2-call pipeline: router + dynamic generator. "
     "Per-agent LanceDB RAG. Optional GeminiMesh agent prompt updates.",
     version=__version__,
     lifespan=lifespan,

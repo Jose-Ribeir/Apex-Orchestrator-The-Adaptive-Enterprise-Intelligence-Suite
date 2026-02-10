@@ -83,6 +83,7 @@ class OpenAILLMProvider:
         input_chars: int,
         docs_count: int,
         total_docs: int,
+        attachments: list[dict[str, str]] | None = None,
     ) -> Generator[str, None, None]:
         client = _get_client()
         model = MODEL_MAP.get(

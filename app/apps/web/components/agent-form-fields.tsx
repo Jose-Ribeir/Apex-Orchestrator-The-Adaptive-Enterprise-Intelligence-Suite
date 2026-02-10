@@ -128,6 +128,25 @@ export function AgentFormFields({
           </div>
         </div>
       </Field>
+      <Field>
+        <div className="flex items-center gap-2">
+          <input
+            id={`${idPrefix}-long-context`}
+            type="checkbox"
+            name="longContextMode"
+            checked={value.longContextMode ?? false}
+            onChange={(e) => onChange({ longContextMode: e.target.checked })}
+            disabled={disabled}
+            className="rounded border-input"
+          />
+          <FieldLabel htmlFor={`${idPrefix}-long-context`} className="cursor-pointer font-normal">
+            Long context mode
+          </FieldLabel>
+        </div>
+        <p className="text-muted-foreground mt-1 text-xs">
+          When enabled and document set is under the token cap, use full documents in context instead of vector search.
+        </p>
+      </Field>
     </FieldGroup>
   );
 }

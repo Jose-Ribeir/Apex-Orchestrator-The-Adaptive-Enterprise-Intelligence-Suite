@@ -4,10 +4,10 @@
  * AddToolBody
  */
 export type AddToolBody = {
-  /**
-   * Name
-   */
-  name: string;
+    /**
+     * Name
+     */
+    name: string;
 };
 
 /**
@@ -15,59 +15,59 @@ export type AddToolBody = {
  * Single agent full detail (GET /agents/{id}).
  */
 export type AgentDetailResponse = {
-  /**
-   * Agent Id
-   * Agent ID (UUID)
-   */
-  agent_id: string;
-  /**
-   * User Id
-   * Owner user id
-   */
-  user_id: string;
-  /**
-   * Name
-   * Display name
-   */
-  name: string;
-  /**
-   * PERFORMANCE | EFFICIENCY | BALANCED
-   */
-  mode: AgentMode;
-  /**
-   * Prompt
-   * System prompt
-   */
-  prompt?: string | null;
-  /**
-   * Instructions
-   * Instruction lines in order
-   */
-  instructions: Array<string>;
-  /**
-   * Tools
-   * Tools linked to this agent (id, name)
-   */
-  tools?: Array<AgentToolRef>;
-  /**
-   * Doc Count
-   * RAG document count for this agent
-   */
-  doc_count: number;
-  /**
-   * Created At
-   * Creation time
-   */
-  created_at: Date;
-  /**
-   * Updated At
-   * Last update time
-   */
-  updated_at: Date;
-  /**
-   * Metadata including status.indexing and status.enrich
-   */
-  metadata?: AgentMetadata;
+    /**
+     * Agent Id
+     * Agent ID (UUID)
+     */
+    agent_id: string;
+    /**
+     * User Id
+     * Owner user id
+     */
+    user_id: string;
+    /**
+     * Name
+     * Display name
+     */
+    name: string;
+    /**
+     * PERFORMANCE | EFFICIENCY | BALANCED
+     */
+    mode: AgentMode;
+    /**
+     * Prompt
+     * System prompt
+     */
+    prompt?: string | null;
+    /**
+     * Instructions
+     * Instruction lines in order
+     */
+    instructions: Array<string>;
+    /**
+     * Tools
+     * Tools linked to this agent (id, name)
+     */
+    tools?: Array<AgentToolRef>;
+    /**
+     * Doc Count
+     * RAG document count for this agent
+     */
+    doc_count: number;
+    /**
+     * Created At
+     * Creation time
+     */
+    created_at: Date;
+    /**
+     * Updated At
+     * Last update time
+     */
+    updated_at: Date;
+    /**
+     * Metadata including status.indexing and status.enrich
+     */
+    metadata?: AgentMetadata;
 };
 
 /**
@@ -75,58 +75,58 @@ export type AgentDetailResponse = {
  * Single agent in list: agent_id, name, user ref; optional doc_count, metadata, timestamps, tools, instructions when from DB.
  */
 export type AgentInfo = {
-  /**
-   * Agent Id
-   * Agent ID (UUID)
-   */
-  agent_id: string;
-  /**
-   * Name
-   * Display name
-   */
-  name: string;
-  /**
-   * PERFORMANCE | EFFICIENCY | BALANCED
-   */
-  mode?: AgentMode | null;
-  /**
-   * Prompt
-   * System prompt
-   */
-  prompt?: string | null;
-  /**
-   * Instructions
-   * Instruction lines in order
-   */
-  instructions?: Array<string>;
-  /**
-   * Owner (when from DB)
-   */
-  user?: UserRef | null;
-  /**
-   * Doc Count
-   * Number of documents in this agent's RAG index (when from DB)
-   */
-  doc_count?: number;
-  /**
-   * Tools
-   * Tools linked to this agent (id, name)
-   */
-  tools?: Array<AgentToolRef>;
-  /**
-   * Created At
-   * Creation time (when from DB)
-   */
-  created_at?: Date | null;
-  /**
-   * Updated At
-   * Last update time (when from DB)
-   */
-  updated_at?: Date | null;
-  /**
-   * Metadata including status.indexing and status.enrich
-   */
-  metadata?: AgentMetadata;
+    /**
+     * Agent Id
+     * Agent ID (UUID)
+     */
+    agent_id: string;
+    /**
+     * Name
+     * Display name
+     */
+    name: string;
+    /**
+     * PERFORMANCE | EFFICIENCY | BALANCED
+     */
+    mode?: AgentMode | null;
+    /**
+     * Prompt
+     * System prompt
+     */
+    prompt?: string | null;
+    /**
+     * Instructions
+     * Instruction lines in order
+     */
+    instructions?: Array<string>;
+    /**
+     * Owner (when from DB)
+     */
+    user?: UserRef | null;
+    /**
+     * Doc Count
+     * Number of documents in this agent's RAG index (when from DB)
+     */
+    doc_count?: number;
+    /**
+     * Tools
+     * Tools linked to this agent (id, name)
+     */
+    tools?: Array<AgentToolRef>;
+    /**
+     * Created At
+     * Creation time (when from DB)
+     */
+    created_at?: Date | null;
+    /**
+     * Updated At
+     * Last update time (when from DB)
+     */
+    updated_at?: Date | null;
+    /**
+     * Metadata including status.indexing and status.enrich
+     */
+    metadata?: AgentMetadata;
 };
 
 /**
@@ -134,26 +134,26 @@ export type AgentInfo = {
  * Agent metadata; status.indexing (document) and status.enrich (prompt) state.
  */
 export type AgentMetadata = {
-  /**
-   * Status including indexing and enrich state
-   */
-  status?: AgentStatusIndexing;
+    /**
+     * Status including indexing and enrich state
+     */
+    status?: AgentStatusIndexing;
 };
 
 /**
  * AgentMode
  * Agent mode: PERFORMANCE | EFFICIENCY | BALANCED.
  */
-export type AgentMode = "PERFORMANCE" | "EFFICIENCY" | "BALANCED";
+export type AgentMode = 'PERFORMANCE' | 'EFFICIENCY' | 'BALANCED';
 
 /**
  * AgentMode
  * Agent mode: PERFORMANCE | EFFICIENCY | BALANCED.
  */
 export const AgentMode = {
-  PERFORMANCE: "PERFORMANCE",
-  EFFICIENCY: "EFFICIENCY",
-  BALANCED: "BALANCED",
+    PERFORMANCE: 'PERFORMANCE',
+    EFFICIENCY: 'EFFICIENCY',
+    BALANCED: 'BALANCED'
 } as const;
 
 /**
@@ -161,16 +161,16 @@ export const AgentMode = {
  * Indexing and enrich status: pending | error | completed.
  */
 export type AgentStatusIndexing = {
-  /**
-   * Indexing
-   * One of: pending, error, completed
-   */
-  indexing: string;
-  /**
-   * Enrich
-   * One of: pending, error, completed
-   */
-  enrich?: string;
+    /**
+     * Indexing
+     * One of: pending, error, completed
+     */
+    indexing: string;
+    /**
+     * Enrich
+     * One of: pending, error, completed
+     */
+    enrich?: string;
 };
 
 /**
@@ -178,58 +178,58 @@ export type AgentStatusIndexing = {
  * Tool reference in agent response (id and name).
  */
 export type AgentToolRef = {
-  /**
-   * Id
-   * Tool ID (UUID)
-   */
-  id: string;
-  /**
-   * Name
-   * Tool display name
-   */
-  name: string;
+    /**
+     * Id
+     * Tool ID (UUID)
+     */
+    id: string;
+    /**
+     * Name
+     * Tool display name
+     */
+    name: string;
 };
 
 /**
  * Body_ingestDocument
  */
 export type BodyIngestDocument = {
-  /**
-   * Agent Id
-   * Agent ID (UUID from app API)
-   */
-  agent_id?: string | null;
-  /**
-   * Agent Name
-   * Agent name (legacy)
-   */
-  agent_name?: string | null;
-  /**
-   * File
-   * PDF, TXT, or DOCX file
-   */
-  file: Blob | File;
+    /**
+     * Agent Id
+     * Agent ID (UUID from app API)
+     */
+    agent_id?: string | null;
+    /**
+     * Agent Name
+     * Agent name (legacy)
+     */
+    agent_name?: string | null;
+    /**
+     * File
+     * PDF, TXT, or DOCX file
+     */
+    file: Blob | File;
 };
 
 /**
  * Body_uploadAndIndex
  */
 export type BodyUploadAndIndex = {
-  /**
-   * Agent Id
-   * Agent ID (UUID from app API)
-   */
-  agent_id?: string | null;
-  /**
-   * Agent Name
-   * Agent name (legacy)
-   */
-  agent_name?: string | null;
-  /**
-   * File
-   * JSONL file
-   */
-  file: Blob | File;
+    /**
+     * Agent Id
+     * Agent ID (UUID from app API)
+     */
+    agent_id?: string | null;
+    /**
+     * Agent Name
+     * Agent name (legacy)
+     */
+    agent_name?: string | null;
+    /**
+     * File
+     * JSONL file
+     */
+    file: Blob | File;
 };
 
 /**
@@ -239,26 +239,26 @@ export type BodyUploadAndIndex = {
  * When agent_id is not set (legacy), agent_name and system_prompt are required.
  */
 export type ChatRequest = {
-  /**
-   * Agent Id
-   * Agent ID (UUID); when set, backend loads agent and builds system_prompt
-   */
-  agent_id?: string | null;
-  /**
-   * Agent Name
-   * Agent name (legacy; required when agent_id is not provided)
-   */
-  agent_name?: string | null;
-  /**
-   * Message
-   * User message
-   */
-  message: string;
-  /**
-   * System Prompt
-   * Full system prompt including TOOLS line (legacy; required when agent_id is not provided)
-   */
-  system_prompt?: string | null;
+    /**
+     * Agent Id
+     * Agent ID (UUID); when set, backend loads agent and builds system_prompt
+     */
+    agent_id?: string | null;
+    /**
+     * Agent Name
+     * Agent name (legacy; required when agent_id is not provided)
+     */
+    agent_name?: string | null;
+    /**
+     * Message
+     * User message
+     */
+    message: string;
+    /**
+     * System Prompt
+     * Full system prompt including TOOLS line (legacy; required when agent_id is not provided)
+     */
+    system_prompt?: string | null;
 };
 
 /**
@@ -266,86 +266,86 @@ export type ChatRequest = {
  * Request to create an agent (stored in DB). Agent ID is always server-generated.
  */
 export type CreateAgentRequest = {
-  /**
-   * User Id
-   * Owner user id (from auth; optional when under /api)
-   */
-  user_id?: string | null;
-  /**
-   * Name
-   * Display name
-   */
-  name: string;
-  /**
-   * Mode
-   * PERFORMANCE | EFFICIENCY | BALANCED
-   */
-  mode?: string;
-  /**
-   * Prompt
-   * System prompt
-   */
-  prompt?: string | null;
-  /**
-   * Instructions
-   * Instruction lines
-   */
-  instructions?: Array<string>;
-  /**
-   * Tools
-   * Tool names (e.g. RAG, Calculator)
-   */
-  tools?: Array<string>;
+    /**
+     * User Id
+     * Owner user id (from auth; optional when under /api)
+     */
+    user_id?: string | null;
+    /**
+     * Name
+     * Display name
+     */
+    name: string;
+    /**
+     * Mode
+     * PERFORMANCE | EFFICIENCY | BALANCED
+     */
+    mode?: string;
+    /**
+     * Prompt
+     * System prompt
+     */
+    prompt?: string | null;
+    /**
+     * Instructions
+     * Instruction lines
+     */
+    instructions?: Array<string>;
+    /**
+     * Tools
+     * Tool names (e.g. RAG, Calculator)
+     */
+    tools?: Array<string>;
 };
 
 /**
  * CreateApiTokenBody
  */
 export type CreateApiTokenBody = {
-  /**
-   * Name
-   */
-  name?: string | null;
-  /**
-   * Expires In Days
-   */
-  expires_in_days?: number | null;
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Expires In Days
+     */
+    expires_in_days?: number | null;
 };
 
 /**
  * CreateHumanTaskBody
  */
 export type CreateHumanTaskBody = {
-  /**
-   * Model Query Id
-   */
-  model_query_id: string;
-  /**
-   * Reason
-   */
-  reason: string;
-  /**
-   * Retrieved Data
-   */
-  retrieved_data?: string | null;
-  /**
-   * Model Message
-   */
-  model_message: string;
-  /**
-   * Status
-   */
-  status?: string;
+    /**
+     * Model Query Id
+     */
+    model_query_id: string;
+    /**
+     * Reason
+     */
+    reason: string;
+    /**
+     * Retrieved Data
+     */
+    retrieved_data?: string | null;
+    /**
+     * Model Message
+     */
+    model_message: string;
+    /**
+     * Status
+     */
+    status?: string;
 };
 
 /**
  * CreateToolBody
  */
 export type CreateToolBody = {
-  /**
-   * Name
-   */
-  name: string;
+    /**
+     * Name
+     */
+    name: string;
 };
 
 /**
@@ -353,54 +353,54 @@ export type CreateToolBody = {
  * Add a single document to the agent's RAG index.
  */
 export type DocumentAddBody = {
-  /**
-   * Id
-   */
-  id?: string | null;
-  /**
-   * Content
-   */
-  content?: string;
-  /**
-   * Metadata
-   */
-  metadata?: {
-    [key: string]: unknown;
-  } | null;
+    /**
+     * Id
+     */
+    id?: string | null;
+    /**
+     * Content
+     */
+    content?: string;
+    /**
+     * Metadata
+     */
+    metadata?: {
+        [key: string]: unknown;
+    } | null;
 };
 
 /**
  * DocumentsIngestBody
  */
 export type DocumentsIngestBody = {
-  /**
-   * Filename
-   */
-  filename?: string;
-  /**
-   * Contentbase64
-   */
-  contentBase64?: string;
+    /**
+     * Filename
+     */
+    filename?: string;
+    /**
+     * Contentbase64
+     */
+    contentBase64?: string;
 };
 
 /**
  * DocumentsIngestUrlBody
  */
 export type DocumentsIngestUrlBody = {
-  /**
-   * Url
-   */
-  url?: string;
+    /**
+     * Url
+     */
+    url?: string;
 };
 
 /**
  * HTTPValidationError
  */
 export type HttpValidationError = {
-  /**
-   * Detail
-   */
-  detail?: Array<ValidationError>;
+    /**
+     * Detail
+     */
+    detail?: Array<ValidationError>;
 };
 
 /**
@@ -408,36 +408,36 @@ export type HttpValidationError = {
  * Health check response.
  */
 export type HealthResponse = {
-  /**
-   * Status
-   * Always 'healthy' when endpoint succeeds
-   */
-  status: string;
-  /**
-   * Agents
-   * List of agent names with loaded RAG
-   */
-  agents: Array<string>;
-  /**
-   * Geminimesh Configured
-   * Whether GeminiMesh API token is set
-   */
-  geminimesh_configured: boolean;
-  /**
-   * Embedding Model
-   * 'loaded' or 'not_loaded'
-   */
-  embedding_model: string;
-  /**
-   * Database Configured
-   * Whether DATABASE_URL is set
-   */
-  database_configured: boolean;
-  /**
-   * Database Connected
-   * Whether DB connection succeeds
-   */
-  database_connected: boolean;
+    /**
+     * Status
+     * Always 'healthy' when endpoint succeeds
+     */
+    status: string;
+    /**
+     * Agents
+     * List of agent names with loaded RAG
+     */
+    agents: Array<string>;
+    /**
+     * Geminimesh Configured
+     * Whether GeminiMesh API token is set
+     */
+    geminimesh_configured: boolean;
+    /**
+     * Embedding Model
+     * 'loaded' or 'not_loaded'
+     */
+    embedding_model: string;
+    /**
+     * Database Configured
+     * Whether DATABASE_URL is set
+     */
+    database_configured: boolean;
+    /**
+     * Database Connected
+     * Whether DB connection succeeds
+     */
+    database_connected: boolean;
 };
 
 /**
@@ -445,21 +445,21 @@ export type HealthResponse = {
  * Model query reference embedded in a human task response.
  */
 export type HumanTaskModelQueryRef = {
-  /**
-   * Id
-   * Model query ID
-   */
-  id: string;
-  /**
-   * Userquery
-   * User query text
-   */
-  userQuery?: string | null;
-  /**
-   * Modelresponse
-   * Model response text
-   */
-  modelResponse?: string | null;
+    /**
+     * Id
+     * Model query ID
+     */
+    id: string;
+    /**
+     * Userquery
+     * User query text
+     */
+    userQuery?: string | null;
+    /**
+     * Modelresponse
+     * Model response text
+     */
+    modelResponse?: string | null;
 };
 
 /**
@@ -467,78 +467,78 @@ export type HumanTaskModelQueryRef = {
  * Single human task (list item or get-by-id).
  */
 export type HumanTaskResponse = {
-  /**
-   * Id
-   * Human task ID (UUID)
-   */
-  id: string;
-  /**
-   * Modelqueryid
-   * Linked model query ID
-   */
-  modelQueryId: string;
-  /**
-   * Reason
-   * Reason for human review
-   */
-  reason?: string | null;
-  /**
-   * Retrieveddata
-   * Retrieved data snapshot
-   */
-  retrievedData?: string | null;
-  /**
-   * Modelmessage
-   * Model message for context
-   */
-  modelMessage?: string | null;
-  /**
-   * Status
-   * PENDING | RESOLVED
-   */
-  status: string;
-  /**
-   * Createdat
-   * Creation time (ISO)
-   */
-  createdAt: string;
-  /**
-   * Updatedat
-   * Last update time (ISO)
-   */
-  updatedAt: string;
-  /**
-   * Linked model query when loaded
-   */
-  modelQuery?: HumanTaskModelQueryRef | null;
+    /**
+     * Id
+     * Human task ID (UUID)
+     */
+    id: string;
+    /**
+     * Modelqueryid
+     * Linked model query ID
+     */
+    modelQueryId: string;
+    /**
+     * Reason
+     * Reason for human review
+     */
+    reason?: string | null;
+    /**
+     * Retrieveddata
+     * Retrieved data snapshot
+     */
+    retrievedData?: string | null;
+    /**
+     * Modelmessage
+     * Model message for context
+     */
+    modelMessage?: string | null;
+    /**
+     * Status
+     * PENDING | RESOLVED
+     */
+    status: string;
+    /**
+     * Createdat
+     * Creation time (ISO)
+     */
+    createdAt: string;
+    /**
+     * Updatedat
+     * Last update time (ISO)
+     */
+    updatedAt: string;
+    /**
+     * Linked model query when loaded
+     */
+    modelQuery?: HumanTaskModelQueryRef | null;
 };
 
 /**
  * InstructionCreateBody
  */
 export type InstructionCreateBody = {
-  /**
-   * Content
-   */
-  content: string;
-  /**
-   * Order
-   */
-  order?: number;
+    /**
+     * Content
+     */
+    content: string;
+    /**
+     * Order
+     */
+    order?: number;
 };
 
 /**
  * InstructionUpdateBody
  */
 export type InstructionUpdateBody = {
-  /**
-   * Content
-   */
-  content?: string | null;
-  /**
-   * Order
-   */
-  order?: number | null;
+    /**
+     * Content
+     */
+    content?: string | null;
+    /**
+     * Order
+     */
+    order?: number | null;
 };
 
 /**
@@ -546,15 +546,15 @@ export type InstructionUpdateBody = {
  * Response for GET /agents: paginated agents with doc counts.
  */
 export type ListAgentsResponse = {
-  /**
-   * Agents
-   * Agents that have RAG data (from DATA_FOLDER)
-   */
-  agents: Array<AgentInfo>;
-  /**
-   * Pagination metadata (when DB configured)
-   */
-  meta?: PaginationMeta | null;
+    /**
+     * Agents
+     * Agents that have RAG data (from DATA_FOLDER)
+     */
+    agents: Array<AgentInfo>;
+    /**
+     * Pagination metadata (when DB configured)
+     */
+    meta?: PaginationMeta | null;
 };
 
 /**
@@ -562,65 +562,65 @@ export type ListAgentsResponse = {
  * Response for GET /human-tasks: paginated list of human tasks.
  */
 export type ListHumanTasksResponse = {
-  /**
-   * Data
-   * Human tasks
-   */
-  data: Array<HumanTaskResponse>;
-  /**
-   * Pagination metadata
-   */
-  meta: PaginationMeta;
+    /**
+     * Data
+     * Human tasks
+     */
+    data: Array<HumanTaskResponse>;
+    /**
+     * Pagination metadata
+     */
+    meta: PaginationMeta;
 };
 
 /**
  * LoginBody
  */
 export type LoginBody = {
-  /**
-   * Email
-   */
-  email: string;
-  /**
-   * Password
-   */
-  password: string;
+    /**
+     * Email
+     */
+    email: string;
+    /**
+     * Password
+     */
+    password: string;
 };
 
 /**
  * ModelQueryCreateBody
  */
 export type ModelQueryCreateBody = {
-  /**
-   * User Query
-   */
-  user_query: string;
-  /**
-   * Model Response
-   */
-  model_response?: string | null;
-  /**
-   * Method Used
-   */
-  method_used?: string;
+    /**
+     * User Query
+     */
+    user_query: string;
+    /**
+     * Model Response
+     */
+    model_response?: string | null;
+    /**
+     * Method Used
+     */
+    method_used?: string;
 };
 
 /**
  * ModelQueryUpdateBody
  */
 export type ModelQueryUpdateBody = {
-  /**
-   * User Query
-   */
-  user_query?: string | null;
-  /**
-   * Model Response
-   */
-  model_response?: string | null;
-  /**
-   * Method Used
-   */
-  method_used?: string | null;
+    /**
+     * User Query
+     */
+    user_query?: string | null;
+    /**
+     * Model Response
+     */
+    model_response?: string | null;
+    /**
+     * Method Used
+     */
+    method_used?: string | null;
 };
 
 /**
@@ -628,49 +628,49 @@ export type ModelQueryUpdateBody = {
  * Pagination metadata for list endpoints.
  */
 export type PaginationMeta = {
-  /**
-   * Page
-   * Current page (1-based)
-   */
-  page: number;
-  /**
-   * Limit
-   * Page size
-   */
-  limit: number;
-  /**
-   * Total
-   * Total number of items
-   */
-  total: number;
-  /**
-   * Pages
-   * Total number of pages
-   */
-  pages: number;
-  /**
-   * More
-   * Whether there are more pages
-   */
-  more: boolean;
+    /**
+     * Page
+     * Current page (1-based)
+     */
+    page: number;
+    /**
+     * Limit
+     * Page size
+     */
+    limit: number;
+    /**
+     * Total
+     * Total number of items
+     */
+    total: number;
+    /**
+     * Pages
+     * Total number of pages
+     */
+    pages: number;
+    /**
+     * More
+     * Whether there are more pages
+     */
+    more: boolean;
 };
 
 /**
  * RegisterBody
  */
 export type RegisterBody = {
-  /**
-   * Email
-   */
-  email: string;
-  /**
-   * Password
-   */
-  password: string;
-  /**
-   * Name
-   */
-  name?: string;
+    /**
+     * Email
+     */
+    email: string;
+    /**
+     * Password
+     */
+    password: string;
+    /**
+     * Name
+     */
+    name?: string;
 };
 
 /**
@@ -678,38 +678,38 @@ export type RegisterBody = {
  * Request to add, update, or delete a document in an agent's RAG index.
  */
 export type UpdateAgentIndexRequest = {
-  /**
-   * Agent Id
-   * Agent ID (UUID from app API); use this or agent_name
-   */
-  agent_id?: string | null;
-  /**
-   * Agent Name
-   * Agent name (legacy); use this or agent_id
-   */
-  agent_name?: string | null;
-  /**
-   * Action
-   * One of: add, update, delete
-   */
-  action: string;
-  /**
-   * Doc Id
-   * Document ID (required for delete)
-   */
-  doc_id?: string | null;
-  /**
-   * Content
-   * JSON string with id, content, optional metadata
-   */
-  content?: string | null;
-  /**
-   * Metadata
-   * Optional metadata override
-   */
-  metadata?: {
-    [key: string]: unknown;
-  } | null;
+    /**
+     * Agent Id
+     * Agent ID (UUID from app API); use this or agent_name
+     */
+    agent_id?: string | null;
+    /**
+     * Agent Name
+     * Agent name (legacy); use this or agent_id
+     */
+    agent_name?: string | null;
+    /**
+     * Action
+     * One of: add, update, delete
+     */
+    action: string;
+    /**
+     * Doc Id
+     * Document ID (required for delete)
+     */
+    doc_id?: string | null;
+    /**
+     * Content
+     * JSON string with id, content, optional metadata
+     */
+    content?: string | null;
+    /**
+     * Metadata
+     * Optional metadata override
+     */
+    metadata?: {
+        [key: string]: unknown;
+    } | null;
 };
 
 /**
@@ -717,16 +717,16 @@ export type UpdateAgentIndexRequest = {
  * Response after updating agent RAG index (add/update/delete).
  */
 export type UpdateAgentIndexResponse = {
-  /**
-   * Status
-   * 'success' on success
-   */
-  status: string;
-  /**
-   * Total Docs
-   * Total documents in agent index after update
-   */
-  total_docs: number;
+    /**
+     * Status
+     * 'success' on success
+     */
+    status: string;
+    /**
+     * Total Docs
+     * Total documents in agent index after update
+     */
+    total_docs: number;
 };
 
 /**
@@ -734,58 +734,58 @@ export type UpdateAgentIndexResponse = {
  * Request to update an agent (partial).
  */
 export type UpdateAgentRequest = {
-  /**
-   * Name
-   */
-  name?: string | null;
-  /**
-   * Mode
-   */
-  mode?: string | null;
-  /**
-   * Prompt
-   */
-  prompt?: string | null;
-  /**
-   * Instructions
-   */
-  instructions?: Array<string> | null;
-  /**
-   * Tools
-   */
-  tools?: Array<string> | null;
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Mode
+     */
+    mode?: string | null;
+    /**
+     * Prompt
+     */
+    prompt?: string | null;
+    /**
+     * Instructions
+     */
+    instructions?: Array<string> | null;
+    /**
+     * Tools
+     */
+    tools?: Array<string> | null;
 };
 
 /**
  * UpdateHumanTaskBody
  */
 export type UpdateHumanTaskBody = {
-  /**
-   * Reason
-   */
-  reason?: string | null;
-  /**
-   * Retrieved Data
-   */
-  retrieved_data?: string | null;
-  /**
-   * Model Message
-   */
-  model_message?: string | null;
-  /**
-   * Status
-   */
-  status?: string | null;
+    /**
+     * Reason
+     */
+    reason?: string | null;
+    /**
+     * Retrieved Data
+     */
+    retrieved_data?: string | null;
+    /**
+     * Model Message
+     */
+    model_message?: string | null;
+    /**
+     * Status
+     */
+    status?: string | null;
 };
 
 /**
  * UpdateToolBody
  */
 export type UpdateToolBody = {
-  /**
-   * Name
-   */
-  name: string;
+    /**
+     * Name
+     */
+    name: string;
 };
 
 /**
@@ -793,21 +793,21 @@ export type UpdateToolBody = {
  * Response after uploading a JSONL file and indexing documents.
  */
 export type UploadAndIndexResponse = {
-  /**
-   * Status
-   * 'success' on success
-   */
-  status: string;
-  /**
-   * Docs Added
-   * Number of documents parsed and added
-   */
-  docs_added: number;
-  /**
-   * Total Docs
-   * Total documents in agent index after upload
-   */
-  total_docs: number;
+    /**
+     * Status
+     * 'success' on success
+     */
+    status: string;
+    /**
+     * Docs Added
+     * Number of documents parsed and added
+     */
+    docs_added: number;
+    /**
+     * Total Docs
+     * Total documents in agent index after upload
+     */
+    total_docs: number;
 };
 
 /**
@@ -815,26 +815,26 @@ export type UploadAndIndexResponse = {
  * User as returned to frontend (e.g. GET /users/me).
  */
 export type UserRead = {
-  /**
-   * Id
-   */
-  id: string;
-  /**
-   * Email
-   */
-  email: string;
-  /**
-   * Name
-   */
-  name: string;
-  /**
-   * Image
-   */
-  image?: string | null;
-  /**
-   * Email Verified
-   */
-  email_verified?: boolean;
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Email
+     */
+    email: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Image
+     */
+    image?: string | null;
+    /**
+     * Email Verified
+     */
+    email_verified?: boolean;
 };
 
 /**
@@ -842,44 +842,44 @@ export type UserRead = {
  * Minimal user reference (id and name).
  */
 export type UserRef = {
-  /**
-   * Id
-   * User ID
-   */
-  id: string;
-  /**
-   * Name
-   * Display name
-   */
-  name: string;
+    /**
+     * Id
+     * User ID
+     */
+    id: string;
+    /**
+     * Name
+     * Display name
+     */
+    name: string;
 };
 
 /**
  * ValidationError
  */
 export type ValidationError = {
-  /**
-   * Location
-   */
-  loc: Array<string | number>;
-  /**
-   * Message
-   */
-  msg: string;
-  /**
-   * Error Type
-   */
-  type: string;
-  /**
-   * Input
-   */
-  input?: unknown;
-  /**
-   * Context
-   */
-  ctx?: {
-    [key: string]: unknown;
-  };
+    /**
+     * Location
+     */
+    loc: Array<string | number>;
+    /**
+     * Message
+     */
+    msg: string;
+    /**
+     * Error Type
+     */
+    type: string;
+    /**
+     * Input
+     */
+    input?: unknown;
+    /**
+     * Context
+     */
+    ctx?: {
+        [key: string]: unknown;
+    };
 };
 
 /**
@@ -887,48 +887,48 @@ export type ValidationError = {
  * Single model query in list or get response
  */
 export type ModelQueryItem = {
-  /**
-   * Model query ID (UUID)
-   */
-  id: string;
-  /**
-   * Agent ID (UUID)
-   */
-  agentId: string;
-  /**
-   * User query text
-   */
-  userQuery: string;
-  /**
-   * Model response text
-   */
-  modelResponse?: string;
-  /**
-   * PERFORMANCE | EFFICIENCY
-   */
-  methodUsed: string;
-  /**
-   * Request/response flow and metrics
-   */
-  flowLog?: {
-    [key: string]: unknown;
-  };
-  /**
-   * Total tokens used (generator)
-   */
-  totalTokens?: number;
-  /**
-   * Response duration in milliseconds
-   */
-  durationMs?: number;
-  /**
-   * Creation time (ISO)
-   */
-  createdAt: string;
-  /**
-   * Last update time (ISO)
-   */
-  updatedAt: string;
+    /**
+     * Model query ID (UUID)
+     */
+    id: string;
+    /**
+     * Agent ID (UUID)
+     */
+    agentId: string;
+    /**
+     * User query text
+     */
+    userQuery: string;
+    /**
+     * Model response text
+     */
+    modelResponse?: string;
+    /**
+     * PERFORMANCE | EFFICIENCY
+     */
+    methodUsed: string;
+    /**
+     * Request/response flow and metrics
+     */
+    flowLog?: {
+        [key: string]: unknown;
+    };
+    /**
+     * Total tokens used (generator)
+     */
+    totalTokens?: number;
+    /**
+     * Response duration in milliseconds
+     */
+    durationMs?: number;
+    /**
+     * Creation time (ISO)
+     */
+    createdAt: string;
+    /**
+     * Last update time (ISO)
+     */
+    updatedAt: string;
 };
 
 /**
@@ -936,14 +936,14 @@ export type ModelQueryItem = {
  * Response for GET /api/agents/{agent_id}/queries
  */
 export type ListAgentQueriesResponse = {
-  /**
-   * Model queries
-   */
-  data: Array<ModelQueryItem>;
-  /**
-   * Pagination metadata
-   */
-  meta: PaginationMeta;
+    /**
+     * Model queries
+     */
+    data: Array<ModelQueryItem>;
+    /**
+     * Pagination metadata
+     */
+    meta: PaginationMeta;
 };
 
 /**
@@ -951,30 +951,30 @@ export type ListAgentQueriesResponse = {
  * Single day aggregate for GET /api/agents/{agent_id}/stats
  */
 export type AgentStatRow = {
-  /**
-   * Composite id: {agent_id}_{date}
-   */
-  id: string;
-  /**
-   * Date (ISO)
-   */
-  date: string;
-  /**
-   * Number of queries that day
-   */
-  totalQueries: number;
-  /**
-   * Sum of tokens that day
-   */
-  totalTokens?: number;
-  /**
-   * Average response time (ms)
-   */
-  avgEfficiency?: number;
-  /**
-   * Average quality score
-   */
-  avgQuality?: number;
+    /**
+     * Composite id: {agent_id}_{date}
+     */
+    id: string;
+    /**
+     * Date (ISO)
+     */
+    date: string;
+    /**
+     * Number of queries that day
+     */
+    totalQueries: number;
+    /**
+     * Sum of tokens that day
+     */
+    totalTokens?: number;
+    /**
+     * Average response time (ms)
+     */
+    avgEfficiency?: number;
+    /**
+     * Average quality score
+     */
+    avgQuality?: number;
 };
 
 /**
@@ -982,10 +982,10 @@ export type AgentStatRow = {
  * Response for GET /api/agents/{agent_id}/stats
  */
 export type ListAgentStatsResponse = {
-  /**
-   * Daily stats
-   */
-  data: Array<AgentStatRow>;
+    /**
+     * Daily stats
+     */
+    data: Array<AgentStatRow>;
 };
 
 /**
@@ -993,31 +993,31 @@ export type ListAgentStatsResponse = {
  * Single connection type with status for current user
  */
 export type ConnectionItem = {
-  /**
-   * Id
-   * Connection type ID
-   */
-  id: string;
-  /**
-   * Name
-   * Display name (e.g. Google)
-   */
-  name: string;
-  /**
-   * Provider Key
-   * Provider key (e.g. google)
-   */
-  providerKey: string;
-  /**
-   * Connected
-   * Whether the current user has connected this provider
-   */
-  connected: boolean;
-  /**
-   * User Connection Id
-   * User connection ID when connected, for disconnect
-   */
-  userConnectionId?: string;
+    /**
+     * Id
+     * Connection type ID
+     */
+    id: string;
+    /**
+     * Name
+     * Display name (e.g. Google)
+     */
+    name: string;
+    /**
+     * Provider Key
+     * Provider key (e.g. google)
+     */
+    providerKey: string;
+    /**
+     * Connected
+     * Whether the current user has connected this provider
+     */
+    connected: boolean;
+    /**
+     * User Connection Id
+     * User connection ID when connected, for disconnect
+     */
+    userConnectionId?: string;
 };
 
 /**
@@ -1025,1600 +1025,1544 @@ export type ConnectionItem = {
  * Response for GET /api/connections
  */
 export type ListConnectionsResponse = {
-  /**
-   * Connection types with status
-   */
-  data: Array<ConnectionItem>;
+    /**
+     * Connection types with status
+     */
+    data: Array<ConnectionItem>;
 };
 
 export type LoginData = {
-  body: LoginBody;
-  path?: never;
-  query?: never;
-  url: "/auth/login";
+    body: LoginBody;
+    path?: never;
+    query?: never;
+    url: '/auth/login';
 };
 
 export type LoginErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
 export type LoginError = LoginErrors[keyof LoginErrors];
 
 export type LoginResponses = {
-  /**
-   * Successful Response
-   */
-  200: unknown;
+    /**
+     * Successful Response
+     */
+    200: unknown;
 };
 
 export type RegisterData = {
-  body: RegisterBody;
-  path?: never;
-  query?: never;
-  url: "/auth/register";
+    body: RegisterBody;
+    path?: never;
+    query?: never;
+    url: '/auth/register';
 };
 
 export type RegisterErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
 export type RegisterError = RegisterErrors[keyof RegisterErrors];
 
 export type RegisterResponses = {
-  /**
-   * Successful Response
-   */
-  200: unknown;
+    /**
+     * Successful Response
+     */
+    200: unknown;
 };
 
 export type LogoutData = {
-  body?: never;
-  path?: never;
-  query?: never;
-  url: "/auth/logout";
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/auth/logout';
 };
 
 export type LogoutResponses = {
-  /**
-   * Successful Response
-   */
-  200: unknown;
+    /**
+     * Successful Response
+     */
+    200: unknown;
 };
 
 export type GetAuthMeData = {
-  body?: never;
-  path?: never;
-  query?: never;
-  url: "/auth/me";
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/auth/me';
 };
 
 export type GetAuthMeErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
 export type GetAuthMeError = GetAuthMeErrors[keyof GetAuthMeErrors];
 
 export type GetAuthMeResponses = {
-  /**
-   * Successful Response
-   */
-  200: UserRead;
+    /**
+     * Successful Response
+     */
+    200: UserRead;
 };
 
 export type GetAuthMeResponse = GetAuthMeResponses[keyof GetAuthMeResponses];
 
 export type ListAgentInstructionsData = {
-  body?: never;
-  path: {
-    /**
-     * Agent Id
-     */
-    agent_id: string;
-  };
-  query?: {
-    /**
-     * Page
-     */
-    page?: number;
-    /**
-     * Limit
-     */
-    limit?: number;
-  };
-  url: "/api/agents/{agent_id}/instructions";
+    body?: never;
+    path: {
+        /**
+         * Agent Id
+         */
+        agent_id: string;
+    };
+    query?: {
+        /**
+         * Page
+         */
+        page?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/agents/{agent_id}/instructions';
 };
 
 export type ListAgentInstructionsErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
-export type ListAgentInstructionsError =
-  ListAgentInstructionsErrors[keyof ListAgentInstructionsErrors];
+export type ListAgentInstructionsError = ListAgentInstructionsErrors[keyof ListAgentInstructionsErrors];
 
 export type ListAgentInstructionsResponses = {
-  /**
-   * Successful Response
-   */
-  200: unknown;
+    /**
+     * Successful Response
+     */
+    200: unknown;
 };
 
 export type CreateAgentInstructionData = {
-  body: InstructionCreateBody;
-  path: {
-    /**
-     * Agent Id
-     */
-    agent_id: string;
-  };
-  query?: never;
-  url: "/api/agents/{agent_id}/instructions";
+    body: InstructionCreateBody;
+    path: {
+        /**
+         * Agent Id
+         */
+        agent_id: string;
+    };
+    query?: never;
+    url: '/api/agents/{agent_id}/instructions';
 };
 
 export type CreateAgentInstructionErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
-export type CreateAgentInstructionError =
-  CreateAgentInstructionErrors[keyof CreateAgentInstructionErrors];
+export type CreateAgentInstructionError = CreateAgentInstructionErrors[keyof CreateAgentInstructionErrors];
 
 export type CreateAgentInstructionResponses = {
-  /**
-   * Successful Response
-   */
-  201: unknown;
+    /**
+     * Successful Response
+     */
+    201: unknown;
 };
 
 export type DeleteAgentInstructionData = {
-  body?: never;
-  path: {
-    /**
-     * Agent Id
-     */
-    agent_id: string;
-    /**
-     * Id
-     */
-    id: string;
-  };
-  query?: never;
-  url: "/api/agents/{agent_id}/instructions/{id}";
+    body?: never;
+    path: {
+        /**
+         * Agent Id
+         */
+        agent_id: string;
+        /**
+         * Id
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/api/agents/{agent_id}/instructions/{id}';
 };
 
 export type DeleteAgentInstructionErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
-export type DeleteAgentInstructionError =
-  DeleteAgentInstructionErrors[keyof DeleteAgentInstructionErrors];
+export type DeleteAgentInstructionError = DeleteAgentInstructionErrors[keyof DeleteAgentInstructionErrors];
 
 export type DeleteAgentInstructionResponses = {
-  /**
-   * Successful Response
-   */
-  204: void;
+    /**
+     * Successful Response
+     */
+    204: void;
 };
 
-export type DeleteAgentInstructionResponse =
-  DeleteAgentInstructionResponses[keyof DeleteAgentInstructionResponses];
+export type DeleteAgentInstructionResponse = DeleteAgentInstructionResponses[keyof DeleteAgentInstructionResponses];
 
 export type GetAgentInstructionData = {
-  body?: never;
-  path: {
-    /**
-     * Agent Id
-     */
-    agent_id: string;
-    /**
-     * Id
-     */
-    id: string;
-  };
-  query?: never;
-  url: "/api/agents/{agent_id}/instructions/{id}";
+    body?: never;
+    path: {
+        /**
+         * Agent Id
+         */
+        agent_id: string;
+        /**
+         * Id
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/api/agents/{agent_id}/instructions/{id}';
 };
 
 export type GetAgentInstructionErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
-export type GetAgentInstructionError =
-  GetAgentInstructionErrors[keyof GetAgentInstructionErrors];
+export type GetAgentInstructionError = GetAgentInstructionErrors[keyof GetAgentInstructionErrors];
 
 export type GetAgentInstructionResponses = {
-  /**
-   * Successful Response
-   */
-  200: unknown;
+    /**
+     * Successful Response
+     */
+    200: unknown;
 };
 
 export type UpdateAgentInstructionData = {
-  body: InstructionUpdateBody;
-  path: {
-    /**
-     * Agent Id
-     */
-    agent_id: string;
-    /**
-     * Id
-     */
-    id: string;
-  };
-  query?: never;
-  url: "/api/agents/{agent_id}/instructions/{id}";
+    body: InstructionUpdateBody;
+    path: {
+        /**
+         * Agent Id
+         */
+        agent_id: string;
+        /**
+         * Id
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/api/agents/{agent_id}/instructions/{id}';
 };
 
 export type UpdateAgentInstructionErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
-export type UpdateAgentInstructionError =
-  UpdateAgentInstructionErrors[keyof UpdateAgentInstructionErrors];
+export type UpdateAgentInstructionError = UpdateAgentInstructionErrors[keyof UpdateAgentInstructionErrors];
 
 export type UpdateAgentInstructionResponses = {
-  /**
-   * Successful Response
-   */
-  200: unknown;
+    /**
+     * Successful Response
+     */
+    200: unknown;
 };
 
 export type ListAgentToolsData = {
-  body?: never;
-  path: {
-    /**
-     * Agent Id
-     */
-    agent_id: string;
-  };
-  query?: {
-    /**
-     * Page
-     */
-    page?: number;
-    /**
-     * Limit
-     */
-    limit?: number;
-  };
-  url: "/api/agents/{agent_id}/tools";
+    body?: never;
+    path: {
+        /**
+         * Agent Id
+         */
+        agent_id: string;
+    };
+    query?: {
+        /**
+         * Page
+         */
+        page?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/agents/{agent_id}/tools';
 };
 
 export type ListAgentToolsErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
-export type ListAgentToolsError =
-  ListAgentToolsErrors[keyof ListAgentToolsErrors];
+export type ListAgentToolsError = ListAgentToolsErrors[keyof ListAgentToolsErrors];
 
 export type ListAgentToolsResponses = {
-  /**
-   * Successful Response
-   */
-  200: unknown;
+    /**
+     * Successful Response
+     */
+    200: unknown;
 };
 
 export type AddAgentToolData = {
-  body: AddToolBody;
-  path: {
-    /**
-     * Agent Id
-     */
-    agent_id: string;
-  };
-  query?: never;
-  url: "/api/agents/{agent_id}/tools";
+    body: AddToolBody;
+    path: {
+        /**
+         * Agent Id
+         */
+        agent_id: string;
+    };
+    query?: never;
+    url: '/api/agents/{agent_id}/tools';
 };
 
 export type AddAgentToolErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
 export type AddAgentToolError = AddAgentToolErrors[keyof AddAgentToolErrors];
 
 export type AddAgentToolResponses = {
-  /**
-   * Successful Response
-   */
-  201: unknown;
+    /**
+     * Successful Response
+     */
+    201: unknown;
 };
 
 export type RemoveAgentToolData = {
-  body?: never;
-  path: {
-    /**
-     * Agent Id
-     */
-    agent_id: string;
-    /**
-     * Tool Id
-     */
-    tool_id: string;
-  };
-  query?: never;
-  url: "/api/agents/{agent_id}/tools/{tool_id}";
+    body?: never;
+    path: {
+        /**
+         * Agent Id
+         */
+        agent_id: string;
+        /**
+         * Tool Id
+         */
+        tool_id: string;
+    };
+    query?: never;
+    url: '/api/agents/{agent_id}/tools/{tool_id}';
 };
 
 export type RemoveAgentToolErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
-export type RemoveAgentToolError =
-  RemoveAgentToolErrors[keyof RemoveAgentToolErrors];
+export type RemoveAgentToolError = RemoveAgentToolErrors[keyof RemoveAgentToolErrors];
 
 export type RemoveAgentToolResponses = {
-  /**
-   * Successful Response
-   */
-  204: void;
+    /**
+     * Successful Response
+     */
+    204: void;
 };
 
-export type RemoveAgentToolResponse =
-  RemoveAgentToolResponses[keyof RemoveAgentToolResponses];
+export type RemoveAgentToolResponse = RemoveAgentToolResponses[keyof RemoveAgentToolResponses];
 
 export type ListAgentQueriesData = {
-  body?: never;
-  path: {
-    /**
-     * Agent Id
-     */
-    agent_id: string;
-  };
-  query?: {
-    /**
-     * Page
-     */
-    page?: number;
-    /**
-     * Limit
-     */
-    limit?: number;
-  };
-  url: "/api/agents/{agent_id}/queries";
+    body?: never;
+    path: {
+        /**
+         * Agent Id
+         */
+        agent_id: string;
+    };
+    query?: {
+        /**
+         * Page
+         */
+        page?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/agents/{agent_id}/queries';
 };
 
 export type ListAgentQueriesErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
-export type ListAgentQueriesError =
-  ListAgentQueriesErrors[keyof ListAgentQueriesErrors];
+export type ListAgentQueriesError = ListAgentQueriesErrors[keyof ListAgentQueriesErrors];
 
 export type ListAgentQueriesResponses = {
-  /**
-   * Successful Response
-   */
-  200: ListAgentQueriesResponse;
+    /**
+     * Successful Response
+     */
+    200: ListAgentQueriesResponse;
 };
 
-export type ListAgentQueriesResponse2 =
-  ListAgentQueriesResponses[keyof ListAgentQueriesResponses];
+export type ListAgentQueriesResponse2 = ListAgentQueriesResponses[keyof ListAgentQueriesResponses];
 
 export type CreateAgentQueryData = {
-  body: ModelQueryCreateBody;
-  path: {
-    /**
-     * Agent Id
-     */
-    agent_id: string;
-  };
-  query?: never;
-  url: "/api/agents/{agent_id}/queries";
+    body: ModelQueryCreateBody;
+    path: {
+        /**
+         * Agent Id
+         */
+        agent_id: string;
+    };
+    query?: never;
+    url: '/api/agents/{agent_id}/queries';
 };
 
 export type CreateAgentQueryErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
-export type CreateAgentQueryError =
-  CreateAgentQueryErrors[keyof CreateAgentQueryErrors];
+export type CreateAgentQueryError = CreateAgentQueryErrors[keyof CreateAgentQueryErrors];
 
 export type CreateAgentQueryResponses = {
-  /**
-   * Successful Response
-   */
-  201: unknown;
+    /**
+     * Successful Response
+     */
+    201: unknown;
 };
 
 export type DeleteAgentQueryData = {
-  body?: never;
-  path: {
-    /**
-     * Agent Id
-     */
-    agent_id: string;
-    /**
-     * Id
-     */
-    id: string;
-  };
-  query?: never;
-  url: "/api/agents/{agent_id}/queries/{id}";
+    body?: never;
+    path: {
+        /**
+         * Agent Id
+         */
+        agent_id: string;
+        /**
+         * Id
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/api/agents/{agent_id}/queries/{id}';
 };
 
 export type DeleteAgentQueryErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
-export type DeleteAgentQueryError =
-  DeleteAgentQueryErrors[keyof DeleteAgentQueryErrors];
+export type DeleteAgentQueryError = DeleteAgentQueryErrors[keyof DeleteAgentQueryErrors];
 
 export type DeleteAgentQueryResponses = {
-  /**
-   * Successful Response
-   */
-  204: void;
+    /**
+     * Successful Response
+     */
+    204: void;
 };
 
-export type DeleteAgentQueryResponse =
-  DeleteAgentQueryResponses[keyof DeleteAgentQueryResponses];
+export type DeleteAgentQueryResponse = DeleteAgentQueryResponses[keyof DeleteAgentQueryResponses];
 
 export type GetAgentQueryData = {
-  body?: never;
-  path: {
-    /**
-     * Agent Id
-     */
-    agent_id: string;
-    /**
-     * Id
-     */
-    id: string;
-  };
-  query?: never;
-  url: "/api/agents/{agent_id}/queries/{id}";
+    body?: never;
+    path: {
+        /**
+         * Agent Id
+         */
+        agent_id: string;
+        /**
+         * Id
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/api/agents/{agent_id}/queries/{id}';
 };
 
 export type GetAgentQueryErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
 export type GetAgentQueryError = GetAgentQueryErrors[keyof GetAgentQueryErrors];
 
 export type GetAgentQueryResponses = {
-  /**
-   * Successful Response
-   */
-  200: ModelQueryItem;
+    /**
+     * Successful Response
+     */
+    200: ModelQueryItem;
 };
 
-export type GetAgentQueryResponse =
-  GetAgentQueryResponses[keyof GetAgentQueryResponses];
+export type GetAgentQueryResponse = GetAgentQueryResponses[keyof GetAgentQueryResponses];
 
 export type UpdateAgentQueryData = {
-  body: ModelQueryUpdateBody;
-  path: {
-    /**
-     * Agent Id
-     */
-    agent_id: string;
-    /**
-     * Id
-     */
-    id: string;
-  };
-  query?: never;
-  url: "/api/agents/{agent_id}/queries/{id}";
+    body: ModelQueryUpdateBody;
+    path: {
+        /**
+         * Agent Id
+         */
+        agent_id: string;
+        /**
+         * Id
+         */
+        id: string;
+    };
+    query?: never;
+    url: '/api/agents/{agent_id}/queries/{id}';
 };
 
 export type UpdateAgentQueryErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
-export type UpdateAgentQueryError =
-  UpdateAgentQueryErrors[keyof UpdateAgentQueryErrors];
+export type UpdateAgentQueryError = UpdateAgentQueryErrors[keyof UpdateAgentQueryErrors];
 
 export type UpdateAgentQueryResponses = {
-  /**
-   * Successful Response
-   */
-  200: unknown;
+    /**
+     * Successful Response
+     */
+    200: unknown;
 };
 
 export type IngestAgentDocumentData = {
-  body: DocumentsIngestBody;
-  path: {
-    /**
-     * Agent Id
-     */
-    agent_id: string;
-  };
-  query?: never;
-  url: "/api/agents/{agent_id}/documents/ingest";
+    body: DocumentsIngestBody;
+    path: {
+        /**
+         * Agent Id
+         */
+        agent_id: string;
+    };
+    query?: never;
+    url: '/api/agents/{agent_id}/documents/ingest';
 };
 
 export type IngestAgentDocumentErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
-export type IngestAgentDocumentError =
-  IngestAgentDocumentErrors[keyof IngestAgentDocumentErrors];
+export type IngestAgentDocumentError = IngestAgentDocumentErrors[keyof IngestAgentDocumentErrors];
 
 export type IngestAgentDocumentResponses = {
-  /**
-   * Successful Response
-   */
-  200: unknown;
+    /**
+     * Successful Response
+     */
+    200: unknown;
 };
 
 export type IngestAgentDocumentUrlData = {
-  body: DocumentsIngestUrlBody;
-  path: {
-    /**
-     * Agent Id
-     */
-    agent_id: string;
-  };
-  query?: never;
-  url: "/api/agents/{agent_id}/documents/ingest-url";
+    body: DocumentsIngestUrlBody;
+    path: {
+        /**
+         * Agent Id
+         */
+        agent_id: string;
+    };
+    query?: never;
+    url: '/api/agents/{agent_id}/documents/ingest-url';
 };
 
 export type IngestAgentDocumentUrlErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
-export type IngestAgentDocumentUrlError =
-  IngestAgentDocumentUrlErrors[keyof IngestAgentDocumentUrlErrors];
+export type IngestAgentDocumentUrlError = IngestAgentDocumentUrlErrors[keyof IngestAgentDocumentUrlErrors];
 
 export type IngestAgentDocumentUrlResponses = {
-  /**
-   * Successful Response
-   */
-  200: unknown;
+    /**
+     * Successful Response
+     */
+    200: unknown;
 };
 
 export type ListAgentDocumentsData = {
-  body?: never;
-  path: {
-    /**
-     * Agent Id
-     */
-    agent_id: string;
-  };
-  query?: {
-    /**
-     * Page
-     */
-    page?: number;
-    /**
-     * Limit
-     */
-    limit?: number;
-  };
-  url: "/api/agents/{agent_id}/documents";
+    body?: never;
+    path: {
+        /**
+         * Agent Id
+         */
+        agent_id: string;
+    };
+    query?: {
+        /**
+         * Page
+         */
+        page?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/agents/{agent_id}/documents';
 };
 
 export type ListAgentDocumentsErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
-export type ListAgentDocumentsError =
-  ListAgentDocumentsErrors[keyof ListAgentDocumentsErrors];
+export type ListAgentDocumentsError = ListAgentDocumentsErrors[keyof ListAgentDocumentsErrors];
 
 export type ListAgentDocumentsResponses = {
-  /**
-   * Successful Response
-   */
-  200: unknown;
+    /**
+     * Successful Response
+     */
+    200: unknown;
 };
 
 export type AddAgentDocumentData = {
-  body: DocumentAddBody;
-  path: {
-    /**
-     * Agent Id
-     */
-    agent_id: string;
-  };
-  query?: never;
-  url: "/api/agents/{agent_id}/documents";
+    body: DocumentAddBody;
+    path: {
+        /**
+         * Agent Id
+         */
+        agent_id: string;
+    };
+    query?: never;
+    url: '/api/agents/{agent_id}/documents';
 };
 
 export type AddAgentDocumentErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
-export type AddAgentDocumentError =
-  AddAgentDocumentErrors[keyof AddAgentDocumentErrors];
+export type AddAgentDocumentError = AddAgentDocumentErrors[keyof AddAgentDocumentErrors];
 
 export type AddAgentDocumentResponses = {
-  /**
-   * Successful Response
-   */
-  200: unknown;
+    /**
+     * Successful Response
+     */
+    200: unknown;
 };
 
 export type DeleteAgentDocumentData = {
-  body?: never;
-  path: {
-    /**
-     * Agent Id
-     */
-    agent_id: string;
-    /**
-     * Document Id
-     */
-    document_id: string;
-  };
-  query?: never;
-  url: "/api/agents/{agent_id}/documents/{document_id}";
+    body?: never;
+    path: {
+        /**
+         * Agent Id
+         */
+        agent_id: string;
+        /**
+         * Document Id
+         */
+        document_id: string;
+    };
+    query?: never;
+    url: '/api/agents/{agent_id}/documents/{document_id}';
 };
 
 export type DeleteAgentDocumentErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
-export type DeleteAgentDocumentError =
-  DeleteAgentDocumentErrors[keyof DeleteAgentDocumentErrors];
+export type DeleteAgentDocumentError = DeleteAgentDocumentErrors[keyof DeleteAgentDocumentErrors];
 
 export type DeleteAgentDocumentResponses = {
-  /**
-   * Successful Response
-   */
-  204: void;
+    /**
+     * Successful Response
+     */
+    204: void;
 };
 
-export type DeleteAgentDocumentResponse =
-  DeleteAgentDocumentResponses[keyof DeleteAgentDocumentResponses];
+export type DeleteAgentDocumentResponse = DeleteAgentDocumentResponses[keyof DeleteAgentDocumentResponses];
 
 export type GetAgentDocumentData = {
-  body?: never;
-  path: {
-    /**
-     * Agent Id
-     */
-    agent_id: string;
-    /**
-     * Document Id
-     */
-    document_id: string;
-  };
-  query?: never;
-  url: "/api/agents/{agent_id}/documents/{document_id}";
+    body?: never;
+    path: {
+        /**
+         * Agent Id
+         */
+        agent_id: string;
+        /**
+         * Document Id
+         */
+        document_id: string;
+    };
+    query?: never;
+    url: '/api/agents/{agent_id}/documents/{document_id}';
 };
 
 export type GetAgentDocumentErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
-export type GetAgentDocumentError =
-  GetAgentDocumentErrors[keyof GetAgentDocumentErrors];
+export type GetAgentDocumentError = GetAgentDocumentErrors[keyof GetAgentDocumentErrors];
 
 export type GetAgentDocumentResponses = {
-  /**
-   * Successful Response
-   */
-  200: unknown;
+    /**
+     * Successful Response
+     */
+    200: unknown;
 };
 
 export type ListAgentsData = {
-  body?: never;
-  path?: never;
-  query?: {
-    /**
-     * User Id
-     * Filter by owner
-     */
-    user_id?: string | null;
-    /**
-     * Page
-     */
-    page?: number;
-    /**
-     * Limit
-     */
-    limit?: number;
-  };
-  url: "/api/agents";
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * User Id
+         * Filter by owner
+         */
+        user_id?: string | null;
+        /**
+         * Page
+         */
+        page?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/agents';
 };
 
 export type ListAgentsErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
 export type ListAgentsError = ListAgentsErrors[keyof ListAgentsErrors];
 
 export type ListAgentsResponses = {
-  /**
-   * Successful Response
-   */
-  200: ListAgentsResponse;
+    /**
+     * Successful Response
+     */
+    200: ListAgentsResponse;
 };
 
-export type ListAgentsResponse2 =
-  ListAgentsResponses[keyof ListAgentsResponses];
+export type ListAgentsResponse2 = ListAgentsResponses[keyof ListAgentsResponses];
 
 export type CreateAgentData = {
-  body: CreateAgentRequest;
-  path?: never;
-  query?: never;
-  url: "/api/agents";
+    body: CreateAgentRequest;
+    path?: never;
+    query?: never;
+    url: '/api/agents';
 };
 
 export type CreateAgentErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
 export type CreateAgentError = CreateAgentErrors[keyof CreateAgentErrors];
 
 export type CreateAgentResponses = {
-  /**
-   * Successful Response
-   */
-  200: AgentDetailResponse;
+    /**
+     * Successful Response
+     */
+    200: AgentDetailResponse;
 };
 
-export type CreateAgentResponse =
-  CreateAgentResponses[keyof CreateAgentResponses];
+export type CreateAgentResponse = CreateAgentResponses[keyof CreateAgentResponses];
 
 export type DeleteAgentData = {
-  body?: never;
-  path: {
-    /**
-     * Agent Id
-     */
-    agent_id: string;
-  };
-  query?: {
-    /**
-     * User Id
-     * Require owner
-     */
-    user_id?: string | null;
-    /**
-     * Soft
-     * Soft delete (default) or hard delete
-     */
-    soft?: boolean;
-  };
-  url: "/api/agents/{agent_id}";
+    body?: never;
+    path: {
+        /**
+         * Agent Id
+         */
+        agent_id: string;
+    };
+    query?: {
+        /**
+         * User Id
+         * Require owner
+         */
+        user_id?: string | null;
+        /**
+         * Soft
+         * Soft delete (default) or hard delete
+         */
+        soft?: boolean;
+    };
+    url: '/api/agents/{agent_id}';
 };
 
 export type DeleteAgentErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
 export type DeleteAgentError = DeleteAgentErrors[keyof DeleteAgentErrors];
 
 export type DeleteAgentResponses = {
-  /**
-   * Successful Response
-   */
-  204: void;
+    /**
+     * Successful Response
+     */
+    204: void;
 };
 
-export type DeleteAgentResponse =
-  DeleteAgentResponses[keyof DeleteAgentResponses];
+export type DeleteAgentResponse = DeleteAgentResponses[keyof DeleteAgentResponses];
 
 export type GetAgentData = {
-  body?: never;
-  path: {
-    /**
-     * Agent Id
-     */
-    agent_id: string;
-  };
-  query?: {
-    /**
-     * User Id
-     * Require owner
-     */
-    user_id?: string | null;
-  };
-  url: "/api/agents/{agent_id}";
+    body?: never;
+    path: {
+        /**
+         * Agent Id
+         */
+        agent_id: string;
+    };
+    query?: {
+        /**
+         * User Id
+         * Require owner
+         */
+        user_id?: string | null;
+    };
+    url: '/api/agents/{agent_id}';
 };
 
 export type GetAgentErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
 export type GetAgentError = GetAgentErrors[keyof GetAgentErrors];
 
 export type GetAgentResponses = {
-  /**
-   * Successful Response
-   */
-  200: AgentDetailResponse;
+    /**
+     * Successful Response
+     */
+    200: AgentDetailResponse;
 };
 
 export type GetAgentResponse = GetAgentResponses[keyof GetAgentResponses];
 
 export type UpdateAgentData = {
-  body: UpdateAgentRequest;
-  path: {
-    /**
-     * Agent Id
-     */
-    agent_id: string;
-  };
-  query?: {
-    /**
-     * User Id
-     * Require owner
-     */
-    user_id?: string | null;
-  };
-  url: "/api/agents/{agent_id}";
+    body: UpdateAgentRequest;
+    path: {
+        /**
+         * Agent Id
+         */
+        agent_id: string;
+    };
+    query?: {
+        /**
+         * User Id
+         * Require owner
+         */
+        user_id?: string | null;
+    };
+    url: '/api/agents/{agent_id}';
 };
 
 export type UpdateAgentErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
 export type UpdateAgentError = UpdateAgentErrors[keyof UpdateAgentErrors];
 
 export type UpdateAgentResponses = {
-  /**
-   * Successful Response
-   */
-  200: AgentDetailResponse;
+    /**
+     * Successful Response
+     */
+    200: AgentDetailResponse;
 };
 
-export type UpdateAgentResponse =
-  UpdateAgentResponses[keyof UpdateAgentResponses];
+export type UpdateAgentResponse = UpdateAgentResponses[keyof UpdateAgentResponses];
 
 export type ListApiTokensData = {
-  body?: never;
-  path?: never;
-  query?: {
-    /**
-     * Page
-     */
-    page?: number;
-    /**
-     * Limit
-     */
-    limit?: number;
-  };
-  url: "/api/api-tokens";
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Page
+         */
+        page?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/api-tokens';
 };
 
 export type ListApiTokensErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
 export type ListApiTokensError = ListApiTokensErrors[keyof ListApiTokensErrors];
 
 export type ListApiTokensResponses = {
-  /**
-   * Successful Response
-   */
-  200: unknown;
+    /**
+     * Successful Response
+     */
+    200: unknown;
 };
 
 export type CreateApiTokenData = {
-  body: CreateApiTokenBody;
-  path?: never;
-  query?: never;
-  url: "/api/api-tokens";
+    body: CreateApiTokenBody;
+    path?: never;
+    query?: never;
+    url: '/api/api-tokens';
 };
 
 export type CreateApiTokenErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
-export type CreateApiTokenError =
-  CreateApiTokenErrors[keyof CreateApiTokenErrors];
+export type CreateApiTokenError = CreateApiTokenErrors[keyof CreateApiTokenErrors];
 
 export type CreateApiTokenResponses = {
-  /**
-   * Successful Response
-   */
-  201: unknown;
+    /**
+     * Successful Response
+     */
+    201: unknown;
 };
 
 export type RevokeApiTokenData = {
-  body?: never;
-  path: {
-    /**
-     * Token Id
-     */
-    token_id: string;
-  };
-  query?: never;
-  url: "/api/api-tokens/{token_id}";
+    body?: never;
+    path: {
+        /**
+         * Token Id
+         */
+        token_id: string;
+    };
+    query?: never;
+    url: '/api/api-tokens/{token_id}';
 };
 
 export type RevokeApiTokenErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
-export type RevokeApiTokenError =
-  RevokeApiTokenErrors[keyof RevokeApiTokenErrors];
+export type RevokeApiTokenError = RevokeApiTokenErrors[keyof RevokeApiTokenErrors];
 
 export type RevokeApiTokenResponses = {
-  /**
-   * Successful Response
-   */
-  204: void;
+    /**
+     * Successful Response
+     */
+    204: void;
 };
 
-export type RevokeApiTokenResponse =
-  RevokeApiTokenResponses[keyof RevokeApiTokenResponses];
+export type RevokeApiTokenResponse = RevokeApiTokenResponses[keyof RevokeApiTokenResponses];
 
 export type ListConnectionsData = {
-  body?: never;
-  path?: never;
-  query?: never;
-  url: "/api/connections";
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/connections';
 };
 
 export type ListConnectionsErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
-export type ListConnectionsError =
-  ListConnectionsErrors[keyof ListConnectionsErrors];
+export type ListConnectionsError = ListConnectionsErrors[keyof ListConnectionsErrors];
 
 export type ListConnectionsResponses = {
-  /**
-   * Successful Response
-   */
-  200: ListConnectionsResponse;
+    /**
+     * Successful Response
+     */
+    200: ListConnectionsResponse;
 };
 
-export type ListConnectionsResponse2 =
-  ListConnectionsResponses[keyof ListConnectionsResponses];
+export type ListConnectionsResponse2 = ListConnectionsResponses[keyof ListConnectionsResponses];
 
 export type DisconnectUserConnectionData = {
-  body?: never;
-  path: {
-    /**
-     * User Connection Id
-     */
-    user_connection_id: string;
-  };
-  query?: never;
-  url: "/api/connections/user/{user_connection_id}";
+    body?: never;
+    path: {
+        /**
+         * User Connection Id
+         */
+        user_connection_id: string;
+    };
+    query?: never;
+    url: '/api/connections/user/{user_connection_id}';
 };
 
 export type DisconnectUserConnectionErrors = {
-  /**
-   * Connection not found
-   */
-  404: unknown;
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Connection not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
-export type DisconnectUserConnectionError =
-  DisconnectUserConnectionErrors[keyof DisconnectUserConnectionErrors];
+export type DisconnectUserConnectionError = DisconnectUserConnectionErrors[keyof DisconnectUserConnectionErrors];
 
 export type DisconnectUserConnectionResponses = {
-  /**
-   * Successful Response
-   */
-  204: void;
+    /**
+     * Successful Response
+     */
+    204: void;
 };
 
-export type DisconnectUserConnectionResponse =
-  DisconnectUserConnectionResponses[keyof DisconnectUserConnectionResponses];
+export type DisconnectUserConnectionResponse = DisconnectUserConnectionResponses[keyof DisconnectUserConnectionResponses];
 
 export type ListToolsData = {
-  body?: never;
-  path?: never;
-  query?: {
-    /**
-     * Page
-     */
-    page?: number;
-    /**
-     * Limit
-     */
-    limit?: number;
-  };
-  url: "/api/tools";
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Page
+         */
+        page?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/tools';
 };
 
 export type ListToolsErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
 export type ListToolsError = ListToolsErrors[keyof ListToolsErrors];
 
 export type ListToolsResponses = {
-  /**
-   * Successful Response
-   */
-  200: unknown;
+    /**
+     * Successful Response
+     */
+    200: unknown;
 };
 
 export type CreateToolData = {
-  body: CreateToolBody;
-  path?: never;
-  query?: never;
-  url: "/api/tools";
+    body: CreateToolBody;
+    path?: never;
+    query?: never;
+    url: '/api/tools';
 };
 
 export type CreateToolErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
 export type CreateToolError = CreateToolErrors[keyof CreateToolErrors];
 
 export type CreateToolResponses = {
-  /**
-   * Successful Response
-   */
-  201: unknown;
+    /**
+     * Successful Response
+     */
+    201: unknown;
 };
 
 export type DeleteToolData = {
-  body?: never;
-  path: {
-    /**
-     * Tool Id
-     */
-    tool_id: string;
-  };
-  query?: {
-    /**
-     * Soft
-     * Soft delete (default)
-     */
-    soft?: boolean;
-  };
-  url: "/api/tools/{tool_id}";
+    body?: never;
+    path: {
+        /**
+         * Tool Id
+         */
+        tool_id: string;
+    };
+    query?: {
+        /**
+         * Soft
+         * Soft delete (default)
+         */
+        soft?: boolean;
+    };
+    url: '/api/tools/{tool_id}';
 };
 
 export type DeleteToolErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
 export type DeleteToolError = DeleteToolErrors[keyof DeleteToolErrors];
 
 export type DeleteToolResponses = {
-  /**
-   * Successful Response
-   */
-  204: void;
+    /**
+     * Successful Response
+     */
+    204: void;
 };
 
 export type DeleteToolResponse = DeleteToolResponses[keyof DeleteToolResponses];
 
 export type GetToolData = {
-  body?: never;
-  path: {
-    /**
-     * Tool Id
-     */
-    tool_id: string;
-  };
-  query?: never;
-  url: "/api/tools/{tool_id}";
+    body?: never;
+    path: {
+        /**
+         * Tool Id
+         */
+        tool_id: string;
+    };
+    query?: never;
+    url: '/api/tools/{tool_id}';
 };
 
 export type GetToolErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
 export type GetToolError = GetToolErrors[keyof GetToolErrors];
 
 export type GetToolResponses = {
-  /**
-   * Successful Response
-   */
-  200: unknown;
+    /**
+     * Successful Response
+     */
+    200: unknown;
 };
 
 export type UpdateToolData = {
-  body: UpdateToolBody;
-  path: {
-    /**
-     * Tool Id
-     */
-    tool_id: string;
-  };
-  query?: never;
-  url: "/api/tools/{tool_id}";
+    body: UpdateToolBody;
+    path: {
+        /**
+         * Tool Id
+         */
+        tool_id: string;
+    };
+    query?: never;
+    url: '/api/tools/{tool_id}';
 };
 
 export type UpdateToolErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
 export type UpdateToolError = UpdateToolErrors[keyof UpdateToolErrors];
 
 export type UpdateToolResponses = {
-  /**
-   * Successful Response
-   */
-  200: unknown;
+    /**
+     * Successful Response
+     */
+    200: unknown;
 };
 
 export type ListHumanTasksData = {
-  body?: never;
-  path?: never;
-  query?: {
-    /**
-     * Pending
-     * Filter to PENDING only
-     */
-    pending?: boolean;
-    /**
-     * Page
-     */
-    page?: number;
-    /**
-     * Limit
-     */
-    limit?: number;
-  };
-  url: "/api/human-tasks";
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Pending
+         * Filter to PENDING only
+         */
+        pending?: boolean;
+        /**
+         * Page
+         */
+        page?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/human-tasks';
 };
 
 export type ListHumanTasksErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
-export type ListHumanTasksError =
-  ListHumanTasksErrors[keyof ListHumanTasksErrors];
+export type ListHumanTasksError = ListHumanTasksErrors[keyof ListHumanTasksErrors];
 
 export type ListHumanTasksResponses = {
-  /**
-   * Successful Response
-   */
-  200: ListHumanTasksResponse;
+    /**
+     * Successful Response
+     */
+    200: ListHumanTasksResponse;
 };
 
-export type ListHumanTasksResponse2 =
-  ListHumanTasksResponses[keyof ListHumanTasksResponses];
+export type ListHumanTasksResponse2 = ListHumanTasksResponses[keyof ListHumanTasksResponses];
 
 export type CreateHumanTaskData = {
-  body: CreateHumanTaskBody;
-  path?: never;
-  query?: never;
-  url: "/api/human-tasks";
+    body: CreateHumanTaskBody;
+    path?: never;
+    query?: never;
+    url: '/api/human-tasks';
 };
 
 export type CreateHumanTaskErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
-export type CreateHumanTaskError =
-  CreateHumanTaskErrors[keyof CreateHumanTaskErrors];
+export type CreateHumanTaskError = CreateHumanTaskErrors[keyof CreateHumanTaskErrors];
 
 export type CreateHumanTaskResponses = {
-  /**
-   * Successful Response
-   */
-  201: HumanTaskResponse;
+    /**
+     * Successful Response
+     */
+    201: HumanTaskResponse;
 };
 
-export type CreateHumanTaskResponse =
-  CreateHumanTaskResponses[keyof CreateHumanTaskResponses];
+export type CreateHumanTaskResponse = CreateHumanTaskResponses[keyof CreateHumanTaskResponses];
 
 export type GetHumanTaskByQueryData = {
-  body?: never;
-  path: {
-    /**
-     * Model Query Id
-     */
-    model_query_id: string;
-  };
-  query?: never;
-  url: "/api/human-tasks/by-query/{model_query_id}";
+    body?: never;
+    path: {
+        /**
+         * Model Query Id
+         */
+        model_query_id: string;
+    };
+    query?: never;
+    url: '/api/human-tasks/by-query/{model_query_id}';
 };
 
 export type GetHumanTaskByQueryErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
-export type GetHumanTaskByQueryError =
-  GetHumanTaskByQueryErrors[keyof GetHumanTaskByQueryErrors];
+export type GetHumanTaskByQueryError = GetHumanTaskByQueryErrors[keyof GetHumanTaskByQueryErrors];
 
 export type GetHumanTaskByQueryResponses = {
-  /**
-   * Successful Response
-   */
-  200: HumanTaskResponse;
+    /**
+     * Successful Response
+     */
+    200: HumanTaskResponse;
 };
 
-export type GetHumanTaskByQueryResponse =
-  GetHumanTaskByQueryResponses[keyof GetHumanTaskByQueryResponses];
+export type GetHumanTaskByQueryResponse = GetHumanTaskByQueryResponses[keyof GetHumanTaskByQueryResponses];
 
 export type DeleteHumanTaskData = {
-  body?: never;
-  path: {
-    /**
-     * Task Id
-     */
-    task_id: string;
-  };
-  query?: never;
-  url: "/api/human-tasks/{task_id}";
+    body?: never;
+    path: {
+        /**
+         * Task Id
+         */
+        task_id: string;
+    };
+    query?: never;
+    url: '/api/human-tasks/{task_id}';
 };
 
 export type DeleteHumanTaskErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
-export type DeleteHumanTaskError =
-  DeleteHumanTaskErrors[keyof DeleteHumanTaskErrors];
+export type DeleteHumanTaskError = DeleteHumanTaskErrors[keyof DeleteHumanTaskErrors];
 
 export type DeleteHumanTaskResponses = {
-  /**
-   * Successful Response
-   */
-  204: void;
+    /**
+     * Successful Response
+     */
+    204: void;
 };
 
-export type DeleteHumanTaskResponse =
-  DeleteHumanTaskResponses[keyof DeleteHumanTaskResponses];
+export type DeleteHumanTaskResponse = DeleteHumanTaskResponses[keyof DeleteHumanTaskResponses];
 
 export type GetHumanTaskData = {
-  body?: never;
-  path: {
-    /**
-     * Task Id
-     */
-    task_id: string;
-  };
-  query?: never;
-  url: "/api/human-tasks/{task_id}";
+    body?: never;
+    path: {
+        /**
+         * Task Id
+         */
+        task_id: string;
+    };
+    query?: never;
+    url: '/api/human-tasks/{task_id}';
 };
 
 export type GetHumanTaskErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
 export type GetHumanTaskError = GetHumanTaskErrors[keyof GetHumanTaskErrors];
 
 export type GetHumanTaskResponses = {
-  /**
-   * Successful Response
-   */
-  200: HumanTaskResponse;
+    /**
+     * Successful Response
+     */
+    200: HumanTaskResponse;
 };
 
-export type GetHumanTaskResponse =
-  GetHumanTaskResponses[keyof GetHumanTaskResponses];
+export type GetHumanTaskResponse = GetHumanTaskResponses[keyof GetHumanTaskResponses];
 
 export type UpdateHumanTaskData = {
-  body: UpdateHumanTaskBody;
-  path: {
-    /**
-     * Task Id
-     */
-    task_id: string;
-  };
-  query?: never;
-  url: "/api/human-tasks/{task_id}";
+    body: UpdateHumanTaskBody;
+    path: {
+        /**
+         * Task Id
+         */
+        task_id: string;
+    };
+    query?: never;
+    url: '/api/human-tasks/{task_id}';
 };
 
 export type UpdateHumanTaskErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
-export type UpdateHumanTaskError =
-  UpdateHumanTaskErrors[keyof UpdateHumanTaskErrors];
+export type UpdateHumanTaskError = UpdateHumanTaskErrors[keyof UpdateHumanTaskErrors];
 
 export type UpdateHumanTaskResponses = {
-  /**
-   * Successful Response
-   */
-  200: HumanTaskResponse;
+    /**
+     * Successful Response
+     */
+    200: HumanTaskResponse;
 };
 
-export type UpdateHumanTaskResponse =
-  UpdateHumanTaskResponses[keyof UpdateHumanTaskResponses];
+export type UpdateHumanTaskResponse = UpdateHumanTaskResponses[keyof UpdateHumanTaskResponses];
 
 export type ResolveHumanTaskData = {
-  body?: never;
-  path: {
-    /**
-     * Task Id
-     */
-    task_id: string;
-  };
-  query?: never;
-  url: "/api/human-tasks/{task_id}/resolve";
+    body?: never;
+    path: {
+        /**
+         * Task Id
+         */
+        task_id: string;
+    };
+    query?: never;
+    url: '/api/human-tasks/{task_id}/resolve';
 };
 
 export type ResolveHumanTaskErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
-export type ResolveHumanTaskError =
-  ResolveHumanTaskErrors[keyof ResolveHumanTaskErrors];
+export type ResolveHumanTaskError = ResolveHumanTaskErrors[keyof ResolveHumanTaskErrors];
 
 export type ResolveHumanTaskResponses = {
-  /**
-   * Successful Response
-   */
-  200: HumanTaskResponse;
+    /**
+     * Successful Response
+     */
+    200: HumanTaskResponse;
 };
 
-export type ResolveHumanTaskResponse =
-  ResolveHumanTaskResponses[keyof ResolveHumanTaskResponses];
+export type ResolveHumanTaskResponse = ResolveHumanTaskResponses[keyof ResolveHumanTaskResponses];
 
 export type GenerateStreamData = {
-  body: ChatRequest;
-  path?: never;
-  query?: never;
-  url: "/generate_stream";
+    body: ChatRequest;
+    path?: never;
+    query?: never;
+    url: '/generate_stream';
 };
 
 export type GenerateStreamErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
-export type GenerateStreamError =
-  GenerateStreamErrors[keyof GenerateStreamErrors];
+export type GenerateStreamError = GenerateStreamErrors[keyof GenerateStreamErrors];
 
 export type GenerateStreamResponses = {
-  /**
-   * Successful Response
-   */
-  200: unknown;
+    /**
+     * Successful Response
+     */
+    200: unknown;
 };
 
 export type UpdateAgentIndexData = {
-  body: UpdateAgentIndexRequest;
-  path?: never;
-  query?: never;
-  url: "/update_agent_index";
+    body: UpdateAgentIndexRequest;
+    path?: never;
+    query?: never;
+    url: '/update_agent_index';
 };
 
 export type UpdateAgentIndexErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
-export type UpdateAgentIndexError =
-  UpdateAgentIndexErrors[keyof UpdateAgentIndexErrors];
+export type UpdateAgentIndexError = UpdateAgentIndexErrors[keyof UpdateAgentIndexErrors];
 
 export type UpdateAgentIndexResponses = {
-  /**
-   * Successful Response
-   */
-  200: UpdateAgentIndexResponse;
+    /**
+     * Successful Response
+     */
+    200: UpdateAgentIndexResponse;
 };
 
-export type UpdateAgentIndexResponse2 =
-  UpdateAgentIndexResponses[keyof UpdateAgentIndexResponses];
+export type UpdateAgentIndexResponse2 = UpdateAgentIndexResponses[keyof UpdateAgentIndexResponses];
 
 export type UploadAndIndexData = {
-  body: BodyUploadAndIndex;
-  path?: never;
-  query?: never;
-  url: "/upload_and_index";
+    body: BodyUploadAndIndex;
+    path?: never;
+    query?: never;
+    url: '/upload_and_index';
 };
 
 export type UploadAndIndexErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
-export type UploadAndIndexError =
-  UploadAndIndexErrors[keyof UploadAndIndexErrors];
+export type UploadAndIndexError = UploadAndIndexErrors[keyof UploadAndIndexErrors];
 
 export type UploadAndIndexResponses = {
-  /**
-   * Successful Response
-   */
-  200: UploadAndIndexResponse;
+    /**
+     * Successful Response
+     */
+    200: UploadAndIndexResponse;
 };
 
-export type UploadAndIndexResponse2 =
-  UploadAndIndexResponses[keyof UploadAndIndexResponses];
+export type UploadAndIndexResponse2 = UploadAndIndexResponses[keyof UploadAndIndexResponses];
 
 export type IngestDocumentData = {
-  body: BodyIngestDocument;
-  path?: never;
-  query?: never;
-  url: "/ingest_document";
+    body: BodyIngestDocument;
+    path?: never;
+    query?: never;
+    url: '/ingest_document';
 };
 
 export type IngestDocumentErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
-export type IngestDocumentError =
-  IngestDocumentErrors[keyof IngestDocumentErrors];
+export type IngestDocumentError = IngestDocumentErrors[keyof IngestDocumentErrors];
 
 export type IngestDocumentResponses = {
-  /**
-   * Successful Response
-   */
-  200: UploadAndIndexResponse;
+    /**
+     * Successful Response
+     */
+    200: UploadAndIndexResponse;
 };
 
-export type IngestDocumentResponse =
-  IngestDocumentResponses[keyof IngestDocumentResponses];
+export type IngestDocumentResponse = IngestDocumentResponses[keyof IngestDocumentResponses];
 
 export type GetHealthData = {
-  body?: never;
-  path?: never;
-  query?: never;
-  url: "/health";
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/health';
 };
 
 export type GetHealthResponses = {
-  /**
-   * Successful Response
-   */
-  200: HealthResponse;
+    /**
+     * Successful Response
+     */
+    200: HealthResponse;
 };
 
 export type GetHealthResponse = GetHealthResponses[keyof GetHealthResponses];
 
 export type ListAgentStatsData = {
-  body?: never;
-  path: {
-    /**
-     * Agent Id
-     */
-    agent_id: string;
-  };
-  query?: {
-    /**
-     * Days
-     */
-    days?: number;
-  };
-  url: "/api/agents/{agent_id}/stats";
+    body?: never;
+    path: {
+        /**
+         * Agent Id
+         */
+        agent_id: string;
+    };
+    query?: {
+        /**
+         * Days
+         */
+        days?: number;
+    };
+    url: '/api/agents/{agent_id}/stats';
 };
 
 export type ListAgentStatsErrors = {
-  /**
-   * Validation Error
-   */
-  422: HttpValidationError;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
 };
 
-export type ListAgentStatsError =
-  ListAgentStatsErrors[keyof ListAgentStatsErrors];
+export type ListAgentStatsError = ListAgentStatsErrors[keyof ListAgentStatsErrors];
 
 export type ListAgentStatsResponses = {
-  /**
-   * Successful Response
-   */
-  200: ListAgentStatsResponse;
+    /**
+     * Successful Response
+     */
+    200: ListAgentStatsResponse;
 };
 
-export type ListAgentStatsResponse2 =
-  ListAgentStatsResponses[keyof ListAgentStatsResponses];
+export type ListAgentStatsResponse2 = ListAgentStatsResponses[keyof ListAgentStatsResponses];
 
 export type ClientOptions = {
-  baseURL: `${string}://${string}` | (string & {});
+    baseURL: `${string}://${string}` | (string & {});
 };

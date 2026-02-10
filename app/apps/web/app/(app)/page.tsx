@@ -5,18 +5,44 @@ import { Button } from "@ai-router/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@ai-router/ui/card";
 import { Textarea } from "@ai-router/ui/textarea";
 import { motion } from "framer-motion";
-import { Bot, Send } from "lucide-react";
+import { Bot, Paperclip, Send, X } from "lucide-react";
 import * as React from "react";
 
-import { streamChat, type StreamLine } from "./chat-stream";
+import { Link } from "react-router-dom";
+import {
+  streamChat,
+  type ChatAttachmentParam,
+  type HumanTaskLine,
+  type StreamLine,
+} from "./chat-stream";
 
-type Message = { role: "user" | "assistant"; content: string };
+type Message = {
+  role: "user" | "assistant";
+  content: string;
+  attachments?: ChatAttachmentParam[];
+};
+
+function fileToAttachment(file: File): Promise<ChatAttachmentParam> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      const base64 = dataUrl.includes(",") ? dataUrl.split(",")[1] : dataUrl;
+      resolve({ mimeType: file.type || "application/octet-stream", dataBase64: base64 ?? "" });
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
 
 export default function Page() {
   const { agentId } = useActiveAgent();
   const [messages, setMessages] = React.useState<Message[]>([]);
   const [input, setInput] = React.useState("");
+  const [attachments, setAttachments] = React.useState<ChatAttachmentParam[]>([]);
   const [isStreaming, setIsStreaming] = React.useState(false);
+  const [pendingHumanTask, setPendingHumanTask] = React.useState<HumanTaskLine | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const messagesEndRef = React.useRef<HTMLDivElement>(null);
   const scrollToBottom = React.useCallback(() => {
@@ -33,10 +59,12 @@ export default function Page() {
       const message = input.trim();
       if (!message || !agentId || isStreaming) return;
       setInput("");
-      // Single update: add user message and empty assistant message so streamed text has a target
+      const attachmentsToSend = [...attachments];
+      setAttachments([]);
+      // Single update: add user message (with attachments for display) and empty assistant message
       setMessages((prev) => [
         ...prev,
-        { role: "user", content: message },
+        { role: "user", content: message, attachments: attachmentsToSend.length ? attachmentsToSend : undefined },
         { role: "assistant", content: "" },
       ]);
       setIsStreaming(true);
@@ -44,8 +72,8 @@ export default function Page() {
         await streamChat({
           agentId,
           message,
+          attachments: attachmentsToSend.length ? attachmentsToSend : undefined,
           onLine(data: StreamLine) {
-            // Backend sends NDJSON: first line = router_decision (no text), then text chunks, then is_final
             if ("text" in data && typeof data.text === "string") {
               setMessages((prev) => {
                 const next = [...prev];
@@ -58,6 +86,9 @@ export default function Page() {
                 }
                 return next;
               });
+            }
+            if ("human_task" in data && data.human_task) {
+              setPendingHumanTask(data.human_task);
             }
           },
         });
@@ -86,8 +117,30 @@ export default function Page() {
         setIsStreaming(false);
       }
     },
-    [agentId, input, isStreaming],
+    [agentId, input, isStreaming, attachments],
   );
+
+  const onAttachmentClick = React.useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const onFileChange = React.useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = e.target.files;
+      if (!files?.length) return;
+      Promise.all(Array.from(files).map(fileToAttachment))
+        .then((list) =>
+          setAttachments((prev) => [...prev, ...list].slice(0, 5))
+        )
+        .catch(() => { });
+      e.target.value = "";
+    },
+    []
+  );
+
+  const removeAttachment = React.useCallback((index: number) => {
+    setAttachments((prev) => prev.filter((_, i) => i !== index));
+  }, []);
 
   if (!agentId) {
     return (
@@ -148,7 +201,7 @@ export default function Page() {
                 key={i}
                 className={
                   msg.role === "user"
-                    ? "ml-auto max-w-[85%] rounded-2xl rounded-br-md shadow-sm bg-primary px-4 py-2.5 text-primary-foreground"
+                    ? "ml-auto max-w-[85%] rounded-2xl rounded-br-md border bg-muted/50 shadow-sm px-4 py-2.5"
                     : "mr-auto max-w-[85%] rounded-2xl rounded-bl-md border bg-muted/50 shadow-sm px-4 py-2.5"
                 }
                 initial={{
@@ -164,9 +217,36 @@ export default function Page() {
                       : 0,
                 }}
               >
-                <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">
-                  {msg.content || "…"}
-                </p>
+                {msg.role === "user" && msg.attachments?.length ? (
+                  <div className="flex flex-col gap-2">
+                    {msg.attachments.map((att, j) =>
+                      att.mimeType.startsWith("image/") ? (
+                        <img
+                          key={j}
+                          src={`data:${att.mimeType};base64,${att.dataBase64}`}
+                          alt=""
+                          className="max-h-48 max-w-full rounded-md object-contain"
+                        />
+                      ) : att.mimeType.startsWith("audio/") ? (
+                        <audio
+                          key={j}
+                          controls
+                          className="max-w-full"
+                          src={`data:${att.mimeType};base64,${att.dataBase64}`}
+                        />
+                      ) : null
+                    )}
+                    {msg.content ? (
+                      <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">
+                        {msg.content}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : (
+                  <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">
+                    {msg.content || "…"}
+                  </p>
+                )}
                 {showStreamingDots && i === messages.length - 1 && (
                   <span className="inline-flex gap-0.5 ml-0.5 align-middle">
                     <span
@@ -195,33 +275,97 @@ export default function Page() {
               </motion.div>
             ))}
             <div ref={messagesEndRef} />
+            {pendingHumanTask && (
+              <div className="flex items-center justify-between gap-2 rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-sm">
+                <span>
+                  Approval required: {pendingHumanTask.reason}
+                  <Link
+                    to="/human-tasks"
+                    className="ml-2 font-medium text-amber-700 underline dark:text-amber-400"
+                  >
+                    Review in Human tasks
+                  </Link>
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setPendingHumanTask(null)}
+                  aria-label="Dismiss"
+                >
+                  <X className="size-4" />
+                </Button>
+              </div>
+            )}
           </div>
           <form
             onSubmit={handleSubmit}
-            className="flex shrink-0 gap-2 border-t bg-card p-4"
+            className="flex shrink-0 flex-col gap-2 border-t bg-card p-4"
           >
-            <Textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Type a message…"
-              className="min-h-[44px] resize-none transition-colors duration-200 focus-visible:ring-2"
-              rows={1}
-              disabled={isStreaming}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSubmit(e as unknown as React.FormEvent);
-                }
-              }}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*,audio/*"
+              multiple
+              className="hidden"
+              aria-hidden
+              onChange={onFileChange}
             />
-            <Button
-              type="submit"
-              size="icon"
-              disabled={isStreaming || !input.trim()}
-              className="shrink-0 transition-transform duration-150 hover:scale-105 active:scale-95"
-            >
-              <Send className="size-4" />
-            </Button>
+            {attachments.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {attachments.map((_, i) => (
+                  <span
+                    key={i}
+                    className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs"
+                  >
+                    {i + 1}
+                    <button
+                      type="button"
+                      onClick={() => removeAttachment(i)}
+                      className="rounded p-0.5 hover:bg-muted-foreground/20"
+                      aria-label="Remove attachment"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-2">
+              <Textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Type a message…"
+                className="min-h-[44px] resize-none transition-colors duration-200 focus-visible:ring-2"
+                rows={1}
+                disabled={isStreaming}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSubmit(e as unknown as React.FormEvent);
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                disabled={isStreaming}
+                onClick={onAttachmentClick}
+                aria-label="Attach image or audio"
+                className="shrink-0"
+              >
+                <Paperclip className="size-4" />
+              </Button>
+              <Button
+                type="submit"
+                size="icon"
+                disabled={isStreaming || !input.trim()}
+                className="shrink-0 transition-transform duration-150 hover:scale-105 active:scale-95"
+              >
+                <Send className="size-4" />
+              </Button>
+            </div>
           </form>
         </CardContent>
       </Card>

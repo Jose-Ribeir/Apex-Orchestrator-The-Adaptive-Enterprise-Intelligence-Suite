@@ -22,6 +22,7 @@ def run_generator_stream(
     input_chars: int,
     docs_count: int,
     total_docs: int,
+    attachments: list[dict[str, str]] | None = None,
 ):
     return get_llm_provider().run_generator_stream(
         full_prompt,
@@ -30,6 +31,7 @@ def run_generator_stream(
         input_chars,
         docs_count,
         total_docs,
+        attachments=attachments,
     )
 
 

@@ -27,8 +27,9 @@ class LLMProvider(Protocol):
         input_chars: int,
         docs_count: int,
         total_docs: int,
+        attachments: list[dict[str, str]] | None = None,
     ) -> Generator[str, None, None]:
-        """Yield NDJSON lines: {text}, then final {is_final, metrics}."""
+        """Yield NDJSON lines: {text}, then final {is_final, metrics}. Optional attachments for multimodal."""
         ...
 
     def build_system_prompt_from_agent(

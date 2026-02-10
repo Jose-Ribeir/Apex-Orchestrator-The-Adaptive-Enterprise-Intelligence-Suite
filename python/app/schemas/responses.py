@@ -37,11 +37,17 @@ class AgentStatusIndexing(BaseModel):
 
 
 class AgentMetadata(BaseModel):
-    """Agent metadata; status.indexing (document) and status.enrich (prompt) state."""
+    """Agent metadata; status.indexing (document) and status.enrich (prompt) state; optional long-context settings."""
 
     status: AgentStatusIndexing = Field(
         default_factory=lambda: AgentStatusIndexing(indexing="completed", enrich="pending"),
         description="Status including indexing and enrich state",
+    )
+    long_context_enabled: bool | None = Field(
+        None, description="When true, use full docs in context when under token cap"
+    )
+    long_context_max_tokens: int | None = Field(
+        None, description="Max tokens for long-context mode (e.g. 1M or 2M for Pro)"
     )
 
 

@@ -228,6 +228,8 @@ async def update_agent_by_id(
         prompt=body.prompt,
         instructions=body.instructions,
         tools=body.tools,
+        long_context_mode=body.long_context_mode,
+        long_context_max_tokens=body.long_context_max_tokens,
     )
     if updated is None:
         raise HTTPException(status_code=404, detail="Agent not found")

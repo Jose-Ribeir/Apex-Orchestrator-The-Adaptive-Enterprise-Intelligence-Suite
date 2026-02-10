@@ -212,12 +212,21 @@ def get_agent(
 
 def _metadata_from_agent(agent: Agent) -> AgentMetadata:
     """Build AgentMetadata from attached agent (must be called inside session)."""
-    status_obj = (
-        (agent.resolved_metadata.get("status") or {}) if isinstance(agent.resolved_metadata.get("status"), dict) else {}
-    )
+    meta = agent.resolved_metadata
+    status_obj = (meta.get("status") or {}) if isinstance(meta.get("status"), dict) else {}
     indexing = status_obj.get("indexing", "completed")
     enrich = status_obj.get("enrich", "pending")
-    return AgentMetadata(status=AgentStatusIndexing(indexing=indexing, enrich=enrich))
+    long_context_enabled = (
+        meta.get("long_context_enabled") if isinstance(meta.get("long_context_enabled"), bool) else None
+    )
+    long_context_max_tokens = (
+        meta.get("long_context_max_tokens") if isinstance(meta.get("long_context_max_tokens"), int) else None
+    )
+    return AgentMetadata(
+        status=AgentStatusIndexing(indexing=indexing, enrich=enrich),
+        long_context_enabled=long_context_enabled,
+        long_context_max_tokens=long_context_max_tokens,
+    )
 
 
 def get_agent_detail_response(
@@ -267,6 +276,8 @@ def update_agent(
     prompt: str | None = None,
     instructions: list[str] | None = None,
     tools: list[str] | None = None,
+    long_context_mode: bool | None = None,
+    long_context_max_tokens: int | None = None,
 ) -> Agent | None:
     """Update agent; returns updated Agent or None if not found."""
     agent = get_agent(agent_id, user_id=user_id)
@@ -284,6 +295,13 @@ def update_agent(
             agent.mode = mode.strip().upper() or agent.mode
         if prompt is not None:
             agent.prompt = prompt.strip() if prompt else None
+        if long_context_mode is not None or long_context_max_tokens is not None:
+            current = dict(agent.metadata_) if agent.metadata_ else {}
+            if long_context_mode is not None:
+                current["long_context_enabled"] = long_context_mode
+            if long_context_max_tokens is not None:
+                current["long_context_max_tokens"] = long_context_max_tokens
+            agent.metadata_ = current
         if instructions is not None:
             session.query(AgentInstruction).filter(AgentInstruction.agent_id == aid).delete()
             for i, content in enumerate(instructions):

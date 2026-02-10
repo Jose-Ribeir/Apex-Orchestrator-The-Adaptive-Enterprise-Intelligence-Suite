@@ -1,6 +1,7 @@
 """Human tasks API (under /api/human-tasks)."""
 
 import asyncio
+import json
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -13,7 +14,7 @@ from app.schemas.responses import (
     ListHumanTasksResponse,
     PaginationMeta,
 )
-from app.services import human_tasks_service
+from app.services import connections_service, gmail_service, human_tasks_service
 
 router = APIRouter(prefix="/human-tasks", tags=["Human Tasks"])
 
@@ -168,13 +169,30 @@ async def update_task(
     "/{task_id}/resolve",
     response_model=HumanTaskResponse,
     summary="Resolve human task",
-    description="Mark a human task as resolved.",
+    description="Mark a human task as resolved. If the task has a stored email action (send/reply), it is executed first.",
     operation_id="resolveHumanTask",
 )
 async def resolve_task(
     task_id: UUID,
     current_user: dict = Depends(get_current_user),
 ):
+    task = await asyncio.to_thread(human_tasks_service.get_task, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="Human task not found")
+    if task.status == "PENDING" and task.retrieved_data:
+        try:
+            action_data = json.loads(task.retrieved_data)
+            if isinstance(action_data, dict) and action_data.get("action") in ("send_email", "reply_email"):
+                user_id = current_user["id"]
+                get_token = lambda uid: connections_service.get_valid_access_token(uid, "google")
+                await asyncio.to_thread(
+                    gmail_service.execute_email_action,
+                    user_id,
+                    action_data,
+                    get_token,
+                )
+        except (json.JSONDecodeError, TypeError, KeyError):
+            pass
     task = await asyncio.to_thread(human_tasks_service.resolve_task, task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Human task not found")

@@ -281,7 +281,7 @@ def generate_gmail_query(user_message: str) -> str:
         )
 
         resp = client.models.generate_content(
-            model="gemini-2.5-flash-lite",
+            model="gemini-3-flash-preview",
             contents=f"{prompt}\n\nUser message: {user_message.strip()!r}",
         )
         text = (resp.text or "").strip().strip('"').strip()
@@ -293,18 +293,13 @@ def generate_gmail_query(user_message: str) -> str:
         return ""
 
 
-def extract_and_execute_email_actions(
-    user_id: str,
+def extract_email_action_only(
     user_message: str,
     assistant_response: str,
     gmail_context_with_ids: str,
-    get_token: "object",
 ) -> dict | None:
-    """If the user asked to send/reply and the assistant wrote content, extract params and execute.
-
-    get_token: callable(user_id) -> access_token or None.
-    Returns None if no action or extraction failed; else {type, success, error}.
-    """
+    """Extract email action (send/reply) from user and assistant text. Does not execute.
+    Returns parsed dict with action, to, subject, body, message_id (for reply) or None."""
     import json as _json
 
     if not (gmail_context_with_ids or "").strip() or not (assistant_response or "").strip():
@@ -314,7 +309,6 @@ def extract_and_execute_email_actions(
         return None
     try:
         from google import genai
-        from google.genai.errors import ClientError as GenaiClientError
 
         client = genai.Client(api_key=settings.gemini_api_key.strip())
         prompt = (
@@ -333,11 +327,10 @@ def extract_and_execute_email_actions(
             f"{assistant_response[:3000]}"
         )
         resp = client.models.generate_content(
-            model="gemini-2.5-flash-lite",
+            model="gemini-3-flash-preview",
             contents=prompt,
         )
         text = (resp.text or "").strip()
-        # Try to parse JSON (might be wrapped in markdown code block)
         start_idx = text.find("{")
         if start_idx >= 0:
             end_idx = text.rfind("}")
@@ -346,30 +339,57 @@ def extract_and_execute_email_actions(
         data = _json.loads(text)
         if not data or data.get("action") is None:
             return None
-        action = data.get("action")
-        token = get_token(user_id) if callable(get_token) else None
-        if not token:
-            return {"type": action, "success": False, "error": "Gmail not connected."}
-        if action == "send_email":
-            to = (data.get("to") or "").strip()
-            body = (data.get("body") or "").strip()
-            success, err = send_gmail_message(
-                token,
-                to=to,
-                subject=(data.get("subject") or "").strip() or "(No subject)",
-                body_plain=body,
-            )
-            return {"type": "send_email", "success": success, "error": err or None}
-        if action == "reply_email":
-            msg_id = (data.get("message_id") or "").strip()
-            body = (data.get("body") or "").strip()
-            if not msg_id:
-                return {"type": "reply_email", "success": False, "error": "Missing message_id."}
-            success, err = reply_gmail_message(token, msg_id, body)
-            return {"type": "reply_email", "success": success, "error": err or None}
+        return data
     except _json.JSONDecodeError:
         return None
     except Exception as e:
-        logger.warning("Email action extraction/execution failed: %s", e, exc_info=True)
+        logger.warning("Email action extraction failed: %s", e, exc_info=True)
         return None
-    return None
+
+
+def execute_email_action(user_id: str, action_data: dict, get_token: "object") -> dict:
+    """Execute a previously extracted email action (send_email or reply_email).
+    get_token: callable(user_id) -> access_token or None.
+    Returns {type, success, error}."""
+    action = action_data.get("action")
+    if not action:
+        return {"type": "unknown", "success": False, "error": "No action in payload."}
+    token = get_token(user_id) if callable(get_token) else None
+    if not token:
+        return {"type": action, "success": False, "error": "Gmail not connected."}
+    if action == "send_email":
+        to = (action_data.get("to") or "").strip()
+        body = (action_data.get("body") or "").strip()
+        success, err = send_gmail_message(
+            token,
+            to=to,
+            subject=(action_data.get("subject") or "").strip() or "(No subject)",
+            body_plain=body,
+        )
+        return {"type": "send_email", "success": success, "error": err or None}
+    if action == "reply_email":
+        msg_id = (action_data.get("message_id") or "").strip()
+        body = (action_data.get("body") or "").strip()
+        if not msg_id:
+            return {"type": "reply_email", "success": False, "error": "Missing message_id."}
+        success, err = reply_gmail_message(token, msg_id, body)
+        return {"type": "reply_email", "success": success, "error": err or None}
+    return {"type": action, "success": False, "error": "Unknown action."}
+
+
+def extract_and_execute_email_actions(
+    user_id: str,
+    user_message: str,
+    assistant_response: str,
+    gmail_context_with_ids: str,
+    get_token: "object",
+) -> dict | None:
+    """If the user asked to send/reply and the assistant wrote content, extract params and execute.
+
+    get_token: callable(user_id) -> access_token or None.
+    Returns None if no action or extraction failed; else {type, success, error}.
+    """
+    action_data = extract_email_action_only(user_message, assistant_response, gmail_context_with_ids)
+    if not action_data:
+        return None
+    return execute_email_action(user_id, action_data, get_token)

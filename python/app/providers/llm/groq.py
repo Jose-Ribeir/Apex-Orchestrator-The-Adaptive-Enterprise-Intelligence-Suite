@@ -15,7 +15,6 @@ MODEL_MAP = {
     "gemini-3-pro-preview": "llama-3.3-70b-versatile",
     "gemini-3-flash-preview": "llama-3.1-8b-instant",
     "gemini-2.5-flash": "llama-3.3-70b-versatile",
-    "gemini-2.5-flash-lite": "llama-3.1-8b-instant",
 }
 
 _client: Any = None
@@ -83,6 +82,7 @@ class GroqLLMProvider:
         input_chars: int,
         docs_count: int,
         total_docs: int,
+        attachments: list[dict[str, str]] | None = None,
     ) -> Generator[str, None, None]:
         client = _get_client()
         model = MODEL_MAP.get(

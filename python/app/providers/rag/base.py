@@ -22,6 +22,10 @@ class RAGRetriever(Protocol):
         """Total document count for this agent."""
         ...
 
+    def get_all_content_for_context(self, max_tokens: int) -> tuple[str, int] | None:
+        """Return (concatenated_content, estimated_total_tokens) if under cap and supported; else None."""
+        ...
+
 
 class RAGProvider(Protocol):
     """Factory + listing. One implementation per backend (vertex, memory, etc.)."""

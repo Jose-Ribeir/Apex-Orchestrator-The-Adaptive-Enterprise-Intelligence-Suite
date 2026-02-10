@@ -23,6 +23,7 @@ class GeminiLLMProvider:
         input_chars: int,
         docs_count: int,
         total_docs: int,
+        attachments: list[dict[str, str]] | None = None,
     ):
         from app.services import gemini_router
 
@@ -33,6 +34,7 @@ class GeminiLLMProvider:
             input_chars,
             docs_count,
             total_docs,
+            attachments=attachments,
         )
 
     def build_system_prompt_from_agent(

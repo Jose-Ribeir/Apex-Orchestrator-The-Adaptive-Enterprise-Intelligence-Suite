@@ -204,6 +204,10 @@ class VertexRAG:
         reg = _read_registry()
         return reg.get(self._agent_restrict, 0)
 
+    def get_all_content_for_context(self, max_tokens: int) -> tuple[str, int] | None:
+        """Vertex index stores only a short content preview; full content not available."""
+        return None
+
 
 retriever_cache: dict[str, VertexRAG] = {}
 

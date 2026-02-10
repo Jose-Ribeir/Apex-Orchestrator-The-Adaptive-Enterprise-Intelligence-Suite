@@ -14,34 +14,62 @@ const getBaseUrl = (): string => {
   );
 };
 
+export type HumanTaskLine = {
+  id: string;
+  model_query_id: string;
+  reason: string;
+  status: string;
+  model_message?: string;
+  retrieved_data?: string | null;
+};
+
 export type StreamLine =
   | { router_decision?: unknown; metrics?: unknown }
   | { text?: string; metrics?: unknown }
   | { text?: string; is_final?: boolean; metrics?: unknown }
+  | { human_task?: HumanTaskLine }
+  | { email_action?: unknown }
   | { error?: string; detail?: string };
+
+export interface ChatAttachmentParam {
+  mimeType: string;
+  dataBase64: string;
+}
 
 export interface StreamChatParams {
   agentId: string;
   message: string;
+  attachments?: ChatAttachmentParam[];
   onLine?: (data: StreamLine) => void;
 }
 
 /**
- * POST /generate_stream with body { agent_id, message }, read NDJSON stream, call onLine for each line.
+ * POST /generate_stream with body { agent_id, message, attachments? }, read NDJSON stream, call onLine for each line.
  * Throws if fetch fails or if the first line contains an error.
  */
 export async function streamChat({
   agentId,
   message,
+  attachments,
   onLine,
 }: StreamChatParams): Promise<void> {
   const baseUrl = getBaseUrl();
   const url = `${baseUrl.replace(/\/$/, "")}/generate_stream`;
+  const body: Record<string, unknown> = {
+    agent_id: agentId,
+    message,
+  };
+  if (attachments?.length) {
+    body.attachments = attachments.map((a) => ({
+      mime_type: a.mimeType,
+      data_base64: a.dataBase64,
+    }));
+  }
   const res = await fetch(url, {
     method: "POST",
     credentials: "include",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ agent_id: agentId, message }),
+    body: JSON.stringify(body),
   });
   if (!res.ok) {
     const text = await res.text();

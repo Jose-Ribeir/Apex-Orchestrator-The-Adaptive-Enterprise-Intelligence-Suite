@@ -5,6 +5,7 @@ import json
 import logging
 import time
 from typing import Any
+from uuid import UUID
 
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
@@ -12,7 +13,7 @@ from fastapi.responses import StreamingResponse
 from app.auth.deps import get_current_user_optional
 from app.config import get_settings
 from app.schemas.requests import ChatRequest
-from app.services import connections_service, gmail_service
+from app.services import connections_service, gmail_service, human_tasks_service
 from app.services.agent_service import get_agent
 from app.services.llm import build_system_prompt_from_agent, run_cheap_router, run_generator_stream
 from app.services.rag import get_or_create_retriever
@@ -48,6 +49,34 @@ def _insert_model_query_sync(payload: dict[str, Any]) -> None:
             )
     except Exception as e:
         logger.warning("Background ModelQuery insert failed: %s", e)
+
+
+def _insert_model_query_sync_return_id(payload: dict[str, Any]) -> str | None:
+    """Insert one ModelQuery and return its id (for human-task flow). Returns None on error."""
+    try:
+        import uuid as uuid_mod
+
+        from app.db import session_scope
+        from app.models import ModelQuery
+
+        agent_id = uuid_mod.UUID(payload["agent_id"])
+        with session_scope() as session:
+            mq = ModelQuery(
+                agent_id=agent_id,
+                user_query=payload["user_query"],
+                model_response=payload.get("model_response"),
+                method_used=payload.get("method_used", "EFFICIENCY"),
+                flow_log=payload.get("flow_log"),
+                total_tokens=payload.get("total_tokens"),
+                duration_ms=payload.get("duration_ms"),
+                quality_score=payload.get("quality_score"),
+            )
+            session.add(mq)
+            session.flush()
+            return str(mq.id)
+    except Exception as e:
+        logger.warning("ModelQuery insert (human task) failed: %s", e)
+        return None
 
 
 def _rag_key(request: ChatRequest, *, resolved_agent_name: str) -> str:
@@ -121,7 +150,26 @@ def _run_stream_pipeline(
     context_str = ""
     docs_count = 0
     total_docs = rag.count_documents()
-    if tool_decision.get("needs_rag", False):
+
+    # Long context mode: when enabled and total docs under cap, use raw docs instead of vector search
+    long_context_used = False
+    if request.agent_id and total_docs > 0:
+        agent = get_agent(request.agent_id, with_relations=True)
+        if agent and agent.resolved_metadata.get("long_context_enabled"):
+            max_tokens = agent.resolved_metadata.get("long_context_max_tokens", 1_000_000)
+            result = rag.get_all_content_for_context(max_tokens)
+            if result is not None:
+                context_str, _est_tokens = result
+                docs_count = total_docs
+                long_context_used = True
+                logger.info(
+                    "Long context: key=%s total_docs=%s estimated_tokens=%s",
+                    _rag_key(request, resolved_agent_name=agent_name),
+                    total_docs,
+                    _est_tokens,
+                )
+
+    if not long_context_used and tool_decision.get("needs_rag", False):
         try:
             results = rag.search(request.message)
             docs_count = len(results)
@@ -161,7 +209,7 @@ def _run_stream_pipeline(
                 context_str += "\n\n[GMAIL: could not load messages.]"
         else:
             context_str += "\n\n[GMAIL: not connected. Connect Gmail in Connections to see emails here.]"
-    generator_model_name = tool_decision.get("model_to_use", "gemini-2.5-flash")
+    generator_model_name = tool_decision.get("model_to_use", "gemini-3-flash-preview")
     full_prompt = f"""
 [SYSTEM]{system_prompt}
 
@@ -175,7 +223,7 @@ def _run_stream_pipeline(
 
     metrics = {
         "call_count": 1,
-        "router_model": "gemini-2.5-flash-lite",
+        "router_model": "gemini-3-flash-preview",
         "generator_model": generator_model_name,
         "tools_executed": tool_decision.get("tools_needed", []),
         "connections_used": tool_decision.get("connections_needed", []),
@@ -196,6 +244,9 @@ def _run_stream_pipeline(
     accumulated_text: list[str] = []
     stream_total_tokens: int | None = None
     start_time = time.perf_counter()
+    attachments_list: list[dict[str, str]] | None = None
+    if request.attachments:
+        attachments_list = [{"mime_type": a.mime_type, "data_base64": a.data_base64} for a in request.attachments]
     for line in run_generator_stream(
         full_prompt,
         generator_model_name,
@@ -203,6 +254,7 @@ def _run_stream_pipeline(
         input_chars,
         docs_count,
         total_docs,
+        attachments=attachments_list,
     ):
         try:
             parsed = json.loads(line)
@@ -215,42 +267,202 @@ def _run_stream_pipeline(
             pass
         yield line
     response_text = "".join(accumulated_text)
-    # If we had Gmail context, check whether to send or reply and execute
-    if user_id and gmail_context_for_actions:
-        try:
-            action_result = gmail_service.extract_and_execute_email_actions(
-                user_id,
-                request.message or "",
-                response_text,
-                gmail_context_for_actions,
-                get_token=lambda uid: connections_service.get_valid_access_token(uid, "google"),
-            )
-            if action_result:
-                yield json.dumps({"email_action": action_result}) + "\n"
-        except Exception as e:
-            logger.warning("Email action step failed: %s", e)
     duration_ms = int((time.perf_counter() - start_time) * 1000)
+    human_task_created = False
+
+    # Router requested human review (e.g. customer support escalation)
     if (
-        model_query_payload is not None
+        tool_decision.get("needs_human_review")
+        and get_settings().database_configured
+        and model_query_payload is not None
         and request.agent_id
         and str(request.agent_id).strip()
-        and get_settings().database_configured
     ):
-        if len(response_text) > _MODEL_RESPONSE_MAX_CHARS:
-            response_text = response_text[:_MODEL_RESPONSE_MAX_CHARS] + "\n...[truncated]"
+        response_truncated = (
+            response_text[:_MODEL_RESPONSE_MAX_CHARS] + "\n...[truncated]"
+            if len(response_text) > _MODEL_RESPONSE_MAX_CHARS
+            else response_text
+        )
         flow_log_metrics: dict[str, Any] = {
             "call_count": 1,
-            "router_model": "gemini-2.5-flash-lite",
-            "generator_model": tool_decision.get("model_to_use", "gemini-2.5-flash"),
+            "router_model": "gemini-3-flash-preview",
+            "generator_model": tool_decision.get("model_to_use", "gemini-3-flash-preview"),
             "tools_executed": tool_decision.get("tools_needed", []),
             "docs_retrieved": docs_count,
             "total_docs": total_docs,
             "input_chars": input_chars,
             "response_chars": len(response_text),
+            "duration_ms": duration_ms,
         }
         if stream_total_tokens is not None:
             flow_log_metrics["total_tokens"] = stream_total_tokens
-        flow_log_metrics["duration_ms"] = duration_ms
+        flow_log = {
+            "request": {
+                "agent_id": str(request.agent_id).strip(),
+                "user_query": request.message,
+                "user_query_len": len(request.message or ""),
+            },
+            "router_decision": tool_decision,
+            "metrics": flow_log_metrics,
+            "response_preview": (response_text[:500] + "...") if len(response_text) > 500 else response_text,
+        }
+        payload = {
+            "agent_id": str(request.agent_id).strip(),
+            "user_query": request.message,
+            "model_response": response_truncated or None,
+            "method_used": (tool_decision.get("model_to_use") or "EFFICIENCY").strip().upper() or "EFFICIENCY",
+            "flow_log": flow_log,
+            "total_tokens": stream_total_tokens,
+            "duration_ms": duration_ms,
+        }
+        model_query_id = _insert_model_query_sync_return_id(payload)
+        if model_query_id:
+            try:
+                reason = (tool_decision.get("reason") or "Router requested human review").strip()
+                task = human_tasks_service.create_task(
+                    model_query_id=UUID(model_query_id),
+                    reason=reason[:500] if len(reason) > 500 else reason,
+                    model_message=response_text[:5000] or "",
+                    retrieved_data=json.dumps({"source": "router", "needs_human_review": True}),
+                    status="PENDING",
+                )
+                human_task_created = True
+                yield (
+                    json.dumps(
+                        {
+                            "human_task": {
+                                "id": str(task.id),
+                                "model_query_id": model_query_id,
+                                "reason": task.reason,
+                                "status": task.status,
+                                "model_message": (task.model_message or "")[:500],
+                                "retrieved_data": task.retrieved_data,
+                            },
+                        }
+                    )
+                    + "\n"
+                )
+                logger.info("Human task created (router needs_human_review) task_id=%s", task.id)
+            except Exception as e:
+                logger.warning("Human task create (router) failed: %s", e, exc_info=True)
+
+    # If we had Gmail context, check for email action: require human approval (insert task) or execute
+    if user_id and gmail_context_for_actions and not human_task_created:
+        try:
+            action_data = gmail_service.extract_email_action_only(
+                request.message or "",
+                response_text,
+                gmail_context_for_actions,
+            )
+            if (
+                action_data
+                and get_settings().database_configured
+                and model_query_payload is not None
+                and request.agent_id
+            ):
+                # Human task required: insert ModelQuery, create HumanTask, yield human_task (do not execute)
+                response_truncated = (
+                    response_text[:_MODEL_RESPONSE_MAX_CHARS] + "\n...[truncated]"
+                    if len(response_text) > _MODEL_RESPONSE_MAX_CHARS
+                    else response_text
+                )
+                flow_log_metrics: dict[str, Any] = {
+                    "call_count": 1,
+                    "router_model": "gemini-3-flash-preview",
+                    "generator_model": tool_decision.get("model_to_use", "gemini-3-flash-preview"),
+                    "tools_executed": tool_decision.get("tools_needed", []),
+                    "docs_retrieved": docs_count,
+                    "total_docs": total_docs,
+                    "input_chars": input_chars,
+                    "response_chars": len(response_text),
+                    "duration_ms": duration_ms,
+                }
+                if stream_total_tokens is not None:
+                    flow_log_metrics["total_tokens"] = stream_total_tokens
+                flow_log = {
+                    "request": {
+                        "agent_id": str(request.agent_id).strip(),
+                        "user_query": request.message,
+                        "user_query_len": len(request.message or ""),
+                    },
+                    "router_decision": tool_decision,
+                    "metrics": flow_log_metrics,
+                    "response_preview": (response_text[:500] + "...") if len(response_text) > 500 else response_text,
+                }
+                payload = {
+                    "agent_id": str(request.agent_id).strip(),
+                    "user_query": request.message,
+                    "model_response": response_truncated or None,
+                    "method_used": (tool_decision.get("model_to_use") or "EFFICIENCY").strip().upper() or "EFFICIENCY",
+                    "flow_log": flow_log,
+                    "total_tokens": stream_total_tokens,
+                    "duration_ms": duration_ms,
+                }
+                model_query_id = _insert_model_query_sync_return_id(payload)
+                if model_query_id:
+                    try:
+                        task = human_tasks_service.create_task(
+                            model_query_id=UUID(model_query_id),
+                            reason="Email action requires approval",
+                            model_message=response_text[:5000] or "",
+                            retrieved_data=json.dumps(action_data),
+                            status="PENDING",
+                        )
+                        human_task_created = True
+                        yield (
+                            json.dumps(
+                                {
+                                    "human_task": {
+                                        "id": str(task.id),
+                                        "model_query_id": model_query_id,
+                                        "reason": task.reason,
+                                        "status": task.status,
+                                        "model_message": (task.model_message or "")[:500],
+                                        "retrieved_data": task.retrieved_data,
+                                    },
+                                }
+                            )
+                            + "\n"
+                        )
+                        logger.info("Human task created for email action task_id=%s", task.id)
+                    except Exception as e:
+                        logger.warning("Human task create failed: %s", e, exc_info=True)
+            elif not action_data:
+                # No email action: run execute path (legacy) and yield email_action if any
+                action_result = gmail_service.extract_and_execute_email_actions(
+                    user_id,
+                    request.message or "",
+                    response_text,
+                    gmail_context_for_actions,
+                    get_token=lambda uid: connections_service.get_valid_access_token(uid, "google"),
+                )
+                if action_result:
+                    yield json.dumps({"email_action": action_result}) + "\n"
+        except Exception as e:
+            logger.warning("Email action step failed: %s", e)
+
+    if (
+        model_query_payload is not None
+        and request.agent_id
+        and str(request.agent_id).strip()
+        and get_settings().database_configured
+        and not human_task_created
+    ):
+        if len(response_text) > _MODEL_RESPONSE_MAX_CHARS:
+            response_text = response_text[:_MODEL_RESPONSE_MAX_CHARS] + "\n...[truncated]"
+        flow_log_metrics = {
+            "call_count": 1,
+            "router_model": "gemini-3-flash-preview",
+            "generator_model": tool_decision.get("model_to_use", "gemini-3-flash-preview"),
+            "tools_executed": tool_decision.get("tools_needed", []),
+            "docs_retrieved": docs_count,
+            "total_docs": total_docs,
+            "input_chars": input_chars,
+            "response_chars": len(response_text),
+            "duration_ms": duration_ms,
+        }
+        if stream_total_tokens is not None:
+            flow_log_metrics["total_tokens"] = stream_total_tokens
         flow_log = {
             "request": {
                 "agent_id": str(request.agent_id).strip(),
@@ -286,7 +498,7 @@ def _run_stream_pipeline(
     "/generate_stream",
     summary="Stream chat (router + generator)",
     description=(
-        "Call #1: cheap router decides needs_rag, tools_needed, connections_needed, model_to_use. "
+        "Call #1: router decides needs_rag, tools_needed, connections_needed, model_to_use. "
         "Call #2: dynamic generator streams. Returns NDJSON: router_decision, text chunks, final metrics."
     ),
     operation_id="generateStream",

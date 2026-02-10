@@ -47,10 +47,7 @@ export default function HumanTasksPage() {
   const resolveTask = useMutation({
     ...resolveHumanTaskMutation(),
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        predicate: (query) =>
-          (query.queryKey[0] as { _id?: string })?._id === "listHumanTasks",
-      });
+      queryClient.invalidateQueries({ queryKey: ["listHumanTasks"] });
       setDetailTask(null);
     },
   });

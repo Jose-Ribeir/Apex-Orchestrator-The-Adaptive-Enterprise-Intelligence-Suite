@@ -185,6 +185,22 @@ class PgVectorRAGRetriever:
             ).fetchone()
         return int(row[0]) if row else 0
 
+    def get_all_content_for_context(self, max_tokens: int) -> tuple[str, int] | None:
+        table = _get_table()
+        with session_scope() as session:
+            rows = session.execute(
+                text(f"SELECT content FROM {table} WHERE agent_key = :agent_key"),
+                {"agent_key": self._agent_key},
+            ).fetchall()
+        if not rows:
+            return ("", 0)
+        parts = [(r[0] or "").strip() for r in rows if (r[0] or "").strip()]
+        concatenated = "\n\n".join(parts)
+        estimated_tokens = len(concatenated) // 4
+        if estimated_tokens > max_tokens:
+            return None
+        return (concatenated, estimated_tokens)
+
 
 def _register_pgvector(session: Any) -> None:
     """Register pgvector type on the session's connection so vector params work."""

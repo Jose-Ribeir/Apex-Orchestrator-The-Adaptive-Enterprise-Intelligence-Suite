@@ -104,6 +104,17 @@ class MemoryRAGRetriever:
     def count_documents(self) -> int:
         return len(_store.get(self._key, []))
 
+    def get_all_content_for_context(self, max_tokens: int) -> tuple[str, int] | None:
+        items = _store.get(self._key, [])
+        if not items:
+            return ("", 0)
+        parts = [(x.get("content") or "").strip() for x in items if (x.get("content") or "").strip()]
+        concatenated = "\n\n".join(parts)
+        estimated_tokens = len(concatenated) // 4
+        if estimated_tokens > max_tokens:
+            return None
+        return (concatenated, estimated_tokens)
+
 
 class MemoryRAGProvider:
     """In-memory RAG provider: no Vertex, no GCP. Uses local embeddings or keyword search."""
