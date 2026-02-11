@@ -1,7 +1,7 @@
 """Streaming chat with 2-call router + dynamic generator."""
 
-import base64
 import asyncio
+import base64
 import json
 import logging
 import time
@@ -14,18 +14,19 @@ from fastapi.responses import StreamingResponse
 
 from app.auth.deps import get_current_user_optional
 from app.config import get_settings
+from app.prompt_registry import get_router_tools_line
 from app.schemas.requests import ChatRequest
 from app.services import connections_service, gmail_service, human_tasks_service
 from app.services.agent_service import get_agent
-from app.prompt_registry import get_router_tools_line
-from app.services.llm import build_system_prompt_from_agent, run_cheap_router, run_generator_stream
 from app.services.document_parser import csv_to_text
+from app.services.llm import build_system_prompt_from_agent, run_cheap_router, run_generator_stream
 from app.services.rag import get_or_create_retriever
 
 logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Chat"])
 
 _CHAT_LOG_PATH = Path(__file__).resolve().parent.parent.parent / "chat_stream.log"
+
 
 # Ensure chat logs go to chat_stream.log so they can be read without terminal access
 def _ensure_chat_file_handler() -> None:
@@ -49,8 +50,27 @@ def _append_chat_log(line: str) -> None:
     except Exception:
         pass
 
-# When the model outputs this phrase, hide it and everything after from the chat; show only on human tasks.
+
+# When the model outputs these phrases, strip them from the user-visible response (still create human task).
 HUMAN_REVIEW_MARKER = "Human Supervisor Review Required"
+# Strip critical-issue escalation text so the user sees only the natural message
+HIDDEN_FROM_USER_PHRASES = [
+    "⚠️ CRITICAL ISSUE DETECTED: Human Supervisor Review Required.",
+    "⚠️ CRITICAL ISSUE DETECTED:",
+    "CRITICAL ISSUE DETECTED: Human Supervisor Review Required.",
+    "CRITICAL ISSUE DETECTED:",
+    "CRITICAL ISSUE DETECTED",
+    HUMAN_REVIEW_MARKER,
+]
+
+
+def _strip_hidden_phrases(text: str) -> str:
+    """Remove escalation markers so they are not shown to the user."""
+    out = text
+    for phrase in HIDDEN_FROM_USER_PHRASES:
+        out = out.replace(phrase, "")
+    return out
+
 
 # Max length to store for model_response (avoid huge DB rows)
 _MODEL_RESPONSE_MAX_CHARS = 100_000
@@ -186,7 +206,7 @@ def _run_stream_pipeline(
         )
         tools_list = tools_line.split("TOOLS: ")[1].split("\n")[0] if "TOOLS:" in tools_line else "[]"
     try:
-        connections_list = connections_service.list_connection_provider_keys()
+        connections_list = connections_service.list_connection_types_for_router()
     except Exception:
         connections_list = []
     tool_decision = run_cheap_router(
@@ -243,8 +263,8 @@ def _run_stream_pipeline(
             rag_search_results = []
     # When user is authenticated and router asked for Gmail, search or list messages and add to context
     gmail_context_for_actions = ""
-    if user_id and "google" in tool_decision.get("connections_needed", []):
-        token = connections_service.get_valid_access_token(user_id, "google")
+    if user_id and "google_gmail" in tool_decision.get("connections_needed", []):
+        token = connections_service.get_valid_access_token(user_id, "google_gmail")
         if token:
             try:
                 q = gmail_service.generate_gmail_query(request.message or "")
@@ -333,10 +353,9 @@ def _run_stream_pipeline(
         if not attachments_list:
             attachments_list = None
     logger.info(
-        "chat_stream generator_loop_start agent_id=%s model=%s needs_human_review=%s has_attachments=%s",
+        "chat_stream generator_loop_start agent_id=%s model=%s has_attachments=%s",
         request.agent_id,
         generator_model_name,
-        tool_decision.get("needs_human_review"),
         attachments_list is not None and len(attachments_list) > 0,
     )
     line_count = 0
@@ -354,16 +373,12 @@ def _run_stream_pipeline(
         try:
             parsed = json.loads(line)
             if isinstance(parsed.get("text"), str):
-                accumulated_text.append(parsed["text"])
-                full_so_far = "".join(accumulated_text)
-                if not human_review_content_triggered and HUMAN_REVIEW_MARKER in full_so_far:
-                    pos = full_so_far.find(HUMAN_REVIEW_MARKER)
-                    already_yielded_len = len(full_so_far) - len(parsed["text"])
-                    safe_len = max(0, min(len(parsed["text"]), pos - already_yielded_len))
-                    line = json.dumps({**parsed, "text": parsed["text"][:safe_len]}) + "\n"
+                # Strip escalation phrases from display; do not truncate the rest
+                chunk_text = _strip_hidden_phrases(parsed["text"])
+                if HUMAN_REVIEW_MARKER in parsed["text"]:
                     human_review_content_triggered = True
-                elif human_review_content_triggered:
-                    line = json.dumps({**parsed, "text": ""}) + "\n"
+                accumulated_text.append(parsed["text"])  # keep original for response_text / human task
+                line = json.dumps({**parsed, "text": chunk_text}) + "\n"
             if parsed.get("is_final"):
                 metrics = parsed.get("metrics") or {}
                 stream_total_tokens = metrics.get("total_tokens")
@@ -396,119 +411,18 @@ def _run_stream_pipeline(
     if response_text:
         preview = response_text[:500] + "..." if len(response_text) > 500 else response_text
         short_preview = (preview[:80] + "...") if len(preview) > 80 else preview
-        _console_log(f"model_response_preview agent_id={request.agent_id} response_chars={len(response_text)} preview={short_preview!r}")
+        _console_log(
+            f"model_response_preview agent_id={request.agent_id} response_chars={len(response_text)} preview={short_preview!r}"
+        )
         logger.info("chat_stream model_response_preview agent_id=%s preview=%s", request.agent_id, preview)
-        _append_chat_log(f"model_response_preview agent_id={request.agent_id} response_chars={len(response_text)} preview={preview!r}")
+        _append_chat_log(
+            f"model_response_preview agent_id={request.agent_id} response_chars={len(response_text)} preview={preview!r}"
+        )
     else:
         _console_log(f"model_response_empty agent_id={request.agent_id} line_count={line_count} response_chars=0")
         logger.warning("chat_stream model_response_empty agent_id=%s line_count=%s", request.agent_id, line_count)
         _append_chat_log(f"model_response_empty agent_id={request.agent_id} line_count={line_count} response_chars=0")
     human_task_created = False
-
-    # Router requested human review (e.g. customer support escalation)
-    if (
-        tool_decision.get("needs_human_review")
-        and get_settings().database_configured
-        and model_query_payload is not None
-        and request.agent_id
-        and str(request.agent_id).strip()
-    ):
-        logger.info(
-            "chat_stream creating human_task (needs_human_review) agent_id=%s",
-            request.agent_id,
-        )
-        response_truncated = (
-            response_text[:_MODEL_RESPONSE_MAX_CHARS] + "\n...[truncated]"
-            if len(response_text) > _MODEL_RESPONSE_MAX_CHARS
-            else response_text
-        )
-        flow_log_metrics: dict[str, Any] = {
-            "call_count": 1,
-            "router_model": "gemini-3-flash-preview",
-            "generator_model": tool_decision.get("model_to_use", "gemini-3-flash-preview"),
-            "tools_executed": tool_decision.get("tools_needed", []),
-            "docs_retrieved": docs_count,
-            "total_docs": total_docs,
-            "input_chars": input_chars,
-            "response_chars": len(response_text),
-            "duration_ms": duration_ms,
-        }
-        if stream_total_tokens is not None:
-            flow_log_metrics["total_tokens"] = stream_total_tokens
-        # Retrieved documents for human task review (vector search or long-context placeholder)
-        if long_context_used:
-            retrieved_documents = [{"long_context": True, "total_docs": total_docs}]
-        else:
-            retrieved_documents = [
-                {
-                    "contents": (r.get("contents") or "")[:_RETRIEVED_DOC_CONTENT_MAX]
-                    + ("..." if len((r.get("contents") or "")) > _RETRIEVED_DOC_CONTENT_MAX else ""),
-                    "score": r.get("score"),
-                }
-                for r in (rag_search_results or [])[:_RETRIEVED_DOCS_MAX]
-            ]
-        flow_log = {
-            "request": {
-                "agent_id": str(request.agent_id).strip(),
-                "user_query": request.message,
-                "user_query_len": len(request.message or ""),
-            },
-            "router_decision": tool_decision,
-            "metrics": flow_log_metrics,
-            "response_preview": (response_text[:500] + "...") if len(response_text) > 500 else response_text,
-            "retrieved_documents": retrieved_documents,
-        }
-        if long_context_used and full_prompt:
-            flow_log["prompt_sent_to_model"] = (
-                full_prompt[:_FLOW_LOG_PROMPT_MAX_CHARS] + "\n...[truncated]"
-                if len(full_prompt) > _FLOW_LOG_PROMPT_MAX_CHARS
-                else full_prompt
-            )
-        payload = {
-            "agent_id": str(request.agent_id).strip(),
-            "user_query": request.message,
-            "model_response": response_truncated or None,
-            "method_used": (tool_decision.get("model_to_use") or "EFFICIENCY").strip().upper() or "EFFICIENCY",
-            "flow_log": flow_log,
-            "total_tokens": stream_total_tokens,
-            "duration_ms": duration_ms,
-        }
-        model_query_id = _insert_model_query_sync_return_id(payload)
-        if model_query_id:
-            try:
-                reason = (tool_decision.get("reason") or "Router requested human review").strip()
-                task = human_tasks_service.create_task(
-                    model_query_id=UUID(model_query_id),
-                    reason=reason[:500] if len(reason) > 500 else reason,
-                    model_message=response_text[:5000] or "",
-                    retrieved_data=json.dumps(
-                        {"source": "router", "needs_human_review": True, "doc_count": docs_count, "long_context_used": long_context_used}
-                    ),
-                    status="PENDING",
-                )
-                human_task_created = True
-                yield (
-                    json.dumps(
-                        {
-                            "human_task": {
-                                "id": str(task.id),
-                                "model_query_id": model_query_id,
-                                "reason": task.reason,
-                                "status": task.status,
-                                "model_message": (task.model_message or "")[:500],
-                                "retrieved_data": task.retrieved_data,
-                            },
-                        }
-                    )
-                    + "\n"
-                )
-                logger.info(
-                    "chat_stream human_task yielded task_id=%s model_query_id=%s",
-                    task.id,
-                    model_query_id,
-                )
-            except Exception as e:
-                logger.warning("Human task create (router) failed: %s", e, exc_info=True)
 
     # Model output requested human review (e.g. "Human Supervisor Review Required" in response)
     if (
@@ -586,7 +500,12 @@ def _run_stream_pipeline(
                     reason="Critical issue: human supervisor review required",
                     model_message=response_text[:5000] or "",
                     retrieved_data=json.dumps(
-                        {"source": "content", "human_review_marker": HUMAN_REVIEW_MARKER, "doc_count": docs_count, "long_context_used": long_context_used}
+                        {
+                            "source": "content",
+                            "human_review_marker": HUMAN_REVIEW_MARKER,
+                            "doc_count": docs_count,
+                            "long_context_used": long_context_used,
+                        }
                     ),
                     status="PENDING",
                 )
@@ -702,7 +621,7 @@ def _run_stream_pipeline(
                     request.message or "",
                     response_text,
                     gmail_context_for_actions,
-                    get_token=lambda uid: connections_service.get_valid_access_token(uid, "google"),
+                    get_token=lambda uid: connections_service.get_valid_access_token(uid, "google_gmail"),
                 )
                 if action_result:
                     yield json.dumps({"email_action": action_result}) + "\n"
@@ -762,9 +681,25 @@ def _run_stream_pipeline(
         )
 
 
+def run_chat_pipeline_collect(request: ChatRequest, user_id: str | None = None) -> str:
+    """Run the stream pipeline and return the full response text (for email reply etc). Strips escalation phrases."""
+    text_parts: list[str] = []
+    for line in _run_stream_pipeline(request, model_query_payload=None, user_id=user_id):
+        try:
+            if isinstance(line, str):
+                parsed = json.loads(line)
+                if isinstance(parsed.get("text"), str):
+                    text_parts.append(parsed["text"])
+        except (json.JSONDecodeError, TypeError):
+            pass
+    response = _strip_hidden_phrases("".join(text_parts))
+    return response.strip()
+
+
 def _console_log(msg: str) -> None:
     """Write to stderr so it appears in the server terminal regardless of logging config."""
     import sys
+
     print(f"[chat] {msg}", file=sys.stderr, flush=True)
 
 
@@ -782,7 +717,9 @@ async def generate_stream(
     current_user: dict | None = Depends(get_current_user_optional),
 ):
     _console_log(f"generate_stream request agent_id={request.agent_id} message_len={len(request.message or '')}")
-    logger.info("generate_stream request received agent_id=%s message_len=%s", request.agent_id, len(request.message or ""))
+    logger.info(
+        "generate_stream request received agent_id=%s message_len=%s", request.agent_id, len(request.message or "")
+    )
     _append_chat_log(f"generate_stream request agent_id={request.agent_id} message_len={len(request.message or '')}")
     user_id = current_user["id"] if current_user else None
     queue: asyncio.Queue[str | tuple[str, dict] | None] = asyncio.Queue()
