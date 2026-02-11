@@ -36,9 +36,16 @@ DEFAULT_TOOL_NAMES = [
     "human-in-loop",
 ]
 
-# Supported connection types (OAuth providers)
+# Supported connection types (OAuth providers). description is for AI/router context.
 DEFAULT_CONNECTION_TYPES = [
-    {"name": "Google", "provider_key": "google"},
+    {
+        "name": "Google Gmail",
+        "provider_key": "google_gmail",
+        "description": (
+            "List emails, search emails, find emails, send and reply to emails. "
+            "Use when the user asks about their inbox, to find or search messages, or to send/reply to email."
+        ),
+    },
 ]
 
 # Seed data directory (app/seed_data/): place PDFs and CSV here for RAG preload
@@ -68,7 +75,7 @@ FIELD_SERVICE_ASSISTANT_AGENT = {
         "Once the part is identified, use the Python tool to search the 'parts_catalog.csv' file for its 'Part_Name', 'Stock_Level', and 'Price_USD'.\n"
         "CRITICAL SAFETY PROTOCOL: If the visual analysis reveals a dangerous failure (e.g., fuel leak, structural crack in a critical component) "
         "or if the part is completely out of stock, you must STOP and recommend contacting a human supervisor immediately.\n"
-        "In these critical cases, output the message: \"⚠️ CRITICAL ISSUE DETECTED: Human Supervisor Review Required.\" and do not proceed with standard repair advice.\n"
+        'In these critical cases, output the message: "⚠️ CRITICAL ISSUE DETECTED: Human Supervisor Review Required." and do not proceed with standard repair advice.\n'
         "Otherwise, provide the Part ID and current stock level in your final response.",
     ],
     "tools": ["RAG", "Python Interpreter", "Web Search", "human-in-loop"],
@@ -99,7 +106,13 @@ def seed_connection_types() -> None:
             existing = {r[0] for r in session.query(ConnectionType.provider_key).all()}
             for item in DEFAULT_CONNECTION_TYPES:
                 if item["provider_key"] not in existing:
-                    session.add(ConnectionType(name=item["name"], provider_key=item["provider_key"]))
+                    session.add(
+                        ConnectionType(
+                            name=item["name"],
+                            provider_key=item["provider_key"],
+                            description=item.get("description"),
+                        )
+                    )
                     logger.info("Seeded connection type: %s", item["provider_key"])
     except Exception as e:
         logger.warning("Seed connection types skipped (e.g. DB not ready): %s", e)
