@@ -128,7 +128,7 @@ export default function ConnectionsPage() {
         {connections.map((conn) => (
           <Card key={conn.id}>
             <CardHeader className="flex flex-row items-center gap-3">
-              {conn.providerKey === "google" ? (
+              {conn.providerKey === "google_gmail" ? (
                 <div
                   className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[#4285F4]/10"
                   aria-hidden
@@ -165,7 +165,7 @@ export default function ConnectionsPage() {
               <div className="min-w-0 flex-1">
                 <CardTitle className="text-base">{conn.name}</CardTitle>
                 <CardDescription>
-                  {conn.providerKey === "google"
+                  {conn.providerKey === "google_gmail"
                     ? "Gmail and Google Workspace"
                     : conn.providerKey}
                 </CardDescription>
@@ -196,7 +196,7 @@ export default function ConnectionsPage() {
                   size="sm"
                   onClick={() => handleConnect(conn.providerKey)}
                 >
-                  {conn.providerKey === "google"
+                  {conn.providerKey === "google_gmail"
                     ? "Connect with Gmail"
                     : "Connect"}
                 </Button>

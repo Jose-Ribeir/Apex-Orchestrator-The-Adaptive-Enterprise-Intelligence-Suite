@@ -28,7 +28,7 @@ async def list_connections(current_user: dict = Depends(get_current_user)):
 @router.get(
     "/oauth/start",
     summary="Start OAuth flow",
-    description="Redirect to Google OAuth consent. Requires connection=google.",
+    description="Redirect to Google OAuth consent. Requires connection=google_gmail.",
     operation_id="connections_oauth_start",
     include_in_schema=False,
 )
@@ -37,8 +37,11 @@ async def oauth_start(
     connection: str = Query(..., alias="connection"),
     current_user: dict = Depends(get_current_user),
 ):
-    if connection != "google":
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Only connection=google is supported")
+    if connection != "google_gmail":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only connection=google_gmail is supported",
+        )
     base = str(request.base_url).rstrip("/")
     redirect_uri = f"{base}/api/connections/oauth/callback"
     logger.info(

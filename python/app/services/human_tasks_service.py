@@ -45,6 +45,23 @@ def get_task_by_model_query_id(model_query_id: UUID) -> HumanTask | None:
         )
 
 
+def has_pending_human_task_for_agent(agent_id: UUID) -> bool:
+    """Return True if there is at least one PENDING human task for this agent (for natural follow-up context)."""
+    with session_scope() as session:
+        return (
+            session.query(HumanTask.id)
+            .join(ModelQuery, HumanTask.model_query_id == ModelQuery.id)
+            .filter(
+                HumanTask.is_deleted.is_(False),
+                HumanTask.status == "PENDING",
+                ModelQuery.agent_id == agent_id,
+            )
+            .limit(1)
+            .first()
+            is not None
+        )
+
+
 def create_task(
     model_query_id: UUID,
     reason: str,

@@ -74,6 +74,7 @@ def list_connection_types_with_status(user_id: str) -> list[dict[str, Any]]:
             "id": str(ct.id),
             "name": ct.name,
             "providerKey": ct.provider_key,
+            "description": getattr(ct, "description", None) or "",
             "connected": ct.id in user_conn_map,
             "userConnectionId": str(user_conn_map[ct.id]) if ct.id in user_conn_map else None,
         }
@@ -82,10 +83,41 @@ def list_connection_types_with_status(user_id: str) -> list[dict[str, Any]]:
 
 
 def list_connection_provider_keys() -> list[str]:
-    """Return provider_key for all connection types (e.g. ['google']). No user context. Returns [] if DB empty or error."""  # noqa: E501
+    """Return provider_key for all connection types (e.g. ['google_gmail']). No user context. Returns [] if DB empty or error."""  # noqa: E501
     try:
         with session_scope() as session:
             rows = session.query(ConnectionType.provider_key).order_by(ConnectionType.provider_key).all()
+            return [r[0] for r in rows]
+    except Exception:
+        return []
+
+
+def list_connection_types_for_router() -> list[dict[str, Any]]:
+    """Return connection types with key and description for router prompt (AI context)."""
+    try:
+        with session_scope() as session:
+            rows = session.query(ConnectionType).order_by(ConnectionType.provider_key).all()
+            return [{"key": ct.provider_key, "description": ct.description or ""} for ct in rows]
+    except Exception:
+        return []
+
+
+def list_user_ids_with_gmail_connected() -> list[str]:
+    """Return user_ids that have a Google Gmail connection. Used by email polling."""
+    try:
+        with session_scope() as session:
+            ct = session.query(ConnectionType).filter(ConnectionType.provider_key == "google_gmail").first()
+            if not ct:
+                return []
+            rows = (
+                session.query(UserConnection.user_id)
+                .filter(
+                    UserConnection.connection_type_id == ct.id,
+                    UserConnection.access_token.isnot(None),
+                )
+                .distinct()
+                .all()
+            )
             return [r[0] for r in rows]
     except Exception:
         return []
@@ -188,8 +220,8 @@ GMAIL_API_BASE = "https://www.googleapis.com/gmail/v1"
 
 
 def get_valid_access_token(user_id: str, connection_provider_key: str) -> str | None:
-    """Return valid access_token for user's connection (refresh if expired). Only google. None if not connected or refresh fails."""  # noqa: E501
-    if connection_provider_key != "google":
+    """Return valid access_token for user's connection (refresh if expired). Only google_gmail. None if not connected or refresh fails."""  # noqa: E501
+    if connection_provider_key != "google_gmail":
         return None
     settings = get_settings()
     if not settings.google_oauth_client_id or not settings.google_oauth_client_secret:

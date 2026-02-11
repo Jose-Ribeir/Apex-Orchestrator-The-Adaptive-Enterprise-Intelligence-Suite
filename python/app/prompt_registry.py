@@ -23,8 +23,8 @@ When to use: When the user needs computation, data analysis, CSV/JSON parsing, o
 When Python is required: Use the tool to run code when the task clearly needs it. Summarize the code and results in your response. Do not execute code that could be unsafe or that the user did not ask for.""",
 
     "human-in-loop": """Human-in-the-loop: Escalates the conversation or decision to a human (e.g. supervisor, support agent) when the situation requires it.
-When to use: For complaints, refunds, safety-critical decisions, out-of-scope requests, or when the router sets needs_human_review=true.
-When human-in-loop is required: Clearly state that human review is recommended or required. Do not make the final decision yourself; tell the user what will happen next (e.g. a human will follow up). Use the exact escalation message if one is specified in your instructions.""",
+When to use: For complaints, refunds, safety-critical decisions, out-of-scope requests, or when the situation clearly requires human review.
+When human-in-loop is required: First write a complete, natural response to the user (acknowledge their concern, set expectations, e.g. "I understand. I'm going to have someone look into this for you and they'll follow up shortly."). Only after your full reply, output the exact phrase: Human Supervisor Review Required. Do not truncate your response; the marker must appear at the very end. Do not use the phrase "pending human intervention" in the visible message.""",
 
     "Chain-of-Thought (CoT)": """Chain-of-Thought (CoT): Encourages step-by-step reasoning before giving the final answer.
 When to use: For complex analysis, multi-step problems, or when accuracy is more important than brevity.
