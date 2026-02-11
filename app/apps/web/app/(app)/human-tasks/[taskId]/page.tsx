@@ -3,6 +3,7 @@
 import { formatDateTime } from "@/lib/format";
 import {
   getHumanTaskOptions,
+  getHumanTaskQueryKey,
   resolveHumanTaskMutation,
 } from "@ai-router/client/react-query";
 import { Badge } from "@ai-router/ui/badge";
@@ -12,8 +13,9 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@ai-router/ui/collapsible";
+import { Textarea } from "@ai-router/ui/textarea";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Check, ChevronDown } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown, Paperclip, Send } from "lucide-react";
 import * as React from "react";
 import { Link, useParams } from "react-router-dom";
 
@@ -57,10 +59,29 @@ function Section({
   );
 }
 
+function fileToAttachment(file: File): Promise<{ mime_type: string; data_base64: string }> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      const base64 = dataUrl.includes(",") ? dataUrl.split(",")[1] : dataUrl;
+      resolve({
+        mime_type: file.type || "application/octet-stream",
+        data_base64: base64 ?? "",
+      });
+    };
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function HumanTaskDetailPage() {
   const params = useParams();
   const taskId = params?.taskId as string;
   const queryClient = useQueryClient();
+  const [humanMessage, setHumanMessage] = React.useState("");
+  const [attachments, setAttachments] = React.useState<File[]>([]);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const { data: task, isPending, error } = useQuery({
     ...getHumanTaskOptions({
@@ -73,7 +94,12 @@ export default function HumanTaskDetailPage() {
     ...resolveHumanTaskMutation(),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["listHumanTasks"] });
-      queryClient.invalidateQueries({ queryKey: ["getHumanTask"] });
+      queryClient.invalidateQueries({
+        queryKey: getHumanTaskQueryKey({ path: { task_id: taskId } }),
+      });
+      queryClient.refetchQueries({
+        queryKey: getHumanTaskQueryKey({ path: { task_id: taskId } }),
+      });
     },
   });
 
@@ -111,18 +137,18 @@ export default function HumanTaskDetailPage() {
 
   const flowLog = task.modelQuery?.flowLog as
     | {
-        request?: { agent_id?: string; user_query?: string; user_query_len?: number };
-        router_decision?: Record<string, unknown>;
-        metrics?: Record<string, unknown>;
-        response_preview?: string;
-        retrieved_documents?: Array<{
-          contents?: string;
-          score?: number;
-          long_context?: boolean;
-          total_docs?: number;
-        }>;
-        prompt_sent_to_model?: string;
-      }
+      request?: { agent_id?: string; user_query?: string; user_query_len?: number };
+      router_decision?: Record<string, unknown>;
+      metrics?: Record<string, unknown>;
+      response_preview?: string;
+      retrieved_documents?: Array<{
+        contents?: string;
+        score?: number;
+        long_context?: boolean;
+        total_docs?: number;
+      }>;
+      prompt_sent_to_model?: string;
+    }
     | undefined;
 
   return (
@@ -143,23 +169,26 @@ export default function HumanTaskDetailPage() {
               {task.status ?? "—"}
             </Badge>
             {task.status === "PENDING" && (
-              <Button
-                onClick={() =>
-                  resolveTask.mutate({
-                    path: { task_id: task.id },
-                  })
-                }
-                disabled={resolveTask.isPending}
-              >
-                {resolveTask.isPending ? (
-                  "Resolving…"
-                ) : (
-                  <>
-                    <Check className="mr-2 size-4" />
-                    Mark resolved
-                  </>
-                )}
-              </Button>
+              <>
+                <Button
+                  onClick={() =>
+                    resolveTask.mutate({
+                      path: { task_id: task.id },
+                    })
+                  }
+                  disabled={resolveTask.isPending}
+                  variant="outline"
+                >
+                  {resolveTask.isPending ? (
+                    "Resolving…"
+                  ) : (
+                    <>
+                      <Check className="mr-2 size-4" />
+                      Mark resolved
+                    </>
+                  )}
+                </Button>
+              </>
             )}
           </div>
         </div>
@@ -184,6 +213,75 @@ export default function HumanTaskDetailPage() {
         <Section title="Reason" body={task.reason ?? "—"} />
 
         <Section title="Model message" body={task.modelMessage ?? "—"} />
+
+        {task.status === "PENDING" && (
+          <div className="flex flex-col gap-3 rounded-lg border bg-muted/30 p-4">
+            <span className="font-medium text-foreground">Your response (optional)</span>
+            <p className="text-muted-foreground text-sm">
+              Add a message and/or attachments. It will be formatted and sent to the user when you resolve.
+            </p>
+            <Textarea
+              placeholder="Your reply to the user…"
+              value={humanMessage}
+              onChange={(e) => setHumanMessage(e.target.value)}
+              className="min-h-[120px]"
+            />
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  const files = e.target.files ? Array.from(e.target.files) : [];
+                  setAttachments((prev) => [...prev, ...files]);
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Paperclip className="mr-2 size-4" />
+                Add files
+              </Button>
+              {attachments.length > 0 && (
+                <span className="text-muted-foreground text-sm">
+                  {attachments.length} file(s) selected
+                </span>
+              )}
+              <Button
+                type="button"
+                onClick={async () => {
+                  const attachmentPayloads = await Promise.all(
+                    attachments.map((f) => fileToAttachment(f))
+                  );
+                  resolveTask.mutate({
+                    path: { task_id: task.id },
+                    body: {
+                      human_message: humanMessage.trim() || undefined,
+                      attachments:
+                        attachmentPayloads.length > 0 ? attachmentPayloads : undefined,
+                    } as { human_message?: string; attachments?: Array<{ mime_type: string; data_base64: string }> },
+                  });
+                  setHumanMessage("");
+                  setAttachments([]);
+                }}
+                disabled={resolveTask.isPending}
+              >
+                {resolveTask.isPending ? (
+                  "Sending…"
+                ) : (
+                  <>
+                    <Send className="mr-2 size-4" />
+                    Resolve and send reply
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
 
         <Section
           title="Retrieved data"

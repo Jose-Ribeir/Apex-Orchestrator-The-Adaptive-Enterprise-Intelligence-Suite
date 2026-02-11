@@ -2,10 +2,11 @@
 
 import asyncio
 import json
+import logging
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from pydantic import BaseModel
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field
 
 from app.auth.deps import get_current_user
 from app.schemas.responses import (
@@ -16,7 +17,24 @@ from app.schemas.responses import (
 )
 from app.services import connections_service, gmail_service, human_tasks_service
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/human-tasks", tags=["Human Tasks"])
+
+
+class ResolveHumanTaskAttachment(BaseModel):
+    mime_type: str = Field(..., description="MIME type of the attachment")
+    data_base64: str = Field(..., description="Base64-encoded content")
+
+
+class ResolveHumanTaskBody(BaseModel):
+    """Optional body when resolving: human's response and/or attachments to format and send."""
+
+    human_message: str | None = Field(
+        None, description="Human's reply text; will be formatted and sent if task has email action"
+    )
+    attachments: list[ResolveHumanTaskAttachment] | None = Field(
+        None, description="Optional attachments (e.g. images/documents)"
+    )
 
 
 class CreateHumanTaskBody(BaseModel):
@@ -166,34 +184,84 @@ async def update_task(
     return _task_to_response(task)
 
 
+def _format_human_response_for_email(human_message: str, attachment_count: int = 0) -> str:
+    """Use LLM to turn the human's raw message (and attachment note) into a professional email body."""
+    from app.config import get_settings
+
+    settings = get_settings()
+    if not getattr(settings, "gemini_api_key", None) or not settings.gemini_api_key.strip():
+        return (human_message or "").strip()
+    try:
+        from google import genai
+
+        client = genai.Client(api_key=settings.gemini_api_key.strip())
+        attachment_note = (
+            f"\n\nThe reviewer attached {attachment_count} file(s) to this response." if attachment_count else ""
+        )
+        prompt = (
+            "Rewrite the following into a short, professional email reply. "
+            "Output only the reply body (no subject, no greetings if redundant). "
+            "Keep the same intent and key information.\n\n"
+            f"Reviewer's message:{attachment_note}\n{human_message or '(none)'}"
+        )
+        resp = client.models.generate_content(
+            model="gemini-3-flash-preview",
+            contents=prompt,
+        )
+        text = (getattr(resp, "text", None) or "").strip()
+        return text or (human_message or "").strip()
+    except Exception as e:
+        logger.warning("Format human response failed: %s", e, exc_info=True)
+        return (human_message or "").strip()
+
+
 @router.post(
     "/{task_id}/resolve",
     response_model=HumanTaskResponse,
     summary="Resolve human task",
-    description="Mark a human task as resolved. If the task has a stored email action (send/reply), it is executed first.",
+    description="Mark a human task as resolved. Optional body: human_message and attachments; if provided, format and send as email reply then resolve.",
     operation_id="resolveHumanTask",
 )
 async def resolve_task(
     task_id: UUID,
+    body: ResolveHumanTaskBody | None = Body(None),
     current_user: dict = Depends(get_current_user),
 ):
     task = await asyncio.to_thread(human_tasks_service.get_task, task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Human task not found")
+    user_id = current_user["id"]
+    get_token = lambda uid: connections_service.get_valid_access_token(uid, "google_gmail")
+
     if task.status == "PENDING" and task.retrieved_data:
+        action_data = None
         try:
             action_data = json.loads(task.retrieved_data)
-            if isinstance(action_data, dict) and action_data.get("action") in ("send_email", "reply_email"):
-                user_id = current_user["id"]
-                get_token = lambda uid: connections_service.get_valid_access_token(uid, "google")
+        except (json.JSONDecodeError, TypeError):
+            pass
+
+        if isinstance(action_data, dict) and action_data.get("action") in ("send_email", "reply_email"):
+            if body and (body.human_message or (body.attachments and len(body.attachments) > 0)):
+                # Human provided a response: format it and send as the email body
+                human_text = (body.human_message or "").strip()
+                attachment_count = len(body.attachments) if body.attachments else 0
+                formatted_body = _format_human_response_for_email(human_text, attachment_count)
+                action_data = {**action_data, "body": formatted_body}
                 await asyncio.to_thread(
                     gmail_service.execute_email_action,
                     user_id,
                     action_data,
                     get_token,
                 )
-        except (json.JSONDecodeError, TypeError, KeyError):
-            pass
+            else:
+                # No human message: execute stored action as-is (existing behavior)
+                await asyncio.to_thread(
+                    gmail_service.execute_email_action,
+                    user_id,
+                    action_data,
+                    get_token,
+                )
+
     task = await asyncio.to_thread(human_tasks_service.resolve_task, task_id)
     if not task:
         raise HTTPException(status_code=404, detail="Human task not found")
