@@ -1,9 +1,14 @@
 """Singleton embedding model (BAAI/bge-base-en-v1.5) for RAG."""
 
+import logging
 import os
 from pathlib import Path
 
 from sentence_transformers import SentenceTransformer
+
+# Silence sentence_transformers loggers in API
+logging.getLogger("sentence_transformers").setLevel(logging.WARNING)
+logging.getLogger("sentence_transformers.SentenceTransformer").setLevel(logging.WARNING)
 
 _embedding_model: SentenceTransformer | None = None
 

@@ -62,7 +62,8 @@ try:
     _app_logger.addHandler(_file_handler)
 except Exception:  # e.g. read-only filesystem
     pass
-_app_logger.propagate = True  # allow propagation to root so uvicorn terminal shows our logs
+# Do not propagate so each log is only handled once (app's stream + file handlers).
+_app_logger.propagate = False
 logger = _app_logger
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
