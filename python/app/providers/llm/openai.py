@@ -9,6 +9,8 @@ from typing import Any
 from app.config import get_settings
 from app.prompt_registry import (
     build_optimized_prompt_with_registry,
+)
+from app.prompt_registry import (
     build_system_prompt_from_agent as build_system_prompt_from_agent_shared,
 )
 from app.schemas.requests import AgentConfig
@@ -40,7 +42,7 @@ CONNECTIONS: {connections_list}
 QUERY: "{query}"
 
 Reply with JSON only:
-{{"needs_rag": true/false, "tools_needed": ["RAG"] or [], "connections_needed": ["google"] or [], "model_to_use": "gpt-4o" or "gpt-4o-mini", "reason": "one sentence"}}
+{{"needs_rag": true/false, "tools_needed": ["RAG"] or [], "connections_needed": ["google_gmail"] or [], "model_to_use": "gpt-4o" or "gpt-4o-mini", "reason": "one sentence"}}
 """  # noqa: E501
 
 
