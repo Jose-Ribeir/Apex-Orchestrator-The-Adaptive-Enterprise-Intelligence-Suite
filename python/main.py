@@ -79,9 +79,12 @@ from app.seed import seed_agents, seed_connection_types, seed_tools, seed_users
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup/shutdown lifecycle."""
+    import asyncio
+
     try:
         with open(_CHAT_LOG_FILE, "a", encoding="utf-8") as f:
             import datetime
+
             f.write(f"\n===== App started {datetime.datetime.now().isoformat()} =====\n")
             f.flush()
     except Exception:
@@ -93,7 +96,16 @@ async def lifespan(app: FastAPI):
         await seed_agents()
     except Exception as e:
         logger.warning("Startup seed skipped: %s", e)
+    # Background: email polling every 30s
+    from app.services.email_polling import email_polling_loop
+
+    _email_poll_task = asyncio.create_task(email_polling_loop())
     yield
+    _email_poll_task.cancel()
+    try:
+        await _email_poll_task
+    except asyncio.CancelledError:
+        pass
 
 
 OPENAPI_TAGS = [

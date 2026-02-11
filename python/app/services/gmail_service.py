@@ -255,6 +255,21 @@ def reply_gmail_message(
         return False, str(e)
 
 
+def mark_as_read(access_token: str, message_id: str) -> bool:
+    """Remove UNREAD label so the message won't be returned by is:unread search. Returns True on success."""
+    headers = {**_headers(access_token), "Content-Type": "application/json"}
+    url = f"{GMAIL_API_BASE}/users/me/messages/{message_id}/modify"
+    try:
+        r = requests.post(url, headers=headers, json={"removeLabelIds": ["UNREAD"]}, timeout=10)
+        if r.status_code != 200:
+            logger.warning("Gmail mark as read failed: %s %s", r.status_code, r.text[:200])
+            return False
+        return True
+    except Exception as e:
+        logger.warning("Gmail mark as read failed: %s", e, exc_info=True)
+        return False
+
+
 def generate_gmail_query(user_message: str) -> str:
     """Convert natural language to a Gmail search query (q parameter).
 
