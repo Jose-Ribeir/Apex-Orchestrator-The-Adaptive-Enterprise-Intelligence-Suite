@@ -233,6 +233,18 @@ class ListAgentStatsResponse(BaseModel):
     data: list[AgentStatRow] = Field(..., description="Daily stats")
 
 
+class RouterSummaryResponse(BaseModel):
+    """Response for GET /api/agents/{agent_id}/router-summary: usage summary for router page."""
+
+    totalQueries: int = Field(..., description="Total queries in the period")
+    totalTokens: int | None = Field(None, description="Sum of tokens in the period")
+    avgDurationMs: float | None = Field(None, description="Average response duration (ms)")
+    queriesByMethod: dict[str, int] = Field(
+        default_factory=dict,
+        description="Query count by method_used (e.g. EFFICIENCY, PERFORMANCE)",
+    )
+
+
 class InstructionItem(BaseModel):
     """Single instruction in list response."""
 

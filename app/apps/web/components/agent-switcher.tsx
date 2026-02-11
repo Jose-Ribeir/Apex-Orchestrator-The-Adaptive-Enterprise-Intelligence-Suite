@@ -33,7 +33,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { agentModeLabel } from "@/lib/format";
 
 const AGENT_SUB_PATH =
-  /^\/agents\/([^/]+)\/(instructions|prompt|documents|tools|queries|stats)$/;
+  /^\/agents\/([^/]+)\/(instructions|prompt|documents|tools|router|queries|stats)$/;
 
 export function AgentSwitcher() {
   const { isMobile } = useSidebar();

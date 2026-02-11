@@ -3,6 +3,7 @@ import AgentInstructionsPage from "@/app/(app)/agents/[agentId]/instructions/pag
 import AgentIdLayout from "@/app/(app)/agents/[agentId]/layout";
 import AgentPromptPage from "@/app/(app)/agents/[agentId]/prompt/page";
 import AgentQueriesPage from "@/app/(app)/agents/[agentId]/queries/page";
+import AgentRouterPage from "@/app/(app)/agents/[agentId]/router/page";
 import AgentStatsPage from "@/app/(app)/agents/[agentId]/stats/page";
 import AgentToolsPage from "@/app/(app)/agents/[agentId]/tools/page";
 import HumanTaskDetailPage from "@/app/(app)/human-tasks/[taskId]/page";
@@ -59,6 +60,7 @@ export default function App() {
           <Route element={<AgentDocumentsPage />} path="documents" />
           <Route element={<AgentToolsPage />} path="tools" />
           <Route element={<AgentQueriesPage />} path="queries" />
+          <Route element={<AgentRouterPage />} path="router" />
           <Route element={<AgentStatsPage />} path="stats" />
         </Route>
       </Route>

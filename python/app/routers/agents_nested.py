@@ -21,6 +21,7 @@ from app.schemas.responses import (
     ListAgentToolsResponse,
     ModelQueryItem,
     PaginationMeta,
+    RouterSummaryResponse,
 )
 from app.services.agent_service import get_agent
 
@@ -682,3 +683,49 @@ async def list_agent_stats(
 
     items = await asyncio.to_thread(_stats)
     return ListAgentStatsResponse(data=[AgentStatRow(**x) for x in items])
+
+
+# ---- Router summary ----
+@router.get(
+    "/{agent_id}/router-summary",
+    summary="Router usage summary",
+    description="Aggregated usage for the router page: total queries, tokens, avg duration, and count by method (EFFICIENCY/PERFORMANCE).",
+    operation_id="getAgentRouterSummary",
+    response_model=RouterSummaryResponse,
+    tags=["Agents -> Queries"],
+)
+async def get_router_summary(
+    agent_id: UUID,
+    current_user: dict = Depends(get_current_user),
+    days: int = Query(30, ge=1, le=365, description="Number of days to include (default 30)"),
+):
+    _ensure_agent_owner(agent_id, current_user["id"])
+
+    def _summary():
+        with session_scope() as session:
+            since = datetime.now(timezone.utc) - timedelta(days=days)
+            filt = (
+                ModelQuery.agent_id == agent_id,
+                ModelQuery.is_deleted.is_(False),
+                ModelQuery.created_at >= since,
+            )
+            total = session.query(func.count(ModelQuery.id)).filter(*filt).scalar() or 0
+            sum_tokens = session.query(func.coalesce(func.sum(ModelQuery.total_tokens), 0)).filter(
+                *filt
+            ).scalar()
+            avg_dur = session.query(func.avg(ModelQuery.duration_ms)).filter(*filt).scalar()
+            by_method = (
+                session.query(ModelQuery.method_used, func.count(ModelQuery.id))
+                .filter(*filt)
+                .group_by(ModelQuery.method_used)
+                .all()
+            )
+            return {
+                "totalQueries": total,
+                "totalTokens": int(sum_tokens) if sum_tokens is not None else None,
+                "avgDurationMs": float(avg_dur) if avg_dur is not None else None,
+                "queriesByMethod": {str(k): v for k, v in by_method},
+            }
+
+    data = await asyncio.to_thread(_summary)
+    return RouterSummaryResponse(**data)

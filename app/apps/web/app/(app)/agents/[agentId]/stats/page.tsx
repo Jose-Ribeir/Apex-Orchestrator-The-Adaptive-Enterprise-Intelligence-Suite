@@ -2,7 +2,7 @@ import { formatDate } from "@/lib/format";
 import type { AgentStatRow } from "@ai-router/client";
 import { listAgentStatsOptions } from "@ai-router/client/react-query";
 import { useQuery } from "@tanstack/react-query";
-import { useParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import {
   Area,
   AreaChart,
@@ -57,6 +57,25 @@ export default function AgentStatsPage() {
           Usage and performance over the last {days} days.
         </p>
       </div>
+
+      <p className="rounded-lg border border-border/80 bg-muted/30 px-4 py-3 text-muted-foreground text-sm">
+        Router uses 1 cheap call + 1 generator call per request. Tokens and flow
+        details are stored for each query; see{" "}
+        <Link
+          to={agentId ? `/agents/${agentId}/router` : "#"}
+          className="text-primary underline hover:no-underline"
+        >
+          Router & usage
+        </Link>{" "}
+        and{" "}
+        <Link
+          to={agentId ? `/agents/${agentId}/queries` : "#"}
+          className="text-primary underline hover:no-underline"
+        >
+          Queries
+        </Link>
+        .
+      </p>
 
       {!agentId ? (
         <p className="text-muted-foreground text-sm">No agent selected.</p>
