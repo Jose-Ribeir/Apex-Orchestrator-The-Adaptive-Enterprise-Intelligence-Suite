@@ -1,6 +1,7 @@
 "use client";
 
 import { formatDateTime } from "@/lib/format";
+import type { HumanTaskResponse } from "@ai-router/client";
 import {
   listHumanTasksOptions,
   listHumanTasksQueryKey,

@@ -118,7 +118,7 @@ function MetricsGrid({ metrics, totalTokens, durationMs }: { metrics: FlowMetric
   if (metrics?.call_count != null) rows.push(["Call count", String(metrics.call_count)]);
   if (metrics?.router_model) rows.push(["Router model", metrics.router_model]);
   if (metrics?.generator_model) rows.push(["Generator model", metrics.generator_model]);
-  if ((metrics?.tools_executed ?? [])?.length > 0) rows.push(["Tools executed", (metrics.tools_executed as string[]).join(", ")]);
+  if ((metrics?.tools_executed ?? [])?.length > 0) rows.push(["Tools executed", (metrics?.tools_executed ?? []).join(", ")]);
   if (metrics?.docs_retrieved != null) rows.push(["Docs retrieved", String(metrics.docs_retrieved)]);
   if (metrics?.total_docs != null) rows.push(["Total docs", String(metrics.total_docs)]);
   if (metrics?.input_chars != null) rows.push(["Input chars", metrics.input_chars.toLocaleString()]);

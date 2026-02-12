@@ -1,89 +1,64 @@
-/**
- * Agent form state and helpers for create/edit agent.
- * Used by create-agent-form, settings agents page, and agent-form-fields.
- */
+import type { AgentInfo } from "@ai-router/client";
+import type { CreateAgentRequest, UpdateAgentRequest } from "@ai-router/client";
 
-export interface AgentFormValues {
+export type AgentFormValues = {
   name: string;
-  mode: "PERFORMANCE" | "EFFICIENCY" | "BALANCED";
+  mode?: string;
   instructionsText: string;
   selectedToolIds: string[];
   longContextMode?: boolean;
-  longContextMaxTokens?: number;
-}
-
-export const defaultAgentFormValues: AgentFormValues = {
-  name: "",
-  mode: "EFFICIENCY",
-  instructionsText: "",
-  selectedToolIds: [],
-  longContextMode: false,
-  longContextMaxTokens: 1_000_000,
 };
 
 type ToolItem = { id?: string; name?: string };
 
-/** Agent from API (list or detail) with optional metadata fields. */
-type AgentForForm = {
-  name?: string | null;
-  mode?: string | null;
-  instructions?: string[];
-  tools?: Array<{ id?: string; name?: string }>;
-  metadata?: {
-    long_context_enabled?: boolean;
-    long_context_max_tokens?: number;
-  } | null;
+export const defaultAgentFormValues: AgentFormValues = {
+  name: "",
+  mode: "BALANCED",
+  instructionsText: "",
+  selectedToolIds: [],
+  longContextMode: false,
 };
 
-export function agentToFormValues(agent: AgentForForm): AgentFormValues {
-  const instructionsText = (agent.instructions ?? []).join("\n");
-  const selectedToolIds = (agent.tools ?? []).map((t) => t.id ?? t.name ?? "").filter(Boolean);
+/**
+ * Convert AgentInfo (from API) to form values. Accepts AgentInfo with metadata that may have null.
+ */
+export function agentToFormValues(agent: AgentInfo): AgentFormValues {
+  const instructions = agent.instructions ?? [];
+  const instructionsText =
+    Array.isArray(instructions) ? instructions.join("\n") : "";
+
+  const tools = agent.tools ?? [];
+  const selectedToolIds = tools
+    .map((t) => (typeof t === "object" && t && "id" in t ? String(t.id) : ""))
+    .filter(Boolean);
+
   return {
     name: agent.name ?? "",
-    mode: (agent.mode as AgentFormValues["mode"]) ?? "EFFICIENCY",
+    mode: agent.mode ?? "BALANCED",
     instructionsText,
     selectedToolIds,
     longContextMode: agent.metadata?.long_context_enabled ?? false,
-    longContextMaxTokens: agent.metadata?.long_context_max_tokens ?? 1_000_000,
   };
 }
 
 export function getAgentBodyFromValues(
   values: AgentFormValues,
-  toolsList: ToolItem[]
-): {
-  name: string;
-  mode: string;
-  instructions: string[];
-  tools: string[];
-  long_context_mode?: boolean;
-  long_context_max_tokens?: number;
-} {
+  toolsList: ToolItem[],
+): CreateAgentRequest | UpdateAgentRequest {
+  const toolNames = values.selectedToolIds
+    .map((id) => toolsList.find((t) => t.id === id)?.name ?? id)
+    .filter(Boolean);
+
   const instructions = values.instructionsText
     .split("\n")
     .map((s) => s.trim())
     .filter(Boolean);
-  const toolNames = values.selectedToolIds
-    .map((id) => toolsList.find((t) => t.id === id || t.name === id)?.name ?? id)
-    .filter(Boolean);
-  const body: {
-    name: string;
-    mode: string;
-    instructions: string[];
-    tools: string[];
-    long_context_mode?: boolean;
-    long_context_max_tokens?: number;
-  } = {
+
+  return {
     name: values.name.trim(),
-    mode: values.mode,
-    instructions,
-    tools: toolNames,
-  };
-  if (values.longContextMode !== undefined) {
-    body.long_context_mode = values.longContextMode;
-  }
-  if (values.longContextMaxTokens !== undefined) {
-    body.long_context_max_tokens = values.longContextMaxTokens;
-  }
-  return body;
+    mode: values.mode ?? undefined,
+    instructions: instructions.length > 0 ? instructions : undefined,
+    tools: toolNames.length > 0 ? toolNames : undefined,
+    long_context_mode: values.longContextMode ?? undefined,
+  } as CreateAgentRequest | UpdateAgentRequest;
 }

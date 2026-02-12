@@ -1,33 +1,50 @@
-import { AgentMode } from "@ai-router/client";
-
 /**
- * Format a date for display.
+ * Format date for display (e.g. "Jan 15, 2025")
  */
-export function formatDate(d: Date | string | null | undefined): string {
-  if (!d) return "—";
-  const date = typeof d === "string" ? new Date(d) : d;
-  return date.toLocaleDateString();
+export function formatDate(
+  d: Date | string | number | null | undefined,
+): string {
+  if (d == null) return "—";
+  const date = typeof d === "object" ? d : new Date(d);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 }
 
 /**
- * Format a date with time for display.
+ * Format date and time for display
  */
-export function formatDateTime(d: Date | string | null | undefined): string {
-  if (!d) return "—";
-  const date = typeof d === "string" ? new Date(d) : d;
-  return date.toLocaleString();
+export function formatDateTime(
+  d: Date | string | number | null | undefined,
+): string {
+  if (d == null) return "—";
+  const date = typeof d === "object" ? d : new Date(d);
+  if (Number.isNaN(date.getTime())) return "—";
+  return date.toLocaleString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
-const AGENT_MODE_LABELS: Record<AgentMode, string> = {
-  PERFORMANCE: "Performance",
-  EFFICIENCY: "Efficiency",
-  BALANCED: "Balanced",
-};
-
 /**
- * Human-readable label for agent mode.
+ * Human-readable label for agent mode
  */
-export function agentModeLabel(mode: AgentMode | null | undefined): string {
-  if (mode == null) return "—";
-  return AGENT_MODE_LABELS[mode] ?? mode;
+export function agentModeLabel(mode: string | null | undefined): string {
+  if (!mode) return "—";
+  switch (mode) {
+    case "PERFORMANCE":
+      return "Performance";
+    case "EFFICIENCY":
+      return "Efficiency";
+    case "BALANCED":
+      return "Balanced";
+    default:
+      return mode;
+  }
 }

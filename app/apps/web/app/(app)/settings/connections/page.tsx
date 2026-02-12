@@ -1,6 +1,14 @@
 "use client";
 
-import type { ConnectionItem } from "@ai-router/client";
+/** Connection list item shape from GET /api/connections */
+type ConnectionItem = {
+  id: string;
+  name: string;
+  providerKey: string;
+  description?: string;
+  connected: boolean;
+  userConnectionId?: string | null;
+};
 import {
   disconnectUserConnectionMutation,
   listConnectionsOptions,

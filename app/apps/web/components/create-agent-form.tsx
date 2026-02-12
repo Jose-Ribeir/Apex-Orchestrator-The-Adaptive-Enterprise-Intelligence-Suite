@@ -6,7 +6,7 @@ import {
   getAgentBodyFromValues,
 } from "@/lib/agent-form";
 import { useActiveAgent } from "@/providers/active-agent";
-import type { AgentInfo } from "@ai-router/client";
+import type { AgentInfo, CreateAgentRequest } from "@ai-router/client";
 import {
   createAgentMutation,
   listAgentsQueryKey,
@@ -58,7 +58,7 @@ export function CreateAgentForm({
     const name = formValues.name.trim();
     if (!name) return;
     const body = getAgentBodyFromValues(formValues, toolsList);
-    createAgent.mutate({ body });
+    createAgent.mutate({ body: body as CreateAgentRequest });
   }
 
   return (

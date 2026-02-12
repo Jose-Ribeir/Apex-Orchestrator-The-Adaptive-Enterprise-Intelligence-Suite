@@ -294,14 +294,15 @@ export default function HumanTaskDetailPage() {
                   const attachmentPayloads = await Promise.all(
                     attachments.map((f) => fileToAttachment(f))
                   );
+                  // API accepts body but generated client types have body?: never
                   resolveTask.mutate({
                     path: { task_id: task.id },
                     body: {
                       human_message: humanMessage.trim() || undefined,
                       attachments:
                         attachmentPayloads.length > 0 ? attachmentPayloads : undefined,
-                    } as { human_message?: string; attachments?: Array<{ mime_type: string; data_base64: string }> },
-                  });
+                    },
+                  } as any);
                   setHumanMessage("");
                   setAttachments([]);
                 }}

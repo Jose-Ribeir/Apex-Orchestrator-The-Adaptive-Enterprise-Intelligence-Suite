@@ -1,30 +1,32 @@
-export interface User {
+/**
+ * Auth client for the Python API (POST /auth/login, /auth/register, /auth/logout).
+ * Matches the better-auth-like API expected by login/signup forms.
+ */
+
+const getBaseUrl = () =>
+  (typeof window !== "undefined" &&
+    (window as unknown as { __API_BASE_URL__?: string }).__API_BASE_URL__) ||
+  (import.meta as unknown as { env?: { VITE_API_URL?: string } }).env
+    ?.VITE_API_URL ||
+  "http://localhost:4000";
+
+export type User = {
   id: string;
   email: string;
   name: string;
   image?: string | null;
   email_verified?: boolean;
-}
+};
 
-export interface Session {
+export type Session = {
   user: User;
-}
+};
 
-const API_BASE_URL = window.__API_BASE_URL__ || import.meta.env.VITE_API_URL;
-
-async function apiFetch(path: string, init?: RequestInit) {
-  const url = `${API_BASE_URL.replace(/\/$/, "")}${path}`;
-  const res = await fetch(url, {
-    ...init,
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...init?.headers,
-    },
-  });
+async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
+  const res = await fetch(url, { ...options, credentials: "include" });
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || res.statusText);
+    const err = await res.json().catch(() => ({}));
+    throw new Error((err as { detail?: string })?.detail ?? res.statusText);
   }
   return res.json();
 }
@@ -33,69 +35,65 @@ export const authClient = {
   signIn: {
     email: async (
       args: { email: string; password: string },
-      opts?: {
-        onSuccess?: () => void;
-        onError?: (ctx: { error?: { message?: string } }) => void;
-      },
+      opts?: { onSuccess?: () => void; onError?: (ctx: { error?: { message?: string } }) => void },
     ) => {
       try {
-        const data = await apiFetch("/auth/login", {
+        const base = getBaseUrl().replace(/\/$/, "");
+        await fetchJson(`${base}/auth/login`, {
           method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email: args.email, password: args.password }),
         });
         opts?.onSuccess?.();
-        return { error: null, data };
-      } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "Invalid email or password";
-        opts?.onError?.({ error: { message } });
-        return { error: { message }, data: null };
+        return { error: null };
+      } catch (e) {
+        const err = e instanceof Error ? e : new Error(String(e));
+        opts?.onError?.({ error: { message: err.message } });
+        return { error: { message: err.message } };
       }
     },
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- signature required by better-auth
-    social: async (args: { provider: string; callbackURL?: string }) => {
-      return {
-        error: { message: "Social login not implemented for Python API" },
-        data: null,
-      };
+    social: async (args: {
+      provider: string;
+      callbackURL?: string;
+    }): Promise<{ error: { message: string } | null }> => {
+      // Redirect to API OAuth flow; backend handles Google
+      const base = getBaseUrl().replace(/\/$/, "");
+      const url = `${base}/api/connections/oauth/start?connection=google_gmail`;
+      window.location.href = url;
+      return { error: null };
     },
   },
   signUp: {
     email: async (
       args: { email: string; password: string; name?: string },
-      opts?: { onError?: (ctx: { error?: { message?: string } }) => void },
+      opts?: { onSuccess?: () => void; onError?: (ctx: { error?: { message?: string } }) => void },
     ) => {
       try {
-        await apiFetch("/auth/register", {
+        const base = getBaseUrl().replace(/\/$/, "");
+        await fetchJson(`${base}/auth/register`, {
           method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             email: args.email,
             password: args.password,
             name: args.name ?? "",
           }),
         });
-        return { error: null, data: {} };
-      } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "Registration failed";
-        opts?.onError?.({ error: { message } });
-        return { error: { message }, data: null };
+        opts?.onSuccess?.();
+        return { error: null };
+      } catch (e) {
+        const err = e instanceof Error ? e : new Error(String(e));
+        opts?.onError?.({ error: { message: err.message } });
+        return { error: { message: err.message } };
       }
     },
   },
   signOut: async () => {
-    try {
-      await fetch(`${API_BASE_URL.replace(/\/$/, "")}/auth/logout`, {
-        method: "POST",
-        credentials: "include",
-      });
-    } catch {
-      // ignore
-    }
-  },
-  useSession: () => {
-    throw new Error(
-      "useSession must be used via SessionProvider from providers/session",
-    );
+    const base = getBaseUrl().replace(/\/$/, "");
+    await fetch(`${base}/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+    });
+    window.location.href = "/";
   },
 };
