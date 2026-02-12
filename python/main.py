@@ -121,7 +121,7 @@ OPENAPI_TAGS = [
     {"name": "Human Tasks", "description": "Human-in-the-loop tasks for model queries."},
     {"name": "Chat", "description": "Streaming chat with router + generator pipeline."},
     {"name": "Index", "description": "RAG index: add, update, delete, and ingest documents."},
-    {"name": "Connections", "description": "OAuth connections (e.g. Google Gmail); list, connect, disconnect."},
+    {"name": "Connections", "description": "OAuth connections (e.g. Gmail Integration); list, connect, disconnect."},
 ]
 
 app = FastAPI(

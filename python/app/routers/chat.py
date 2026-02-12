@@ -51,16 +51,17 @@ def _append_chat_log(line: str) -> None:
         pass
 
 
-# When the model outputs these phrases, strip them from the user-visible response (still create human task).
-HUMAN_REVIEW_MARKER = "Human Supervisor Review Required"
-# Strip critical-issue escalation text so the user sees only the natural message
+# When the model outputs this token, strip it from the user-visible response (still create human task).
+HUMAN_REVIEW_MARKER = "[[ESCALATE_TO_HUMAN]]"
+# Strip escalation markers so the user sees only the natural message (legacy phrases kept for backward compat)
 HIDDEN_FROM_USER_PHRASES = [
+    "[[ESCALATE_TO_HUMAN]]",
     "⚠️ CRITICAL ISSUE DETECTED: Human Supervisor Review Required.",
     "⚠️ CRITICAL ISSUE DETECTED:",
     "CRITICAL ISSUE DETECTED: Human Supervisor Review Required.",
     "CRITICAL ISSUE DETECTED:",
     "CRITICAL ISSUE DETECTED",
-    HUMAN_REVIEW_MARKER,
+    "Human Supervisor Review Required",
 ]
 
 
@@ -296,11 +297,15 @@ def _run_stream_pipeline(
     full_prompt = f"""
 [SYSTEM]{system_prompt}
 
-[ROUTER]{json.dumps(tool_decision)}
+[ROUTER_DECISION]
+The router decided: {json.dumps(tool_decision)}
+Note: If the router requested RAG/Context but the [CONTEXT] section below is empty or irrelevant, ignore the router's instruction to use context and inform the user that no data was found.
 
-[CONTEXT]{context_str}
+[CONTEXT]
+{context_str}
 
-[QUERY]{request.message}
+[QUERY]
+{request.message}
 """
     input_chars = len(full_prompt)
 

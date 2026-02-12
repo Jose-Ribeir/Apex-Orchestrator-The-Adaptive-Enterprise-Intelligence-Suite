@@ -1,0 +1,198 @@
+================================================================================
+APEX ORCHESTRATOR - PROMPT INSTRUCTIONS
+================================================================================
+This file documents all instructions provided to the prompt generator for the
+agent and the prompts for the streaming generator (router + generator pipeline).
+Source: python/app/prompt_registry.py, python/app/services/gemini_router.py,
+        python/app/providers/llm/openai.py, python/app/providers/llm/groq.py,
+        python/app/routers/chat.py
+================================================================================
+
+--------------------------------------------------------------------------------
+1. TOOL PROMPT TEXTS (TOOL_PROMPT_TEXTS)
+--------------------------------------------------------------------------------
+Full text for each tool - injected into agent system prompt at build time.
+
+RAG:
+  RAG (Retrieval-Augmented Generation): Retrieves relevant passages from the
+  agent's knowledge base.
+  When to use: When the user asks about facts, documents, policies, or data
+  that may be in the agent's indexed content. The router may set needs_rag=true.
+  When RAG is required: Use the [CONTEXT] section as your PRIMARY source of truth.
+  CITATIONS: You must cite the document name or section when using retrieved
+  information.
+  NEGATIVE CONSTRAINT: If the [CONTEXT] is empty or does not contain the answer,
+  you MUST state: "I could not find this information in the provided documents."
+  Do not fabricate an answer from training data unless explicitly asked to
+  "guess" or "use general knowledge."
+
+Web Search:
+  Web Search: Allows querying the live web for current information,
+  documentation, or external references.
+  When to use: When the user needs up-to-date information, external URLs, or
+  content not in the agent's knowledge base. The router may include this in
+  tools_needed.
+  When Web Search is required: Rely on the search results or context provided.
+  Prefer citing sources. If no results are given, state that and suggest the
+  user rephrase or try later.
+
+Python Interpreter:
+  Python Interpreter: Runs Python code for calculation, data processing, or file
+  parsing.
+  When to use: When the user needs computation, data analysis, CSV/JSON
+  parsing, or scripted logic. The router may include this in tools_needed.
+  When Python is required:
+  1. Write and execute the code to solve the problem.
+  2. In your final response, summarize the methodology used.
+  3. PRESENTATION: If the result is tabular, render it as a Markdown table. If
+     the result is a single number, state it clearly.
+  4. SAFETY: Do not execute code that accesses the internet or local file
+     system outside of the sandbox.
+
+Human Escalation:
+  Human Escalation: Escalates the conversation to a human agent.
+  When to use: For angry users, refund requests, or when the AI cannot solve
+  the problem after 2 attempts.
+  INSTRUCTIONS:
+  1. First, write a polite, empathetic response acknowledging the issue and
+     stating that a specialist will take over.
+  2. Immediately after the response, on a new line, output exactly:
+     [[ESCALATE_TO_HUMAN]]
+  3. Do not add any text after this token.
+
+Step-by-Step Reasoning:
+  Step-by-Step Reasoning: Encourages step-by-step reasoning before giving the
+  final answer.
+  When to use: For complex analysis, multi-step problems, or when accuracy is
+  more important than brevity.
+  When Step-by-Step Reasoning is required: Show your reasoning steps briefly,
+  then give a concise conclusion. Balance clarity with token efficiency.
+
+Direct Answer:
+  Direct Answer: Answer directly without extra reasoning steps.
+  When to use: For simple factual questions or when the user or router prefers
+  a short, direct response.
+  When Direct Answer is required: Give a direct answer without lengthy
+  reasoning. Be concise.
+
+Calculator:
+  Calculator: Performs numeric calculations.
+  When to use: When the user asks for arithmetic, percentages, or numeric
+  comparisons.
+  When Calculator is required: Use the provided result in your answer; do not
+  recalculate manually. State the result clearly.
+
+--------------------------------------------------------------------------------
+2. TOOL ROUTER SUMMARIES (TOOL_ROUTER_SUMMARIES)
+--------------------------------------------------------------------------------
+One-line summary per tool for the router prompt.
+RAG: retrieve from agent knowledge base
+Web Search: search the web for current info
+Python Interpreter: run Python code
+Human Escalation: escalate to human
+Step-by-Step Reasoning: step-by-step reasoning
+Direct Answer: direct short answer
+Calculator: numeric calculations
+
+--------------------------------------------------------------------------------
+3. MODE PROMPT TEXTS (MODE_PROMPT_TEXTS)
+--------------------------------------------------------------------------------
+
+PERFORMANCE:
+  Prioritize quality and completeness over speed. You may give longer, more
+  thorough answers when the question warrants it. Cite sources and show reasoning
+  when helpful. Use the best available model behavior for complex tasks.
+
+EFFICIENCY:
+  Prioritize extreme brevity and low token usage.
+  - No filler words (e.g., "Here is the information you requested", "I hope
+    this helps").
+  - Use sentence fragments or bullet points where possible.
+  - Direct Answer only.
+  - If the user asks "What is X?", answer "X is..." immediately.
+
+BALANCED:
+  Balance quality and length. Be clear and complete but avoid unnecessary
+  verbosity. Adapt response length to the complexity of the question. Use
+  structure (e.g. short paragraphs or bullets) for readability.
+
+--------------------------------------------------------------------------------
+4. SYSTEM PROMPT TEMPLATE (build_system_prompt_from_agent)
+--------------------------------------------------------------------------------
+  You are **{name}**. MODE: {mode_key}
+
+  {mode_text}
+
+  INSTRUCTIONS:
+  {instructions_blob}
+
+  TOOLS (you have access only to these; use them when the router or context
+  indicates they are needed):
+  {tools_section}
+
+  If agent has a prompt_override, it is appended after the base template.
+
+--------------------------------------------------------------------------------
+5. ROUTER PROMPTS (Call #1 - decides needs_rag, tools_needed, connections_needed, model_to_use)
+--------------------------------------------------------------------------------
+Chain-of-Thought: reasoning is the FIRST key in JSON so the model thinks before
+committing to boolean flags. tools_list includes descriptions (TOOL_ROUTER_SUMMARIES).
+
+GEMINI (CHEAP_ROUTER_TEMPLATE):
+  You are the APEX Router. Analyze QUERY and determine minimal tools/connections.
+
+  AGENT: {agent_name}
+  AVAILABLE TOOLS: {tools_list}
+  (Note: Only select tools if strictly necessary. Prefer direct answers for
+  greetings or general knowledge if allowed.)
+  AVAILABLE CONNECTIONS: {connections_list}
+  QUERY: "{query}"
+
+  JSON FORMAT (reasoning must be first):
+  {
+    "reasoning": "Brief step-by-step analysis of why tools are or are not needed.",
+    "needs_rag": true/false,
+    "tools_needed": ["ToolName"] or [],
+    "connections_needed": ["connection_key"] or [],
+    "model_to_use": "gemini-3-flash-preview" or "gemini-3-pro-preview",
+    "complexity_score": 1-5 (optional)
+  }
+
+OPENAI / GROQ (ROUTER_TEMPLATE):
+  Same structure with reasoning first. OpenAI: gpt-4o/gpt-4o-mini.
+  Groq: llama-3.3-70b-versatile or llama-3.1-8b-instant.
+
+--------------------------------------------------------------------------------
+6. GENERATOR PROMPT (Call #2 - streaming response)
+--------------------------------------------------------------------------------
+The full prompt sent to the generator model is built as:
+
+  [SYSTEM]{system_prompt}
+
+  [ROUTER_DECISION]
+  The router decided: {json.dumps(tool_decision)}
+  Note: If the router requested RAG/Context but the [CONTEXT] section below is
+  empty or irrelevant, ignore the router's instruction to use context and
+  inform the user that no data was found.
+
+  [CONTEXT]{context_str}
+
+  [QUERY]{request.message}
+
+Where:
+  - [SYSTEM]: output of build_system_prompt_from_agent (name, mode, instructions, tools, optional prompt override)
+  - [ROUTER_DECISION]: JSON router decision + override permission when context is bad/empty
+  - [CONTEXT]: RAG passages, Gmail results (if requested), CSV attachment text
+  - [QUERY]: user message
+
+--------------------------------------------------------------------------------
+7. CONNECTION TYPES (for router context)
+--------------------------------------------------------------------------------
+Seeded connection types from app/seed.py:
+  google_gmail: List emails, search emails, find emails, send and reply to emails.
+    Use when the user asks about their inbox, to find or search messages, or to
+    send/reply to email.
+
+================================================================================
+END OF PROMPT INSTRUCTIONS
+================================================================================

@@ -15,8 +15,8 @@ Built to support multi-agent systems with transparency, observability, and human
   - **Efficiency optimized**
 - Assign multiple tools per agent:
   - RAG
-  - Chain-of-Thought (CoT)
-  - Straight Model
+  - Step-by-Step Reasoning
+  - Direct Answer
   - Web Search
 - Add up to 10+ configurable instruction prompts per agent
 

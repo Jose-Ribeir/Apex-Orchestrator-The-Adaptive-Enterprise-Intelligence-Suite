@@ -98,6 +98,7 @@ def update_task(
     retrieved_data: str | None = None,
     model_message: str | None = None,
     status: str | None = None,
+    human_resolved_response: str | None = None,
 ) -> HumanTask | None:
     with session_scope() as session:
         task = session.query(HumanTask).filter(HumanTask.id == task_id, HumanTask.is_deleted.is_(False)).first()
@@ -111,13 +112,15 @@ def update_task(
             task.model_message = model_message.strip()
         if status is not None:
             task.status = status
+        if human_resolved_response is not None:
+            task.human_resolved_response = human_resolved_response.strip() or None
         session.flush()
         session.refresh(task)
         return task
 
 
-def resolve_task(task_id: UUID) -> HumanTask | None:
-    return update_task(task_id, status="RESOLVED")
+def resolve_task(task_id: UUID, human_resolved_response: str | None = None) -> HumanTask | None:
+    return update_task(task_id, status="RESOLVED", human_resolved_response=human_resolved_response)
 
 
 def delete_task(task_id: UUID, soft: bool = True) -> bool:

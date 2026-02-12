@@ -39,6 +39,8 @@ class Settings(BaseSettings):
 
     # Gemini (required when llm_provider=gemini)
     gemini_api_key: str = ""
+    # Optional: comma-separated list of fallback keys (e.g. GEMINI_API_KEYS=key1,key2,key3)
+    gemini_api_keys: str = ""
 
     # Google Cloud (required when rag_provider=vertex or storage_provider=gcs)
     gcp_project_id: str = ""
@@ -111,8 +113,10 @@ class Settings(BaseSettings):
         lp = (self.llm_provider or "gemini").strip().lower()
         sp = (self.storage_provider or "gcs").strip().lower()
 
-        if lp == "gemini" and not (self.gemini_api_key and self.gemini_api_key.strip()):
-            raise ValueError("GEMINI_API_KEY is required when LLM_PROVIDER=gemini")
+        if lp == "gemini":
+            keys = self.get_gemini_api_keys()
+            if not keys:
+                raise ValueError("GEMINI_API_KEY or GEMINI_API_KEYS is required when LLM_PROVIDER=gemini")
 
         if lp == "openai" and not (self.openai_api_key and self.openai_api_key.strip()):
             raise ValueError("OPENAI_API_KEY is required when LLM_PROVIDER=openai")
@@ -159,6 +163,18 @@ class Settings(BaseSettings):
                     raise ValueError(f"{name} is required when STORAGE_PROVIDER=minio")
 
         return self
+
+    def get_gemini_api_keys(self) -> list[str]:
+        """Return list of Gemini API keys from GEMINI_API_KEYS or GEMINI_API_KEY (both support comma-separated)."""
+        keys_str = (self.gemini_api_keys or "").strip()
+        if keys_str:
+            return [k.strip() for k in keys_str.split(",") if k.strip()]
+        key = (self.gemini_api_key or "").strip()
+        if key:
+            if "," in key:
+                return [k.strip() for k in key.split(",") if k.strip()]
+            return [key]
+        return []
 
     @property
     def geminimesh_configured(self) -> bool:

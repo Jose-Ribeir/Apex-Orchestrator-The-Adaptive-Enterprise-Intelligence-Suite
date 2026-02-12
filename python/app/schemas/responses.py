@@ -182,6 +182,7 @@ class HumanTaskResponse(BaseModel):
     retrievedData: str | None = Field(None, description="Retrieved data snapshot")
     modelMessage: str | None = Field(None, description="Model message for context")
     status: str = Field(..., description="PENDING | RESOLVED")
+    humanResolvedResponse: str | None = Field(None, description="Model-formatted reply when resolved with human input")
     createdAt: str = Field(..., description="Creation time (ISO)")
     updatedAt: str = Field(..., description="Last update time (ISO)")
     modelQuery: HumanTaskModelQueryRef | None = Field(None, description="Linked model query when loaded")

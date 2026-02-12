@@ -7,6 +7,8 @@ import base64
 import email.utils
 import logging
 import urllib.parse
+from email.mime.base import MIMEBase
+from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
 import requests
@@ -174,10 +176,31 @@ def _get_message_metadata(access_token: str, message_id: str) -> dict | None:
         return None
 
 
-def _encode_raw_message(msg: MIMEText) -> str:
+def _encode_raw_message(msg: MIMEText | MIMEMultipart) -> str:
     """Encode MIME message as base64url for Gmail API."""
     raw = base64.urlsafe_b64encode(msg.as_bytes()).decode("utf-8")
     return raw.rstrip("=")
+
+
+def _attach_files(msg: MIMEMultipart, attachments: list[dict[str, str]]) -> None:
+    """Attach files from list of {mime_type, data_base64} to a MIMEMultipart message."""
+    for i, att in enumerate(attachments):
+        mime = (att.get("mime_type") or "application/octet-stream").strip()
+        b64 = att.get("data_base64") or ""
+        try:
+            payload = base64.b64decode(b64, validate=True)
+        except Exception:
+            continue
+        main, sub = mime.split("/", 1) if "/" in mime else ("application", "octet-stream")
+        part = MIMEBase(main, sub)
+        part.set_payload(payload)
+        part.add_header("Content-Transfer-Encoding", "base64")
+        part.add_header(
+            "Content-Disposition",
+            "attachment",
+            filename=f"attachment_{i + 1}",
+        )
+        msg.attach(part)
 
 
 def send_gmail_message(
@@ -185,12 +208,18 @@ def send_gmail_message(
     to: str,
     subject: str,
     body_plain: str,
+    attachments: list[dict[str, str]] | None = None,
 ) -> tuple[bool, str]:
-    """Send a new email. Returns (success, error_message)."""
+    """Send a new email. Optional attachments: list of {mime_type, data_base64}. Returns (success, error_message)."""
     if not to or not (to.strip()):
         return False, "Missing recipient (to)."
     try:
-        msg = MIMEText(body_plain or "", "plain", "utf-8")
+        if attachments:
+            msg = MIMEMultipart("mixed")
+            msg.attach(MIMEText(body_plain or "", "plain", "utf-8"))
+            _attach_files(msg, attachments)
+        else:
+            msg = MIMEText(body_plain or "", "plain", "utf-8")
         msg["To"] = to.strip()
         msg["Subject"] = (subject or "").strip() or "(No subject)"
         msg["Date"] = email.utils.formatdate(localtime=True)
@@ -216,8 +245,9 @@ def reply_gmail_message(
     access_token: str,
     message_id: str,
     body_plain: str,
+    attachments: list[dict[str, str]] | None = None,
 ) -> tuple[bool, str]:
-    """Reply to an existing email. Uses threadId and In-Reply-To. Returns (success, error_message)."""
+    """Reply to an existing email. Optional attachments: list of {mime_type, data_base64}. Returns (success, error_message)."""
     meta = _get_message_metadata(access_token, message_id)
     if not meta or not meta.get("thread_id"):
         return False, "Could not load original message or thread."
@@ -229,7 +259,12 @@ def reply_gmail_message(
     if not reply_to:
         return False, "Could not determine reply recipient."
     try:
-        msg = MIMEText(body_plain or "", "plain", "utf-8")
+        if attachments:
+            msg = MIMEMultipart("mixed")
+            msg.attach(MIMEText(body_plain or "", "plain", "utf-8"))
+            _attach_files(msg, attachments)
+        else:
+            msg = MIMEText(body_plain or "", "plain", "utf-8")
         msg["To"] = reply_to
         subj = (meta.get("subject") or "").strip()
         msg["Subject"] = f"Re: {subj}" if subj else "Re: (reply)"
@@ -372,6 +407,10 @@ def execute_email_action(user_id: str, action_data: dict, get_token: "object") -
     token = get_token(user_id) if callable(get_token) else None
     if not token:
         return {"type": action, "success": False, "error": "Gmail not connected."}
+    attachments = action_data.get("attachments")
+    if not isinstance(attachments, list):
+        attachments = None
+
     if action == "send_email":
         to = (action_data.get("to") or "").strip()
         body = (action_data.get("body") or "").strip()
@@ -380,6 +419,7 @@ def execute_email_action(user_id: str, action_data: dict, get_token: "object") -
             to=to,
             subject=(action_data.get("subject") or "").strip() or "(No subject)",
             body_plain=body,
+            attachments=attachments,
         )
         return {"type": "send_email", "success": success, "error": err or None}
     if action == "reply_email":
@@ -387,7 +427,7 @@ def execute_email_action(user_id: str, action_data: dict, get_token: "object") -
         body = (action_data.get("body") or "").strip()
         if not msg_id:
             return {"type": "reply_email", "success": False, "error": "Missing message_id."}
-        success, err = reply_gmail_message(token, msg_id, body)
+        success, err = reply_gmail_message(token, msg_id, body, attachments=attachments)
         return {"type": "reply_email", "success": success, "error": err or None}
     return {"type": action, "success": False, "error": "Unknown action."}
 

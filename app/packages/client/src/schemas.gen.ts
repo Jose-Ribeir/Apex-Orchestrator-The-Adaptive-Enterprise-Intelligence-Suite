@@ -1023,6 +1023,18 @@ export const HumanTaskResponseSchema = {
             title: 'Status',
             description: 'PENDING | RESOLVED'
         },
+        humanResolvedResponse: {
+            anyOf: [
+                {
+                    type: 'string'
+                },
+                {
+                    type: 'null'
+                }
+            ],
+            title: 'Humanresolvedresponse',
+            description: 'Model-formatted reply when resolved with human input'
+        },
         createdAt: {
             type: 'string',
             title: 'Createdat',

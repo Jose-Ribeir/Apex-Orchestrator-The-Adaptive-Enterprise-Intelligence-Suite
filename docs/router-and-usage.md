@@ -30,14 +30,14 @@ The router (Call 1) runs once per user message and returns a structured decision
 
 | Field | Description |
 |-------|-------------|
+| `reasoning` | Step-by-step analysis (Chain-of-Thought, output first so the model thinks before committing) |
 | `needs_rag` | Whether to run RAG retrieval for this query |
 | `tools_needed` | e.g. `["RAG"]`, `["RAG","Calculator"]`, or `[]` |
 | `connections_needed` | e.g. `["google"]` for Gmail or `[]` |
 | `model_to_use` | `gemini-3-flash-preview` or `gemini-3-pro-preview` for the generator |
-| `reason` | One-sentence explanation of the routing choice |
-| `needs_human_review` | Whether to create a human-in-the-loop task (e.g. escalation, sensitive request) |
+| `complexity_score` | Optional 1–5 for model selection |
 
-The pipeline uses this to: run RAG and/or connections if requested, pick the generator model (flash vs pro), and optionally create a human task. The generator (Call 2) streams the final answer.
+The pipeline uses this to: run RAG and/or connections if requested, pick the generator model (flash vs pro). Human-in-the-loop tasks are created only when the **generator** (Call 2) outputs the escalation token `[[ESCALATE_TO_HUMAN]]` in its final response—not from the router.
 
 ## Where usage is saved
 

@@ -16,7 +16,7 @@ migrate-down:
 # Redo: roll back to base then apply head (full reset and re-apply)
 migrate-redo: migrate-down migrate-up
 
-# Seed default data (Chain-of-Thought, RAG, Straight Model, Web Search). Idempotent.
+# Seed default data (Step-by-Step Reasoning, RAG, Direct Answer, Web Search). Idempotent.
 seed:
 	python -c "from app.seed import seed_tools; seed_tools()"
 

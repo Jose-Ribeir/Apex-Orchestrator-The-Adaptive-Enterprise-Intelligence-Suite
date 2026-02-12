@@ -1,9 +1,11 @@
 "use client";
 
 import { useActiveAgent } from "@/providers/active-agent";
+import { getHumanTaskOptions } from "@ai-router/client/react-query";
 import { Button } from "@ai-router/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@ai-router/ui/card";
 import { Textarea } from "@ai-router/ui/textarea";
+import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Bot, ChevronDown, ChevronUp, Paperclip, Send, X } from "lucide-react";
 import * as React from "react";
@@ -60,6 +62,37 @@ export default function Page() {
   const scrollToBottom = React.useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
+
+  const { data: resolvedTask } = useQuery({
+    ...getHumanTaskOptions({
+      path: { task_id: pendingHumanTask?.id ?? "" },
+    }),
+    enabled: Boolean(pendingHumanTask?.id),
+    refetchInterval: 5000,
+  });
+
+  React.useEffect(() => {
+    if (
+      resolvedTask?.status === "RESOLVED" &&
+      resolvedTask?.humanResolvedResponse &&
+      pendingHumanTask
+    ) {
+      setMessages((prev) => {
+        const next = [...prev];
+        const last = next[next.length - 1];
+        if (last?.role === "assistant") {
+          next[next.length - 1] = {
+            ...last,
+            content: last.content.trim()
+              ? `${last.content}\n\n---\n**Reviewer reply:**\n\n${resolvedTask.humanResolvedResponse}`
+              : (resolvedTask.humanResolvedResponse ?? ""),
+          };
+        }
+        return next;
+      });
+      setPendingHumanTask(null);
+    }
+  }, [resolvedTask?.status, resolvedTask?.humanResolvedResponse, pendingHumanTask]);
 
   React.useEffect(() => {
     scrollToBottom();

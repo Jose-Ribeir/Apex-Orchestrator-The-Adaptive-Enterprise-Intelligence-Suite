@@ -4,6 +4,7 @@ import { formatDateTime } from "@/lib/format";
 import {
   getHumanTaskOptions,
   getHumanTaskQueryKey,
+  listHumanTasksQueryKey,
   resolveHumanTaskMutation,
 } from "@ai-router/client/react-query";
 import { Badge } from "@ai-router/ui/badge";
@@ -81,7 +82,18 @@ export default function HumanTaskDetailPage() {
   const queryClient = useQueryClient();
   const [humanMessage, setHumanMessage] = React.useState("");
   const [attachments, setAttachments] = React.useState<File[]>([]);
+  const [attachmentPreviewUrls, setAttachmentPreviewUrls] = React.useState<string[]>([]);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  React.useEffect(() => {
+    const urls = attachments.map((f) =>
+      f.type.startsWith("image/") ? URL.createObjectURL(f) : ""
+    );
+    setAttachmentPreviewUrls(urls);
+    return () => {
+      urls.forEach((u) => u && URL.revokeObjectURL(u));
+    };
+  }, [attachments]);
 
   const { data: task, isPending, error } = useQuery({
     ...getHumanTaskOptions({
@@ -93,11 +105,8 @@ export default function HumanTaskDetailPage() {
   const resolveTask = useMutation({
     ...resolveHumanTaskMutation(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["listHumanTasks"] });
+      queryClient.invalidateQueries({ queryKey: listHumanTasksQueryKey({}) });
       queryClient.invalidateQueries({
-        queryKey: getHumanTaskQueryKey({ path: { task_id: taskId } }),
-      });
-      queryClient.refetchQueries({
         queryKey: getHumanTaskQueryKey({ path: { task_id: taskId } }),
       });
     },
@@ -214,6 +223,13 @@ export default function HumanTaskDetailPage() {
 
         <Section title="Model message" body={task.modelMessage ?? "—"} />
 
+        {task.status === "RESOLVED" && task.humanResolvedResponse && (
+          <Section
+            title="Resolved reply (formatted)"
+            body={task.humanResolvedResponse}
+          />
+        )}
+
         {task.status === "PENDING" && (
           <div className="flex flex-col gap-3 rounded-lg border bg-muted/30 p-4">
             <span className="font-medium text-foreground">Your response (optional)</span>
@@ -247,9 +263,30 @@ export default function HumanTaskDetailPage() {
                 Add files
               </Button>
               {attachments.length > 0 && (
-                <span className="text-muted-foreground text-sm">
-                  {attachments.length} file(s) selected
-                </span>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-muted-foreground text-sm">
+                    {attachments.length} file(s) selected
+                  </span>
+                  <div className="flex flex-wrap gap-2">
+                    {attachments.map((file, i) =>
+                      file.type.startsWith("image/") && attachmentPreviewUrls[i] ? (
+                        <img
+                          key={i}
+                          src={attachmentPreviewUrls[i]}
+                          alt=""
+                          className="h-16 w-16 rounded border object-cover"
+                        />
+                      ) : (
+                        <span
+                          key={i}
+                          className="inline-flex items-center rounded border bg-muted/50 px-2 py-1 text-xs"
+                        >
+                          {file.name || `File ${i + 1}`}
+                        </span>
+                      )
+                    )}
+                  </div>
+                </div>
               )}
               <Button
                 type="button"

@@ -675,6 +675,11 @@ export type HumanTaskResponse = {
      */
     status: string;
     /**
+     * Humanresolvedresponse
+     * Model-formatted reply when resolved with human input
+     */
+    humanResolvedResponse?: string | null;
+    /**
      * Createdat
      * Creation time (ISO)
      */

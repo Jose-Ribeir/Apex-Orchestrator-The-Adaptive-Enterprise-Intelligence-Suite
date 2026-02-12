@@ -3,6 +3,7 @@
 import { formatDateTime } from "@/lib/format";
 import {
   listHumanTasksOptions,
+  listHumanTasksQueryKey,
   resolveHumanTaskMutation,
 } from "@ai-router/client/react-query";
 import { Badge } from "@ai-router/ui/badge";
@@ -41,7 +42,7 @@ export default function HumanTasksPage() {
   const resolveTask = useMutation({
     ...resolveHumanTaskMutation(),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["listHumanTasks"] });
+      queryClient.invalidateQueries({ queryKey: listHumanTasksQueryKey({}) });
     },
   });
 

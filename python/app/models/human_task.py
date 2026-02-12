@@ -28,6 +28,7 @@ class HumanTask(Base):
     retrieved_data: Mapped[str | None] = mapped_column(Text(), nullable=True)
     model_message: Mapped[str] = mapped_column(Text(), nullable=False)
     status: Mapped[str] = mapped_column(String(), nullable=False, server_default="PENDING")  # PENDING, RESOLVED
+    human_resolved_response: Mapped[str | None] = mapped_column(Text(), nullable=True)
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at: Mapped[DateTime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False

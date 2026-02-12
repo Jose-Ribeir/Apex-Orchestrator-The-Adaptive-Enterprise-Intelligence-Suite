@@ -8,6 +8,7 @@ from typing import Any
 
 from app.config import get_settings
 from app.prompt_registry import (
+    HUMAN_ESCALATION_TOOL,
     build_optimized_prompt_with_registry,
 )
 from app.prompt_registry import (
@@ -35,13 +36,17 @@ def _get_client():
     return _client
 
 
-ROUTER_TEMPLATE = """AGENT: {agent_name}
-TOOLS: {tools_list}
-CONNECTIONS: {connections_list}
+ROUTER_TEMPLATE = """You are the APEX Router. Analyze the QUERY and determine the minimal set of tools and connections required.
+
+AGENT: {agent_name}
+AVAILABLE TOOLS: {tools_list}
+AVAILABLE CONNECTIONS: {connections_list}
+
 QUERY: "{query}"
 
-Reply with JSON only:
-{{"needs_rag": true/false, "tools_needed": ["RAG"] or [], "connections_needed": ["google_gmail"] or [], "model_to_use": "llama-3.3-70b-versatile" or "llama-3.1-8b-instant", "reason": "one sentence"}}
+INSTRUCTIONS: Analyze intent. Determine if external data (RAG, Web, Connections) is needed or if conversational/logic-based.
+Output JSON with reasoning FIRST (think before committing):
+{{"reasoning": "Brief step-by-step analysis of why tools are or are not needed.", "needs_rag": true/false, "tools_needed": ["RAG"] or [], "connections_needed": ["google_gmail"] or [], "model_to_use": "llama-3.3-70b-versatile" or "llama-3.1-8b-instant", "complexity_score": 1-5 (optional)}}
 """  # noqa: E501
 
 
@@ -70,7 +75,13 @@ class GroqLLMProvider:
         )
         text = (resp.choices[0].message.content or "").strip()
         try:
-            return json.loads(text)
+            data = json.loads(text)
+            # Strip Human Escalation: human-needed is decided by the generator's final output
+            raw_tools = list(data.get("tools_needed") or [])
+            data["tools_needed"] = [
+                t for t in raw_tools if (t or "").strip() != HUMAN_ESCALATION_TOOL
+            ]
+            return data
         except json.JSONDecodeError:
             return {
                 "needs_rag": True,

@@ -28,18 +28,18 @@ DEFAULT_USERS = [
 
 # Default tools available in the catalog
 DEFAULT_TOOL_NAMES = [
-    "Chain-of-Thought (CoT)",
+    "Step-by-Step Reasoning",
     "RAG",
-    "Straight Model",
+    "Direct Answer",
     "Web Search",
     "Python Interpreter",
-    "human-in-loop",
+    "Human Escalation",
 ]
 
 # Supported connection types (OAuth providers). description is for AI/router context.
 DEFAULT_CONNECTION_TYPES = [
     {
-        "name": "Google Gmail",
+        "name": "Gmail Integration",
         "provider_key": "google_gmail",
         "description": (
             "List emails, search emails, find emails, send and reply to emails. "
@@ -78,7 +78,7 @@ FIELD_SERVICE_ASSISTANT_AGENT = {
         'In these critical cases, output the message: "⚠️ CRITICAL ISSUE DETECTED: Human Supervisor Review Required." and do not proceed with standard repair advice.\n'
         "Otherwise, provide the Part ID and current stock level in your final response.",
     ],
-    "tools": ["RAG", "Python Interpreter", "Web Search", "human-in-loop"],
+    "tools": ["RAG", "Python Interpreter", "Web Search", "Human Escalation"],
     "rag_files": ["parts_catalog.csv"],
 }
 

@@ -3,6 +3,29 @@
 With WORKER_RELOAD=1 (or --reload), restarts the worker when Python files under app/ change.
 """
 
+# Bootstrap HuggingFace cache before any imports that might pull in sentence-transformers.
+# Avoids G:\ and other missing-drive errors on Windows when embedding model loads.
+import os
+from pathlib import Path
+
+def _hf_cache_valid(v: str) -> bool:
+    if not v or not v.strip():
+        return False
+    try:
+        return Path(v).exists()
+    except OSError:
+        return False
+
+_wd = Path(__file__).resolve().parent.parent
+_hf_cache = _wd / ".cache" / "huggingface"
+try:
+    _hf_cache.mkdir(parents=True, exist_ok=True)
+    for _var in ("HF_HOME", "HUGGINGFACE_HUB_CACHE", "TRANSFORMERS_CACHE"):
+        if not _hf_cache_valid(os.environ.get(_var, "")):
+            os.environ[_var] = str(_hf_cache)
+except OSError:
+    pass
+
 import asyncio
 import logging
 import os

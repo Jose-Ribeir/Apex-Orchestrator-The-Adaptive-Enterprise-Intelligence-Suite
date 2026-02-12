@@ -1,8 +1,10 @@
 """Human tasks API (under /api/human-tasks)."""
 
+import base64
 import asyncio
 import json
 import logging
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Query, status
@@ -61,6 +63,7 @@ def _task_to_response(task) -> HumanTaskResponse:
         retrievedData=task.retrieved_data,
         modelMessage=task.model_message,
         status=task.status,
+        humanResolvedResponse=getattr(task, "human_resolved_response", None),
         createdAt=task.created_at.isoformat(),
         updatedAt=task.updated_at.isoformat(),
         modelQuery=(
@@ -184,42 +187,82 @@ async def update_task(
     return _task_to_response(task)
 
 
-def _format_human_response_for_email(human_message: str, attachment_count: int = 0) -> str:
-    """Use LLM to turn the human's raw message (and attachment note) into a professional email body."""
+# MIME types we pass to the model as multimodal (images and common docs Gemini can handle)
+_MULTIMODAL_MIMES = frozenset(
+    {"image/jpeg", "image/png", "image/gif", "image/webp", "image/heic", "application/pdf"}
+)
+
+
+def _format_human_response(
+    human_message: str,
+    attachments: list[ResolveHumanTaskAttachment] | None = None,
+) -> str:
+    """Use LLM to turn the human's message and optional attachments into a short professional reply.
+    Supports multimodal input (images, PDF). Returns formatted text for email or chat delivery.
+    """
     from app.config import get_settings
 
     settings = get_settings()
+    raw_text = (human_message or "").strip()
     if not getattr(settings, "gemini_api_key", None) or not settings.gemini_api_key.strip():
-        return (human_message or "").strip()
+        return raw_text
+    attachment_list = attachments or []
+    # Build list of dicts for multimodal (mime_type, data_base64) - only supported types
+    att_dicts: list[dict[str, str]] = []
+    for a in attachment_list:
+        mime = (a.mime_type or "").strip().lower()
+        if mime in _MULTIMODAL_MIMES and a.data_base64:
+            att_dicts.append({"mime_type": a.mime_type, "data_base64": a.data_base64})
     try:
         from google import genai
+        from google.genai import types
 
         client = genai.Client(api_key=settings.gemini_api_key.strip())
-        attachment_note = (
-            f"\n\nThe reviewer attached {attachment_count} file(s) to this response." if attachment_count else ""
-        )
         prompt = (
-            "Rewrite the following into a short, professional email reply. "
-            "Output only the reply body (no subject, no greetings if redundant). "
+            "Given the reviewer's message and any attached images/documents, produce a short, professional reply. "
+            "Incorporate relevant information from the attachments. Output only the reply body (no subject, no redundant greetings). "
             "Keep the same intent and key information.\n\n"
-            f"Reviewer's message:{attachment_note}\n{human_message or '(none)'}"
+            f"Reviewer's message:\n{raw_text or '(none)'}"
         )
+        if not att_dicts:
+            resp = client.models.generate_content(
+                model="gemini-3-flash-preview",
+                contents=prompt,
+            )
+            text = (getattr(resp, "text", None) or "").strip()
+            return text or raw_text
+        # Multimodal: build Content with text + inline_data parts
+        Content = getattr(types, "Content", None)
+        Part = getattr(types, "Part", None)
+        Blob = getattr(types, "Blob", None)
+        if not all((Content, Part, Blob)):
+            return raw_text
+        parts: list[Any] = [Part(text=prompt)]
+        for att in att_dicts:
+            mime = att.get("mime_type") or "application/octet-stream"
+            b64 = att.get("data_base64") or ""
+            try:
+                data = base64.b64decode(b64, validate=True)
+            except Exception:
+                continue
+            parts.append(Part(inline_data=Blob(mime_type=mime, data=data)))
+        contents = [Content(role="user", parts=parts)]
         resp = client.models.generate_content(
             model="gemini-3-flash-preview",
-            contents=prompt,
+            contents=contents,
         )
         text = (getattr(resp, "text", None) or "").strip()
-        return text or (human_message or "").strip()
+        return text or raw_text
     except Exception as e:
         logger.warning("Format human response failed: %s", e, exc_info=True)
-        return (human_message or "").strip()
+        return raw_text
 
 
 @router.post(
     "/{task_id}/resolve",
     response_model=HumanTaskResponse,
     summary="Resolve human task",
-    description="Mark a human task as resolved. Optional body: human_message and attachments; if provided, format and send as email reply then resolve.",
+    description="Mark a human task as resolved. Optional body: human_message and attachments; if provided, model formats and sends (email) or stores (chat) then resolve.",
     operation_id="resolveHumanTask",
 )
 async def resolve_task(
@@ -233,6 +276,13 @@ async def resolve_task(
     user_id = current_user["id"]
     get_token = lambda uid: connections_service.get_valid_access_token(uid, "google_gmail")
 
+    formatted_response: str | None = None
+    if body and (body.human_message or (body.attachments and len(body.attachments) > 0)):
+        formatted_response = _format_human_response(
+            (body.human_message or "").strip(),
+            body.attachments,
+        )
+
     if task.status == "PENDING" and task.retrieved_data:
         action_data = None
         try:
@@ -241,12 +291,13 @@ async def resolve_task(
             pass
 
         if isinstance(action_data, dict) and action_data.get("action") in ("send_email", "reply_email"):
-            if body and (body.human_message or (body.attachments and len(body.attachments) > 0)):
-                # Human provided a response: format it and send as the email body
-                human_text = (body.human_message or "").strip()
-                attachment_count = len(body.attachments) if body.attachments else 0
-                formatted_body = _format_human_response_for_email(human_text, attachment_count)
-                action_data = {**action_data, "body": formatted_body}
+            if formatted_response is not None:
+                action_data = {**action_data, "body": formatted_response}
+                if body and body.attachments:
+                    action_data["attachments"] = [
+                        {"mime_type": a.mime_type, "data_base64": a.data_base64}
+                        for a in body.attachments
+                    ]
                 await asyncio.to_thread(
                     gmail_service.execute_email_action,
                     user_id,
@@ -254,13 +305,22 @@ async def resolve_task(
                     get_token,
                 )
             else:
-                # No human message: execute stored action as-is (existing behavior)
                 await asyncio.to_thread(
                     gmail_service.execute_email_action,
                     user_id,
                     action_data,
                     get_token,
                 )
+    elif formatted_response is not None:
+        # Content-triggered (or other non-email) task: store formatted response for chat delivery
+        task = await asyncio.to_thread(
+            human_tasks_service.resolve_task,
+            task_id,
+            human_resolved_response=formatted_response,
+        )
+        if not task:
+            raise HTTPException(status_code=404, detail="Human task not found")
+        return _task_to_response(task)
 
     task = await asyncio.to_thread(human_tasks_service.resolve_task, task_id)
     if not task:
