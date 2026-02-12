@@ -135,9 +135,14 @@ app = FastAPI(
     openapi_tags=OPENAPI_TAGS,
 )
 
+# CORS: must use explicit origins when credentials=True; "*" is invalid
+_s = get_settings()
+_cors_origins = [o.strip() for o in _s.cors_origins.split(",") if o.strip()]
+if not _cors_origins:
+    _cors_origins = ["http://localhost:3000"]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

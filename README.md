@@ -1,4 +1,4 @@
-# Apex Orchestrator – The Adaptive Enterprise Intelligence Suite
+git# Apex Orchestrator – The Adaptive Enterprise Intelligence Suite
 
 AI-powered agent dashboard for managing intelligent agents, human-in-the-loop workflows, and performance analytics.
 

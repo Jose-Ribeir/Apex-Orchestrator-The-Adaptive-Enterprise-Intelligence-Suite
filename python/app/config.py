@@ -87,6 +87,9 @@ class Settings(BaseSettings):
     cookie_max_age_seconds: int = 60 * 60 * 24 * 7  # 7 days
     cookie_same_site: str = "lax"  # use "none" for cross-origin + secure
 
+    # CORS: explicit origins required when credentials=True (cannot use *)
+    cors_origins: str = "http://localhost:3000,http://localhost:5173"
+
     # Google OAuth (optional; for Connections / Gmail integration)
     google_oauth_client_id: str = ""
     google_oauth_client_secret: str = ""

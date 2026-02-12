@@ -67,6 +67,7 @@ services:
       LLM_PROVIDER: ${LLM_PROVIDER:-groq}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_API_KEYS: ${GEMINI_API_KEYS:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       STORAGE_PROVIDER: minio
       MINIO_ENDPOINT: minio:9000
@@ -75,6 +76,7 @@ services:
       MINIO_BUCKET: ${MINIO_BUCKET:-documents}
       MINIO_SECURE: "false"
       GEMINIMESH_REQUEST_TIMEOUT: ${GEMINIMESH_REQUEST_TIMEOUT:-90}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:5173}
     ports:
       - "${API_PORT:-4000}:8000"
     depends_on:
@@ -98,6 +100,7 @@ services:
       LLM_PROVIDER: ${LLM_PROVIDER:-groq}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_API_KEYS: ${GEMINI_API_KEYS:-}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       STORAGE_PROVIDER: minio
       MINIO_ENDPOINT: minio:9000
