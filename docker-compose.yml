@@ -93,6 +93,8 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     command: python -m app.worker
+    healthcheck:
+      disable: true
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-ai_router}
       REDIS_URL: redis://redis:6379
