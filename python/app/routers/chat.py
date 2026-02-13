@@ -322,13 +322,17 @@ Note: If the router requested RAG/Context but the [CONTEXT] section below is emp
         if not isinstance(tools_available, list):
             tools_available = []
         agent_mode = ""
+    # Merge router's tools_needed with tools we actually used (e.g. RAG when we retrieved docs)
+    tools_executed = list(tool_decision.get("tools_needed", []))
+    if tool_decision.get("needs_rag") and docs_count > 0 and "RAG" not in tools_executed:
+        tools_executed.append("RAG")
     metrics = {
         "call_count": 1,
         "router_model": "gemini-3-flash-preview",
         "generator_model": generator_model_name,
         "agent_mode": agent_mode,
         "tools_available": tools_available,
-        "tools_executed": tool_decision.get("tools_needed", []),
+        "tools_executed": tools_executed,
         "connections_used": tool_decision.get("connections_needed", []),
         "docs_retrieved": docs_count,
         "total_docs": total_docs,
@@ -451,7 +455,7 @@ Note: If the router requested RAG/Context but the [CONTEXT] section below is emp
             "call_count": 1,
             "router_model": "gemini-3-flash-preview",
             "generator_model": tool_decision.get("model_to_use", "gemini-3-flash-preview"),
-            "tools_executed": tool_decision.get("tools_needed", []),
+            "tools_executed": tools_executed,
             "docs_retrieved": docs_count,
             "total_docs": total_docs,
             "input_chars": input_chars,
@@ -562,7 +566,7 @@ Note: If the router requested RAG/Context but the [CONTEXT] section below is emp
                     "call_count": 1,
                     "router_model": "gemini-3-flash-preview",
                     "generator_model": tool_decision.get("model_to_use", "gemini-3-flash-preview"),
-                    "tools_executed": tool_decision.get("tools_needed", []),
+                    "tools_executed": tools_executed,
                     "docs_retrieved": docs_count,
                     "total_docs": total_docs,
                     "input_chars": input_chars,
@@ -646,7 +650,7 @@ Note: If the router requested RAG/Context but the [CONTEXT] section below is emp
             "call_count": 1,
             "router_model": "gemini-3-flash-preview",
             "generator_model": tool_decision.get("model_to_use", "gemini-3-flash-preview"),
-            "tools_executed": tool_decision.get("tools_needed", []),
+            "tools_executed": tools_executed,
             "docs_retrieved": docs_count,
             "total_docs": total_docs,
             "input_chars": input_chars,

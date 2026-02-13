@@ -37,7 +37,7 @@ def _get_client():
     return _client
 
 
-ROUTER_TEMPLATE = """You are the APEX Router. Analyze the QUERY and determine the minimal set of tools and connections required.
+ROUTER_TEMPLATE = """You are the APEX Router. Analyze the QUERY and determine ALL tools and connections that may be needed to answer it.
 
 AGENT: {agent_name}
 AVAILABLE TOOLS: {tools_list}
@@ -45,7 +45,7 @@ AVAILABLE CONNECTIONS: {connections_list}
 
 QUERY: "{query}"
 
-INSTRUCTIONS: Analyze intent. Determine if external data (RAG, Web, Connections) is needed or if conversational/logic-based.
+INSTRUCTIONS: Include every tool that may be used (e.g. RAG + Python Interpreter if query needs both document lookup and data/parts lookup). Only omit tools for simple greetings or general knowledge.
 Output JSON with reasoning FIRST (think before committing):
 {{"reasoning": "Brief step-by-step analysis of why tools are or are not needed.", "needs_rag": true/false, "tools_needed": ["RAG"] or [], "connections_needed": ["google_gmail"] or [], "model_to_use": "gpt-4o" or "gpt-4o-mini", "complexity_score": 1-5 (optional)}}
 """  # noqa: E501

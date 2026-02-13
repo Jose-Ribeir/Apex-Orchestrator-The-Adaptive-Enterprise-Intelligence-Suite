@@ -153,6 +153,30 @@ export default function Page() {
                 return next;
               });
             }
+            if ("is_final" in data && data.is_final && "metrics" in data && data.metrics) {
+              const metrics = data.metrics as Record<string, unknown>;
+              const toolsFromFinal =
+                (metrics.tools_executed as string[] | undefined) ??
+                (metrics.tools_used as string[] | undefined);
+              if (toolsFromFinal?.length) {
+                setMessages((prev) => {
+                  const next = [...prev];
+                  const last = next[next.length - 1];
+                  if (last?.role === "assistant" && last.routerInfo) {
+                    const existing = last.routerInfo.metrics.tools_executed ?? last.routerInfo.router_decision.tools_needed ?? [];
+                    const merged = [...new Set([...existing, ...toolsFromFinal])];
+                    next[next.length - 1] = {
+                      ...last,
+                      routerInfo: {
+                        ...last.routerInfo,
+                        metrics: { ...last.routerInfo.metrics, tools_executed: merged },
+                      },
+                    };
+                  }
+                  return next;
+                });
+              }
+            }
             if ("human_task" in data && data.human_task) {
               setPendingHumanTask(data.human_task);
             }

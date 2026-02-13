@@ -145,12 +145,12 @@ class RouterDecision(BaseModel):
 
 
 CHEAP_ROUTER_TEMPLATE = """
-You are the APEX Router. Your job is to analyze a user QUERY and determine the minimal set of tools and connections required to answer it.
+You are the APEX Router. Your job is to analyze a user QUERY and determine ALL tools and connections that may be needed to answer it.
 
 AGENT: {agent_name}
 AVAILABLE TOOLS:
 {tools_list}
-(Note: Only select tools if strictly necessary. Prefer direct answers for greetings or general knowledge if allowed.)
+(Note: Include every tool that may be used—e.g. if the query needs both document lookup and data/parts lookup, include both RAG and Python Interpreter. Only omit tools for simple greetings or general knowledge.)
 
 AVAILABLE CONNECTIONS:
 {connections_list}
